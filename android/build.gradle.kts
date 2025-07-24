@@ -27,10 +27,7 @@ subprojects {
 }
 
 plugins {
-    // this is a placeholder for your existing plugins
 }
-
-
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
