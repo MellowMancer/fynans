@@ -32,10 +32,16 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-              icon: Icon(Icons.list_alt), label: 'Expenses'),
-          BottomNavigationBarItem(icon: Icon(Icons.pie_chart), label: 'Groups'),
+            icon: Icon(Icons.list_alt),
+            label: 'Expenses',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined), label: 'Analytics'),
+            icon: Icon(Icons.analytics_outlined), 
+            label: 'Views'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.pie_chart_outline),
+            label: 'Analytics',
+          ),
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
