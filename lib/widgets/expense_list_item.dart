@@ -54,6 +54,12 @@ class _ExpenseListItemState extends State<ExpenseListItem> {
                   ),
                   const SizedBox(width: 8),
                   Text(DateFormat.yMd().format(widget.expense.date)),
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.keyboard_arrow_down, size: 20, color: Colors.grey),
+                  ),
                 ],
               ),
               AnimatedSize(
