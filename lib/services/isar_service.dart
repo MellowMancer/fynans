@@ -4,6 +4,7 @@ import 'package:fynans/models/advanced_view_summary.dart';
 import 'package:isar/isar.dart';
 import 'package:fynans/models/monthly_analytics.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
 
 class IsarService {
   late Future<Isar> db;
@@ -81,6 +82,9 @@ class IsarService {
           // Recipient is now mandatory, so no null check is needed.
           keys.add(expense.recipient.trim());
           break;
+        case GroupingOption.month:
+          keys.add(DateFormat.yMMMM().format(expense.date));
+          break;
       }
 
       if (keys.isEmpty && groupBy == GroupingOption.group) {
@@ -101,6 +105,7 @@ class IsarService {
     result.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
     return (monthTotal, result);
   }
+
 
   Future<List<String>> getAllGroups() async {
     final isar = await db;
