@@ -32,18 +32,23 @@ const ExpenseSchema = CollectionSchema(
       name: r'group',
       type: IsarType.stringList,
     ),
-    r'note': PropertySchema(
+    r'isCredit': PropertySchema(
       id: 3,
+      name: r'isCredit',
+      type: IsarType.bool,
+    ),
+    r'note': PropertySchema(
+      id: 4,
       name: r'note',
       type: IsarType.string,
     ),
     r'recipient': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'recipient',
       type: IsarType.string,
     ),
     r'tags': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'tags',
       type: IsarType.stringList,
     )
@@ -88,6 +93,19 @@ const ExpenseSchema = CollectionSchema(
       properties: [
         IndexPropertySchema(
           name: r'recipient',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
+    ),
+    r'isCredit': IndexSchema(
+      id: 7558575624608104572,
+      name: r'isCredit',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'isCredit',
           type: IndexType.value,
           caseSensitive: false,
         )
@@ -141,9 +159,10 @@ void _expenseSerialize(
   writer.writeDouble(offsets[0], object.amount);
   writer.writeDateTime(offsets[1], object.date);
   writer.writeStringList(offsets[2], object.group);
-  writer.writeString(offsets[3], object.note);
-  writer.writeString(offsets[4], object.recipient);
-  writer.writeStringList(offsets[5], object.tags);
+  writer.writeBool(offsets[3], object.isCredit);
+  writer.writeString(offsets[4], object.note);
+  writer.writeString(offsets[5], object.recipient);
+  writer.writeStringList(offsets[6], object.tags);
 }
 
 Expense _expenseDeserialize(
@@ -157,9 +176,10 @@ Expense _expenseDeserialize(
   object.date = reader.readDateTime(offsets[1]);
   object.group = reader.readStringList(offsets[2]) ?? [];
   object.id = id;
-  object.note = reader.readStringOrNull(offsets[3]);
-  object.recipient = reader.readString(offsets[4]);
-  object.tags = reader.readStringList(offsets[5]) ?? [];
+  object.isCredit = reader.readBool(offsets[3]);
+  object.note = reader.readStringOrNull(offsets[4]);
+  object.recipient = reader.readString(offsets[5]);
+  object.tags = reader.readStringList(offsets[6]) ?? [];
   return object;
 }
 
@@ -177,10 +197,12 @@ P _expenseDeserializeProp<P>(
     case 2:
       return (reader.readStringList(offset) ?? []) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 5:
+      return (reader.readString(offset)) as P;
+    case 6:
       return (reader.readStringList(offset) ?? []) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -226,6 +248,14 @@ extension ExpenseQueryWhereSort on QueryBuilder<Expense, Expense, QWhere> {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         const IndexWhereClause.any(indexName: r'recipient'),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhere> anyIsCredit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'isCredit'),
       );
     });
   }
@@ -704,6 +734,51 @@ extension ExpenseQueryWhere on QueryBuilder<Expense, Expense, QWhereClause> {
       }
     });
   }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> isCreditEqualTo(
+      bool isCredit) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'isCredit',
+        value: [isCredit],
+      ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> isCreditNotEqualTo(
+      bool isCredit) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'isCredit',
+              lower: [],
+              upper: [isCredit],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'isCredit',
+              lower: [isCredit],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'isCredit',
+              lower: [isCredit],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'isCredit',
+              lower: [],
+              upper: [isCredit],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
 }
 
 extension ExpenseQueryFilter
@@ -1086,6 +1161,16 @@ extension ExpenseQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> isCreditEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isCredit',
+        value: value,
       ));
     });
   }
@@ -1613,6 +1698,18 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByIsCredit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isCredit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByIsCreditDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isCredit', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> sortByNote() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'note', Sort.asc);
@@ -1676,6 +1773,18 @@ extension ExpenseQuerySortThenBy
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByIsCredit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isCredit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByIsCreditDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isCredit', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> thenByNote() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'note', Sort.asc);
@@ -1718,6 +1827,12 @@ extension ExpenseQueryWhereDistinct
   QueryBuilder<Expense, Expense, QDistinct> distinctByGroup() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'group');
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QDistinct> distinctByIsCredit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isCredit');
     });
   }
 
@@ -1765,6 +1880,12 @@ extension ExpenseQueryProperty
   QueryBuilder<Expense, List<String>, QQueryOperations> groupProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'group');
+    });
+  }
+
+  QueryBuilder<Expense, bool, QQueryOperations> isCreditProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isCredit');
     });
   }
 

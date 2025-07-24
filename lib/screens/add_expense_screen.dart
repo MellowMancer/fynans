@@ -23,6 +23,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   List<String> _allTags = [];
   List<String> _existingGroups = [];
   List<String> _existingRecipients = [];
+  bool _creditFlag = false;
+  String recipient = '';
+
 
   @override
   void initState() {
@@ -64,11 +67,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       _selectedDate = pickedDate ?? _selectedDate;
     });
   }
-
+  
   void _saveExpense() async {
     if (_formKey.currentState!.validate()) {
-      final groupInputString =
-          _groupController.text; // Assuming you have a TextEditingController
+      final groupInputString = _groupController.text;
       final List<String> groups = groupInputString
           .split(',')
           .map((g) => g.trim())
@@ -81,9 +83,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         ..tags = _selectedTags
         ..note = _noteController.text.isNotEmpty ? _noteController.text : null
         ..group = groups
-        ..recipient = _recipientController.text.trim();
+        ..recipient = _recipientController.text.trim()
+        ..isCredit = _creditFlag;
 
       await isarService.saveExpense(newExpense);
+
 
       // Check if the widget is still in the tree before using its context.
       if (!mounted) return;
@@ -100,7 +104,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       setState(() {
         _selectedTags.clear();
         _selectedDate = DateTime.now();
-        _tagFormFieldKey.currentState?.didChange([]);
+        _creditFlag = false;
+        _recipientController.text = '';
+        _tagFormFieldKey.currentState?.didChange(<String>[]);
       });
       FocusScope.of(context).unfocus();
       _loadSuggestions();
@@ -139,21 +145,44 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _amountController,
-                decoration: const InputDecoration(
-                  labelText: 'Amount',
-                  prefixIcon: Icon(Icons.currency_rupee),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _amountController,
+                      decoration: const InputDecoration(
+                        labelText: 'Amount',
+                        prefixIcon: Icon(Icons.currency_rupee),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d+\.?\d{0,2}'),
+                        ),
+                      ],
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? 'Please enter an amount'
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Column(
+                    children: [
+                      const Text('Credit', textScaler: TextScaler.linear(0.9)),
+                      const SizedBox(height: 1),
+                      Switch(
+                        value: _creditFlag,
+                        onChanged: (value) => setState(() {
+                          _creditFlag = value;
+                          _recipientController.text = value ? 'Me' : '';
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
                 ],
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Please enter an amount'
-                    : null,
               ),
               const SizedBox(height: 16),
               Row(
@@ -236,8 +265,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       focusNode,
                       onFieldSubmitted,
                     ) {
-                      // We need to manually assign the controller to our state's controller
-                      _groupController.value = textEditingController.value;
                       return TextFormField(
                         controller: _groupController,
                         focusNode: focusNode,
@@ -273,9 +300,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       focusNode,
                       onFieldSubmitted,
                     ) {
-                      _recipientController.value = textEditingController.value;
+                      // _recipientController.value = textEditingController.value;
                       return TextFormField(
                         controller: _recipientController,
+                        readOnly: _creditFlag,
                         focusNode: focusNode,
                         onFieldSubmitted: (String value) {
                           onFieldSubmitted();

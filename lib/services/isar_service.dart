@@ -13,6 +13,11 @@ class IsarService {
     db = openDB();
   }
 
+  Future<Expense?> getLatestExpense() async {
+    final isar = await db;
+    return await isar.expenses.where(sort: Sort.desc).findFirst();
+  }
+
   Future<void> saveExpense(Expense newExpense) async {
     final isar = await db;
     isar.writeTxnSync<int>(() => isar.expenses.putSync(newExpense));
@@ -144,8 +149,19 @@ class IsarService {
         .dateBetween(start, end, includeLower: true, includeUpper: true)
         .findAll();
 
-    final double totalOutflow =
-        expensesForMonth.fold(0, (sum, e) => sum + e.amount);
+    // Outflow (expenses.isCredit = false)
+    final double totalOutflow = expensesForMonth.fold(
+      0,
+      (sum, expense) => expense.isCredit ? sum : sum + expense.amount,
+    );
+
+    final double totalInflow = expensesForMonth.fold(
+      0,
+      (sum, expense) => expense.isCredit ? sum + expense.amount : sum,
+    );
+
+
+    // Daily spending
 
     final Map<int, double> dailySpending = {};
     for (var expense in expensesForMonth) {
@@ -169,8 +185,9 @@ class IsarService {
 
     // Inflow is not yet implemented in the model, so we'll return 0.
     return MonthlyAnalytics(
+
         totalOutflow: totalOutflow,
-        totalInflow: 0.0, // Placeholder for future income tracking
+        totalInflow: totalInflow,
         dailySpending: dailySpending,
         spendingByTag: spendingByTag);
   }

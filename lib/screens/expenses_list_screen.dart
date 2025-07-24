@@ -36,8 +36,6 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // If there are no months to display, show a safe empty state.
-    // This prevents RangeErrors if the _months list is empty.
     if (_months.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Monthly Overview')),
@@ -70,7 +68,7 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
       body: Column(
         children: [
           SizedBox(
-            height: 240, // Height for the summary card PageView
+            height: 320,
             child: PageView.builder(
               controller: _pageController,
               itemCount: _months.length,
@@ -146,13 +144,18 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(DateFormat.yMMMM().format(month), style: Theme.of(context).textTheme.headlineSmall),
+                Text(DateFormat.yMMMM().format(month), style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildFlowIndicator(context, title: 'Inflow', amount: summary.totalIncome, color: Colors.green.shade300),
+                    const SizedBox(width: 8),
+                    _buildFlowIndicator(context, title: 'Outflow', amount: summary.totalExpenses, color: Colors.red.shade300),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text('₹${summary.total.toStringAsFixed(2)}', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 12),
                 Expanded(
                   child: Row(
                     children: [
@@ -167,6 +170,29 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildFlowIndicator(BuildContext context, {required String title, required double amount, required Color color}) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color.fromARGB(255, 45, 45, 45),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.white70)),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('₹${amount.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

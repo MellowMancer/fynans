@@ -20,4 +20,7 @@ class Expense {
 
   @Index(type: IndexType.value, caseSensitive: false)
   late String recipient;
+
+  @Index()
+  bool isCredit = false;
 }
