@@ -25,10 +25,11 @@ class MonthlySummary {
           tagSpending.update(cleanTag, (value) => value + expense.amount, ifAbsent: () => expense.amount);
         }
       }
-
-      if (expense.group != null && expense.group!.trim().isNotEmpty) {
-        final cleanGroup = expense.group!.trim().toLowerCase();
-        groupSpending.update(cleanGroup, (value) => value + expense.amount, ifAbsent: () => expense.amount);
+      for (var gr in expense.group) {
+        final cleanGr = gr.trim().toLowerCase();
+      if (cleanGr.trim().isNotEmpty) {
+        groupSpending.update(cleanGr, (value) => value + expense.amount, ifAbsent: () => expense.amount);
+      }
       }
     }
 

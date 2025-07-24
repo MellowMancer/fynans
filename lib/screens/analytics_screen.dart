@@ -4,7 +4,8 @@ import 'package:fynans/main.dart';
 import 'package:fynans/models/monthly_analytics.dart';
 import 'package:fynans/utils/tag_helper.dart';
 import 'package:intl/intl.dart';
-import 'package:month_year_picker/month_year_picker.dart';
+import 'package:fynans/widgets/month_year_wheel_picker.dart';
+
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -31,8 +32,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   void _selectMonth() async {
     final now = DateTime.now();
-    final firstDate = DateTime(now.year - 2, now.month);
-    final pickedDate = await showMonthYearPicker(
+    final firstDate = DateTime(now.year - 5, now.month);
+    final pickedDate = await MonthYearWheelPicker.show(
       context: context,
       initialDate: _selectedMonth,
       firstDate: firstDate,
@@ -240,7 +241,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       return PieChartSectionData(
         color: TagHelper.getColorForTag(tag),
         value: amount,
-        title: '₹${amount.toStringAsFixed(0)}',
+        title: '${(amount / analytics.totalOutflow * 100).toStringAsFixed(0)}%',
         radius: radius,
         titleStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.white),
       );

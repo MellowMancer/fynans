@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fynans/screens/expenses_list_screen.dart';
 import 'package:fynans/screens/analytics_screen.dart';
-import 'package:fynans/screens/grouped_expenses_screen.dart';
+import 'package:fynans/screens/advanced_view.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,7 +15,7 @@ class _MainScreenState extends State<MainScreen> {
 
   static const List<Widget> _widgetOptions = <Widget>[
     ExpensesListScreen(),
-    GroupedExpensesScreen(),
+    AdvancedViewScreen(),
     AnalyticsScreen(),
   ];
 

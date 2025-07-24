@@ -30,7 +30,7 @@ const ExpenseSchema = CollectionSchema(
     r'group': PropertySchema(
       id: 2,
       name: r'group',
-      type: IsarType.string,
+      type: IsarType.stringList,
     ),
     r'note': PropertySchema(
       id: 3,
@@ -54,6 +54,19 @@ const ExpenseSchema = CollectionSchema(
   deserializeProp: _expenseDeserializeProp,
   idName: r'id',
   indexes: {
+    r'group': IndexSchema(
+      id: -7980787437430964260,
+      name: r'group',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'group',
+          type: IndexType.value,
+          caseSensitive: true,
+        )
+      ],
+    ),
     r'tags': IndexSchema(
       id: 4029205728550669204,
       name: r'tags',
@@ -95,10 +108,11 @@ int _expenseEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.group.length * 3;
   {
-    final value = object.group;
-    if (value != null) {
-      bytesCount += 3 + value.length * 3;
+    for (var i = 0; i < object.group.length; i++) {
+      final value = object.group[i];
+      bytesCount += value.length * 3;
     }
   }
   {
@@ -126,7 +140,7 @@ void _expenseSerialize(
 ) {
   writer.writeDouble(offsets[0], object.amount);
   writer.writeDateTime(offsets[1], object.date);
-  writer.writeString(offsets[2], object.group);
+  writer.writeStringList(offsets[2], object.group);
   writer.writeString(offsets[3], object.note);
   writer.writeString(offsets[4], object.recipient);
   writer.writeStringList(offsets[5], object.tags);
@@ -141,7 +155,7 @@ Expense _expenseDeserialize(
   final object = Expense();
   object.amount = reader.readDouble(offsets[0]);
   object.date = reader.readDateTime(offsets[1]);
-  object.group = reader.readStringOrNull(offsets[2]);
+  object.group = reader.readStringList(offsets[2]) ?? [];
   object.id = id;
   object.note = reader.readStringOrNull(offsets[3]);
   object.recipient = reader.readString(offsets[4]);
@@ -161,7 +175,7 @@ P _expenseDeserializeProp<P>(
     case 1:
       return (reader.readDateTime(offset)) as P;
     case 2:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 3:
       return (reader.readStringOrNull(offset)) as P;
     case 4:
@@ -189,6 +203,14 @@ extension ExpenseQueryWhereSort on QueryBuilder<Expense, Expense, QWhere> {
   QueryBuilder<Expense, Expense, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhere> anyGroupElement() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'group'),
+      );
     });
   }
 
@@ -272,6 +294,142 @@ extension ExpenseQueryWhere on QueryBuilder<Expense, Expense, QWhereClause> {
         upper: upperId,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> groupElementEqualTo(
+      String groupElement) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'group',
+        value: [groupElement],
+      ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> groupElementNotEqualTo(
+      String groupElement) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'group',
+              lower: [],
+              upper: [groupElement],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'group',
+              lower: [groupElement],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'group',
+              lower: [groupElement],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'group',
+              lower: [],
+              upper: [groupElement],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> groupElementGreaterThan(
+    String groupElement, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'group',
+        lower: [groupElement],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> groupElementLessThan(
+    String groupElement, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'group',
+        lower: [],
+        upper: [groupElement],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> groupElementBetween(
+    String lowerGroupElement,
+    String upperGroupElement, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'group',
+        lower: [lowerGroupElement],
+        includeLower: includeLower,
+        upper: [upperGroupElement],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> groupElementStartsWith(
+      String GroupElementPrefix) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'group',
+        lower: [GroupElementPrefix],
+        upper: ['$GroupElementPrefix\u{FFFFF}'],
+      ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> groupElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'group',
+        value: [''],
+      ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterWhereClause> groupElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.lessThan(
+              indexName: r'group',
+              upper: [''],
+            ))
+            .addWhereClause(IndexWhereClause.greaterThan(
+              indexName: r'group',
+              lower: [''],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.greaterThan(
+              indexName: r'group',
+              lower: [''],
+            ))
+            .addWhereClause(IndexWhereClause.lessThan(
+              indexName: r'group',
+              upper: [''],
+            ));
+      }
     });
   }
 
@@ -665,24 +823,8 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'group',
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'group',
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupEqualTo(
-    String? value, {
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementEqualTo(
+    String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -694,8 +836,8 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupGreaterThan(
-    String? value, {
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementGreaterThan(
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -709,8 +851,8 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupLessThan(
-    String? value, {
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementLessThan(
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -724,9 +866,9 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupBetween(
-    String? lower,
-    String? upper, {
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementBetween(
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -743,7 +885,7 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupStartsWith(
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -756,7 +898,7 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupEndsWith(
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -769,7 +911,7 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupContains(
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementContains(
       String value,
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -781,7 +923,7 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupMatches(
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementMatches(
       String pattern,
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -793,7 +935,7 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupIsEmpty() {
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupElementIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'group',
@@ -802,12 +944,97 @@ extension ExpenseQueryFilter
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupIsNotEmpty() {
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+      groupElementIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'group',
         value: '',
       ));
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'group',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'group',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'group',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'group',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'group',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> groupLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'group',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -1386,18 +1613,6 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterSortBy> sortByGroup() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'group', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> sortByGroupDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'group', Sort.desc);
-    });
-  }
-
   QueryBuilder<Expense, Expense, QAfterSortBy> sortByNote() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'note', Sort.asc);
@@ -1446,18 +1661,6 @@ extension ExpenseQuerySortThenBy
   QueryBuilder<Expense, Expense, QAfterSortBy> thenByDateDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'date', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> thenByGroup() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'group', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> thenByGroupDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'group', Sort.desc);
     });
   }
 
@@ -1512,10 +1715,9 @@ extension ExpenseQueryWhereDistinct
     });
   }
 
-  QueryBuilder<Expense, Expense, QDistinct> distinctByGroup(
-      {bool caseSensitive = true}) {
+  QueryBuilder<Expense, Expense, QDistinct> distinctByGroup() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'group', caseSensitive: caseSensitive);
+      return query.addDistinctBy(r'group');
     });
   }
 
@@ -1560,7 +1762,7 @@ extension ExpenseQueryProperty
     });
   }
 
-  QueryBuilder<Expense, String?, QQueryOperations> groupProperty() {
+  QueryBuilder<Expense, List<String>, QQueryOperations> groupProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'group');
     });

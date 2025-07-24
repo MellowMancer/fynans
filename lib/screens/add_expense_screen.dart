@@ -67,14 +67,20 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   void _saveExpense() async {
     if (_formKey.currentState!.validate()) {
+      final groupInputString =
+          _groupController.text; // Assuming you have a TextEditingController
+      final List<String> groups = groupInputString
+          .split(',')
+          .map((g) => g.trim())
+          .where((g) => g.isNotEmpty)
+          .toList();
+
       final newExpense = Expense()
         ..amount = double.parse(_amountController.text)
         ..date = _selectedDate
         ..tags = _selectedTags
         ..note = _noteController.text.isNotEmpty ? _noteController.text : null
-        ..group = _groupController.text.isNotEmpty
-            ? _groupController.text.trim()
-            : null
+        ..group = groups
         ..recipient = _recipientController.text.trim();
 
       await isarService.saveExpense(newExpense);

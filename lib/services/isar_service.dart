@@ -1,6 +1,6 @@
 import 'package:fynans/models/expense.dart';
 import 'package:fynans/models/grouping_option.dart';
-import 'package:fynans/models/grouped_expense_summary.dart';
+import 'package:fynans/models/advanced_view_summary.dart';
 import 'package:isar/isar.dart';
 import 'package:fynans/models/monthly_analytics.dart';
 import 'package:path_provider/path_provider.dart';
@@ -38,7 +38,7 @@ class IsarService {
     await isar.writeTxn(() => isar.expenses.delete(id));
   }
 
-  Future<(double, List<GroupedExpenseSummary>)> getGroupedExpenses({
+  Future<(double, List<AdvancedViewSummary>)> getAdvancedViews({
     required DateTime month,
     required GroupingOption groupBy,
     String? filterGroup,
@@ -51,7 +51,7 @@ class IsarService {
     var query = isar.expenses.filter().dateBetween(start, end);
 
     if (filterGroup != null) {
-      query = query.groupEqualTo(filterGroup);
+      query = query.groupElementEqualTo(filterGroup);
     }
     if (filterTag != null) {
       query = query.tagsElementEqualTo(filterTag);
@@ -70,8 +70,8 @@ class IsarService {
       List<String> keys = [];
       switch (groupBy) {
         case GroupingOption.group:
-          if (expense.group != null && expense.group!.trim().isNotEmpty) {
-            keys.add(expense.group!.trim());
+          if (expense.group.isNotEmpty) {
+            keys.addAll(expense.group.map((g) => g.trim()).where((g) => g.isNotEmpty));
           }
           break;
         case GroupingOption.tag:
@@ -92,10 +92,10 @@ class IsarService {
       }
     }
 
-    final List<GroupedExpenseSummary> result = [];
+    final List<AdvancedViewSummary> result = [];
     groupedMap.forEach((name, expenses) {
       final total = expenses.fold<double>(0, (sum, item) => sum + item.amount);
-      result.add(GroupedExpenseSummary(name: name, totalAmount: total, expenses: expenses));
+      result.add(AdvancedViewSummary(name: name, totalAmount: total, expenses: expenses));
     });
 
     result.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
@@ -104,9 +104,13 @@ class IsarService {
 
   Future<List<String>> getAllGroups() async {
     final isar = await db;
-    final groups = await isar.expenses.where().distinctByGroup().groupProperty().findAll();
-    // Filter out nulls/empty, and get unique values.
-    return groups.where((g) => g != null && g.trim().isNotEmpty).map((g) => g!.trim()).toSet().toList();
+    final allExpenses = await isar.expenses.where().findAll();
+    return allExpenses
+        .expand((exp) => exp.group)
+        .where((g) => g.trim().isNotEmpty)
+        .map((g) => g.trim())
+        .toSet()
+        .toList();
   }
 
   Future<List<String>> getAllUniqueTags() async {
@@ -176,5 +180,12 @@ class IsarService {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(microseconds: 1));
     return (start, end);
+  }
+
+  Future<void> clearDatabase() async {
+    final isar = await db;
+    await isar.writeTxn(() async {
+      await isar.clear();
+    });
   }
 }

@@ -38,8 +38,7 @@ dependencies:
   isar_flutter_libs: ^3.1.0+1
   path_provider: ^2.1.3
   fl_chart: ^1.0.0
-  month_year_picker:
-    path: lib/vendored/month_year_picker
+  wheel_picker: ^0.2.2
 
 dev_dependencies:
   flutter_test:

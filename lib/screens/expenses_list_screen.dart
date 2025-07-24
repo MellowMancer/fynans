@@ -5,7 +5,7 @@ import 'package:fynans/models/monthly_summary.dart';
 import 'package:fynans/screens/add_expense_screen.dart';
 import 'package:fynans/widgets/expense_list_item.dart';
 import 'package:intl/intl.dart';
-import 'package:month_year_picker/month_year_picker.dart';
+import 'package:fynans/widgets/month_year_wheel_picker.dart';
 
 class ExpensesListScreen extends StatefulWidget {
   const ExpensesListScreen({super.key});
@@ -22,14 +22,10 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    // Generate a list of the last 24 months for the PageView
-    for (int i = 23; i >= 0; i--) {
-      _months.add(DateTime(now.year, now.month - i, 1));
-    }
-    // Start the PageView on the current month (last in our list)
+    _populateMonths();
+    // Set the current page to the last month in the list (most recent)
     _currentPageIndex = _months.length - 1;
-    _pageController = PageController(initialPage: _currentPageIndex);
+    _pageController = PageController(initialPage: _currentPageIndex >= 0 ? _currentPageIndex : 0);
   }
 
   @override
@@ -40,6 +36,14 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // If there are no months to display, show a safe empty state.
+    // This prevents RangeErrors if the _months list is empty.
+    if (_months.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Monthly Overview')),
+        body: const Center(child: Text('No data available.')),
+      );
+    }
     final selectedMonth = _months[_currentPageIndex];
 
     return Scaffold(
@@ -90,26 +94,38 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
     );
   }
 
+  void _populateMonths() {
+    final now = DateTime.now();
+    // Create a date range of 5 years back from the current month.
+    final firstDate = DateTime(now.year - 5, now.month);
+
+    DateTime monthIterator = DateTime(firstDate.year, firstDate.month, 1);
+    final lastMonth = DateTime(now.year, now.month, 1);
+
+    while (monthIterator.isBefore(lastMonth) || monthIterator.isAtSameMomentAs(lastMonth)) {
+      _months.add(monthIterator);
+      // This safely increments the month, handling year rollovers.
+      monthIterator = DateTime(monthIterator.year, monthIterator.month + 1, 1);
+    }
+  }
+
   void _selectMonth() async {
-    final pickedDate = await showMonthYearPicker(
+    if (_months.isEmpty) return;
+
+    final result = await MonthYearWheelPicker.show(
       context: context,
       initialDate: _months[_currentPageIndex],
       firstDate: _months.first,
       lastDate: _months.last,
     );
 
-    if (pickedDate != null) {
-      // Normalize to the first day of the month to find it in our list
-      final targetMonth = DateTime(pickedDate.year, pickedDate.month, 1);
+    if (result != null && mounted) {
+      final targetMonth = DateTime(result.year, result.month, 1);
       final targetIndex = _months.indexWhere(
           (month) => month.year == targetMonth.year && month.month == targetMonth.month);
 
       if (targetIndex != -1) {
-        _pageController.animateToPage(
-          targetIndex,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
+        _pageController.jumpToPage(targetIndex);
       }
     }
   }

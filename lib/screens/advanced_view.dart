@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:fynans/main.dart';
 import 'package:fynans/models/grouping_option.dart';
-import 'package:fynans/models/grouped_expense_summary.dart';
+import 'package:fynans/models/advanced_view_summary.dart';
 import 'package:fynans/widgets/expense_list_item.dart';
 import 'package:intl/intl.dart';
-import 'package:month_year_picker/month_year_picker.dart';
+import 'package:fynans/widgets/month_year_wheel_picker.dart';
 
-class GroupedExpensesScreen extends StatefulWidget {
-  const GroupedExpensesScreen({super.key});
+class AdvancedViewScreen extends StatefulWidget {
+  const AdvancedViewScreen({super.key});
 
   @override
-  State<GroupedExpensesScreen> createState() => _GroupedExpensesScreenState();
+  State<AdvancedViewScreen> createState() => _AdvancedViewScreenState();
 }
 
-class _GroupedExpensesScreenState extends State<GroupedExpensesScreen> {
+class _AdvancedViewScreenState extends State<AdvancedViewScreen> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
   GroupingOption _groupingOption = GroupingOption.group;
-  Future<(double, List<GroupedExpenseSummary>)>? _summaryFuture;
+  Future<(double, List<AdvancedViewSummary>)>? _summaryFuture;
   // New state for filters
   String? _filterGroup;
   String? _filterTag;
@@ -30,7 +30,7 @@ class _GroupedExpensesScreenState extends State<GroupedExpensesScreen> {
 
   void _loadData() {
     setState(() {
-      _summaryFuture = isarService.getGroupedExpenses(
+      _summaryFuture = isarService.getAdvancedViews(
         month: _selectedMonth,
         groupBy: _groupingOption,
         filterGroup: _filterGroup,
@@ -42,8 +42,8 @@ class _GroupedExpensesScreenState extends State<GroupedExpensesScreen> {
 
   void _selectMonth() async {
     final now = DateTime.now();
-    final firstDate = DateTime(now.year - 2, now.month);
-    final pickedDate = await showMonthYearPicker(
+    final firstDate = DateTime(now.year - 5, now.month);
+    final pickedDate = await MonthYearWheelPicker.show(
       context: context,
       initialDate: _selectedMonth,
       firstDate: firstDate,
@@ -89,7 +89,7 @@ class _GroupedExpensesScreenState extends State<GroupedExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Expenses by Group')),
+      appBar: AppBar(title: const Text('Advanced View')),
       body: Column(
         children: [
           _buildFilterControls(),
@@ -217,7 +217,7 @@ class _GroupedExpensesScreenState extends State<GroupedExpensesScreen> {
   }
 
   Widget _buildContent() {
-    return FutureBuilder<(double, List<GroupedExpenseSummary>)>(
+    return FutureBuilder<(double, List<AdvancedViewSummary>)>(
       future: _summaryFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

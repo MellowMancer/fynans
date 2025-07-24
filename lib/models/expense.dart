@@ -12,7 +12,8 @@ class Expense {
 
   String? note;
 
-  String? group;
+  @Index(type: IndexType.value)
+  List<String> group = [];
 
   @Index(type: IndexType.value)
   late List<String> tags;
