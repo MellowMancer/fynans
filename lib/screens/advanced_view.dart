@@ -27,7 +27,6 @@ class AdvancedView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(title: const Text('Advanced View')),
       body: BlocBuilder<AdvancedViewBloc, AdvancedViewState>(
         builder: (context, state) {
           if (state is AdvancedViewFailure) {
@@ -153,7 +152,7 @@ class AdvancedView extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
               title: const Text('Total For Selection'),
-              trailing: Text('₹${state.totalAmount.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleLarge),
+              trailing: Text('₹${state.summary.total.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleLarge),
             ),
           );
         }
@@ -177,7 +176,7 @@ class AdvancedView extends StatelessWidget {
             Expanded(child: Text(_capitalize(node.name), style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
             Padding(
               padding: const EdgeInsets.only(left: 8.0),
-              child: Text('₹${node.totalAmount.toStringAsFixed(2)}'),
+              child: Text('₹${node.summary.total.toStringAsFixed(2)}'),
             ),
           ],
         ),

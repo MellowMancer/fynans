@@ -3,14 +3,14 @@ part of 'advanced_view_bloc.dart';
 
 class HierarchyNode {
   final String name;
-  final double totalAmount;
+  final MonthlySummary summary;
   final int transactionCount;
   final List<HierarchyNode> children; // Only populated for non-leaf nodes
   final List<Transaction> transactions; // Only populated for leaf nodes
 
   HierarchyNode({
     required this.name,
-    required this.totalAmount,
+    required this.summary,
     required this.transactionCount,
     this.children = const [],
     this.transactions = const [],
@@ -42,7 +42,7 @@ final class AdvancedViewLoadSuccess extends AdvancedViewState {
   final String? filterTag;
   final String? filterParty;
   final List<HierarchyNode> hierarchicalData;
-  final double totalAmount;
+  final MonthlySummary summary;
 
   const AdvancedViewLoadSuccess({
     required this.selectedMonth,
@@ -51,7 +51,7 @@ final class AdvancedViewLoadSuccess extends AdvancedViewState {
     this.filterTag,
     this.filterParty,
     required this.hierarchicalData,
-    required this.totalAmount,
+    required this.summary,
   });
 
   AdvancedViewLoadSuccess copyWith({
@@ -61,7 +61,7 @@ final class AdvancedViewLoadSuccess extends AdvancedViewState {
     String? filterTag,
     String? filterParty,
     List<HierarchyNode>? hierarchicalData,
-    double? totalAmount,
+    MonthlySummary? summary,
     bool clearGroup = false,
     bool clearTag = false,
     bool clearParty = false,
@@ -73,7 +73,9 @@ final class AdvancedViewLoadSuccess extends AdvancedViewState {
       filterTag: clearTag ? null : filterTag ?? this.filterTag,
       filterParty: clearParty ? null : filterParty ?? this.filterParty,
       hierarchicalData: hierarchicalData ?? this.hierarchicalData,
-      totalAmount: totalAmount ?? this.totalAmount,
+      summary: summary ?? this.summary,
     );
   }
 }
+
+

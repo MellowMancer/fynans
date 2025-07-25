@@ -3,6 +3,7 @@ import 'package:fynans/models/grouping_option.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/services/hive_service.dart';
 import 'package:meta/meta.dart';
+import 'package:fynans/models/monthly_summary.dart';
 
 part 'advanced_view_event.dart';
 part 'advanced_view_state.dart';
@@ -17,8 +18,8 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
             selectedMonth: DateTime(DateTime.now().year, DateTime.now().month, 1),
             groupingHierarchy: [GroupingOption.month], // Default hierarchy
             hierarchicalData: [],
-            totalAmount: 0,
-          ),
+            summary: MonthlySummary(total: 0, totalIncome: 0, totalTransactions: 0, topTags: <String, double>{}, topGroups: <String, double>{})
+          )
         ) {
     on<AdvancedViewDataFetched>(_onDataFetched);
     on<AdvancedViewMonthChanged>(_onMonthChanged);
@@ -72,6 +73,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
   Future<void> _onDataFetched(AdvancedViewDataFetched event, Emitter<AdvancedViewState> emit) async {
     if (state is! AdvancedViewLoadSuccess) return;
     final currentState = state as AdvancedViewLoadSuccess;
+    
 
     emit(AdvancedViewLoading());
 
@@ -84,7 +86,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
         filterParty: currentState.filterParty,
       );
 
-      final totalAmount = allTransactions.fold(0.0, (sum, e) => sum + e.amount);
+      final summary = MonthlySummary.fromTransactions(allTransactions);
 
       // 2. Perform the hierarchical grouping on the client side.
       final nodes = _groupTransactions(allTransactions, currentState.groupingHierarchy);
@@ -92,7 +94,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
       // 3. Emit the final success state with the processed data.
       emit(currentState.copyWith(
         hierarchicalData: nodes,
-        totalAmount: totalAmount,
+        summary: summary,
       ));
     } catch (e) {
       emit(AdvancedViewFailure(e.toString()));
@@ -116,10 +118,9 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
 
     final nodes = groupedMap.entries.map((entry) {
       final groupTransactions = entry.value;
-      final total = groupTransactions.fold(0.0, (sum, e) => sum + e.amount);
       return HierarchyNode(
         name: entry.key,
-        totalAmount: total,
+        summary: MonthlySummary.fromTransactions(groupTransactions),
         transactionCount: groupTransactions.length,
         children: _groupTransactions(groupTransactions, remainingHierarchy),
         transactions: remainingHierarchy.isEmpty ? groupTransactions : [],
@@ -127,7 +128,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     }).toList();
 
     // Sort nodes by total amount in descending order for better visualization.
-    nodes.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
+    nodes.sort((a, b) => b.summary.total.compareTo(a.summary.total));
     return nodes;
   }
 }
