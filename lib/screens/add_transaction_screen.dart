@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fynans/main.dart';
-import 'package:fynans/models/expense.dart';
+import 'package:fynans/models/transaction.dart';
+import 'package:fynans/services/hive_service.dart';
 import 'package:intl/intl.dart';
 import 'package:fynans/utils/tag_helper.dart';
 
-class AddExpenseScreen extends StatefulWidget {
-  const AddExpenseScreen({super.key});
+class AddTransactionScreen extends StatefulWidget {
+  const AddTransactionScreen({super.key});
 
   @override
-  State<AddExpenseScreen> createState() => _AddExpenseScreenState();
+  State<AddTransactionScreen> createState() => _AddTransactionScreenState();
 }
 
-class _AddExpenseScreenState extends State<AddExpenseScreen> {
+class _AddTransactionScreenState extends State<AddTransactionScreen> {
+  final _hiveService = HiveService();
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   final _groupController = TextEditingController();
-  final _recipientController = TextEditingController();
+  final _partyController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   final List<String> _selectedTags = [];
   List<String> _allTags = [];
   List<String> _existingGroups = [];
-  List<String> _existingRecipients = [];
+  List<String> _existingParties = [];
   bool _creditFlag = false;
-  String recipient = '';
+  String party = '';
 
 
   @override
@@ -35,12 +36,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   void _loadSuggestions() async {
-    final groups = await isarService.getAllGroups();
-    final recipients = await isarService.getAllRecipients();
+    final groups = await _hiveService.getAllGroups();
+    final parties = await _hiveService.getAllParties();
     if (mounted) {
       setState(() {
         _existingGroups = groups;
-        _existingRecipients = recipients;
+        _existingParties = parties;
       });
     }
   }
@@ -50,7 +51,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     _amountController.dispose();
     _noteController.dispose();
     _groupController.dispose();
-    _recipientController.dispose();
+    _partyController.dispose();
     super.dispose();
   }
 
@@ -68,7 +69,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     });
   }
   
-  void _saveExpense() async {
+  void _saveTransaction() async {
     if (_formKey.currentState!.validate()) {
       final groupInputString = _groupController.text;
       final List<String> groups = groupInputString
@@ -77,25 +78,24 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           .where((g) => g.isNotEmpty)
           .toList();
 
-      final newExpense = Expense()
+      final newTransaction = Transaction()
         ..amount = double.parse(_amountController.text)
         ..date = _selectedDate
         ..tags = _selectedTags
         ..note = _noteController.text.isNotEmpty ? _noteController.text : null
         ..group = groups
-        ..recipient = _recipientController.text.trim()
+        ..party = _partyController.text.trim()
         ..isCredit = _creditFlag;
 
-      await isarService.saveExpense(newExpense);
+      await _hiveService.saveTransaction(newTransaction);
 
 
       // Check if the widget is still in the tree before using its context.
       if (!mounted) return;
 
-      // If adding, show a confirmation and clear the form for the next entry.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Expense Saved!'),
+          content: Text('Transaction Saved!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -105,7 +105,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         _selectedTags.clear();
         _selectedDate = DateTime.now();
         _creditFlag = false;
-        _recipientController.text = '';
+        _partyController.text = '';
         _tagFormFieldKey.currentState?.didChange(<String>[]);
       });
       FocusScope.of(context).unfocus();
@@ -137,7 +137,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Add Expense')),
+      appBar: AppBar(title: Text('Add Transaction')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -176,7 +176,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         value: _creditFlag,
                         onChanged: (value) => setState(() {
                           _creditFlag = value;
-                          _recipientController.text = value ? 'Me' : '';
+                          _partyController.text = value ? 'Me' : '';
                         }),
                       ),
                     ],
@@ -300,21 +300,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       focusNode,
                       onFieldSubmitted,
                     ) {
-                      // _recipientController.value = textEditingController.value;
+                      // _partyController.value = textEditingController.value;
                       return TextFormField(
-                        controller: _recipientController,
+                        controller: _partyController,
                         readOnly: _creditFlag,
                         focusNode: focusNode,
                         onFieldSubmitted: (String value) {
                           onFieldSubmitted();
                         },
                         decoration: const InputDecoration(
-                          labelText: 'Recipient',
+                          labelText: 'Party',
                           prefixIcon: Icon(Icons.person_outline),
                         ),
                         validator: (value) =>
                             (value == null || value.trim().isEmpty)
-                            ? 'Please enter a recipient'
+                            ? 'Please enter a party'
                             : null,
                       );
                     },
@@ -322,21 +322,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   if (textEditingValue.text == '') {
                     return const Iterable<String>.empty();
                   }
-                  return _existingRecipients.where((String option) {
+                  return _existingParties.where((String option) {
                     return option.toLowerCase().contains(
                       textEditingValue.text.toLowerCase(),
                     );
                   });
                 },
                 onSelected: (String selection) {
-                  _recipientController.text = selection;
+                  _partyController.text = selection;
                 },
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
-                onPressed: _saveExpense,
+                onPressed: _saveTransaction,
                 icon: const Icon(Icons.save),
-                label: const Text('Save Expense'),
+                label: const Text('Save Transaction'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   textStyle: Theme.of(context).textTheme.titleMedium,

@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:fynans/main.dart';
-import 'package:fynans/models/expense.dart';
+import 'package:fynans/models/transaction.dart';
 import 'package:fynans/models/monthly_summary.dart';
-import 'package:fynans/screens/add_expense_screen.dart';
-import 'package:fynans/widgets/expense_list_item.dart';
+import 'package:fynans/screens/add_transaction_screen.dart';
+import 'package:fynans/services/hive_service.dart';
+import 'package:fynans/widgets/transaction_list_item.dart';
 import 'package:intl/intl.dart';
 import 'package:fynans/widgets/month_year_wheel_picker.dart';
 
-class ExpensesListScreen extends StatefulWidget {
-  const ExpensesListScreen({super.key});
+class TransactionsListScreen extends StatefulWidget {
+  const TransactionsListScreen({super.key});
 
   @override
-  State<ExpensesListScreen> createState() => _ExpensesListScreenState();
+  State<TransactionsListScreen> createState() => _TransactionsListScreenState();
 }
 
-class _ExpensesListScreenState extends State<ExpensesListScreen> {
+class _TransactionsListScreenState extends State<TransactionsListScreen> {
+  final HiveService _hiveService = HiveService();
   late final PageController _pageController;
   final List<DateTime> _months = [];
   int _currentPageIndex = 0;
@@ -25,7 +26,9 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
     _populateMonths();
     // Set the current page to the last month in the list (most recent)
     _currentPageIndex = _months.length - 1;
-    _pageController = PageController(initialPage: _currentPageIndex >= 0 ? _currentPageIndex : 0);
+    _pageController = PageController(
+      initialPage: _currentPageIndex >= 0 ? _currentPageIndex : 0,
+    );
   }
 
   @override
@@ -38,31 +41,23 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
   Widget build(BuildContext context) {
     if (_months.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Monthly Overview')),
+        // appBar: AppBar(title: const Text('Monthly Overview')),
         body: const Center(child: Text('No data available.')),
       );
     }
     final selectedMonth = _months[_currentPageIndex];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Monthly Overview'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: _selectMonth,
-            tooltip: 'Select Month',
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
+            MaterialPageRoute(
+              builder: (context) => const AddTransactionScreen(),
+            ),
           );
         },
-        tooltip: 'Add Expense',
+        tooltip: 'Add Transaction',
         child: const Icon(Icons.add),
       ),
       body: Column(
@@ -86,7 +81,7 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
             padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Divider(height: 1),
           ),
-          Expanded(child: _buildMonthlyExpenseList(selectedMonth)),
+          Expanded(child: _buildMonthlyTransactionList(selectedMonth)),
         ],
       ),
     );
@@ -100,7 +95,8 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
     DateTime monthIterator = DateTime(firstDate.year, firstDate.month, 1);
     final lastMonth = DateTime(now.year, now.month, 1);
 
-    while (monthIterator.isBefore(lastMonth) || monthIterator.isAtSameMomentAs(lastMonth)) {
+    while (monthIterator.isBefore(lastMonth) ||
+        monthIterator.isAtSameMomentAs(lastMonth)) {
       _months.add(monthIterator);
       // This safely increments the month, handling year rollovers.
       monthIterator = DateTime(monthIterator.year, monthIterator.month + 1, 1);
@@ -120,7 +116,9 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
     if (result != null && mounted) {
       final targetMonth = DateTime(result.year, result.month, 1);
       final targetIndex = _months.indexWhere(
-          (month) => month.year == targetMonth.year && month.month == targetMonth.month);
+        (month) =>
+            month.year == targetMonth.year && month.month == targetMonth.month,
+      );
 
       if (targetIndex != -1) {
         _pageController.jumpToPage(targetIndex);
@@ -129,13 +127,13 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
   }
 
   Widget _buildSummaryCard(DateTime month) {
-    return StreamBuilder<List<Expense>>(
-      stream: isarService.listenToExpensesForMonth(month),
+    return StreamBuilder<List<Transaction>>(
+      stream: _hiveService.listenToTransactionsForMonth(month: month),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final summary = MonthlySummary.fromExpenses(snapshot.data!);
+        final summary = MonthlySummary.fromTransactions(snapshot.data!);
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           elevation: 4,
@@ -144,13 +142,38 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(DateFormat.yMMMM().format(month), style: Theme.of(context).textTheme.headlineSmall),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        DateFormat.yMMMM().format(month),
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+
+                    IconButton(
+                      icon: const Icon(Icons.calendar_today),
+                      onPressed: _selectMonth,
+                      tooltip: 'Select Month',
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _buildFlowIndicator(context, title: 'Inflow', amount: summary.totalIncome, color: Colors.green.shade300),
+                    _buildFlowIndicator(
+                      context,
+                      title: 'Inflow',
+                      amount: summary.totalIncome,
+                      color: Colors.green.shade300,
+                    ),
                     const SizedBox(width: 8),
-                    _buildFlowIndicator(context, title: 'Outflow', amount: summary.totalExpenses, color: Colors.red.shade300),
+                    _buildFlowIndicator(
+                      context,
+                      title: 'Outflow',
+                      amount: summary.totalTransactions,
+                      color: Colors.red.shade300,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -173,7 +196,12 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
     );
   }
 
-  Widget _buildFlowIndicator(BuildContext context, {required String title, required double amount, required Color color}) {
+  Widget _buildFlowIndicator(
+    BuildContext context, {
+    required String title,
+    required double amount,
+    required Color color,
+  }) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -184,11 +212,22 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.white70)),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: Colors.white70),
+            ),
             const SizedBox(height: 4),
             FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text('₹${amount.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color, fontWeight: FontWeight.bold)),
+              child: Text(
+                '₹${amount.toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -197,7 +236,8 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
   }
 
   Widget _buildTopSpendingList(String title, Map<String, double> spending) {
-    String capitalize(String s) => s.isEmpty ? '' : s[0].toUpperCase() + s.substring(1);
+    String capitalize(String s) =>
+        s.isEmpty ? '' : s[0].toUpperCase() + s.substring(1);
 
     return Expanded(
       child: Column(
@@ -210,16 +250,25 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
           else
             Expanded(
               child: ListView(
-                children: spending.entries.map((entry) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(child: Text(capitalize(entry.key), overflow: TextOverflow.ellipsis)),
-                          Text('₹${entry.value.toStringAsFixed(0)}'),
-                        ],
+                children: spending.entries
+                    .map(
+                      (entry) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                capitalize(entry.key),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text('₹${entry.value.toStringAsFixed(0)}'),
+                          ],
+                        ),
                       ),
-                    )).toList(),
+                    )
+                    .toList(),
               ),
             ),
         ],
@@ -227,9 +276,9 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
     );
   }
 
-  Widget _buildMonthlyExpenseList(DateTime month) {
-    return StreamBuilder<List<Expense>>(
-      stream: isarService.listenToExpensesForMonth(month),
+  Widget _buildMonthlyTransactionList(DateTime month) {
+    return StreamBuilder<List<Transaction>>(
+      stream: _hiveService.listenToTransactionsForMonth(month: month),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -240,24 +289,24 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(
             child: Text(
-              'No expenses for this month.',
+              'No transactions for this month.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18),
             ),
           );
         }
 
-        final expenses = snapshot.data!;
+        final transactions = snapshot.data!;
 
         return ListView.builder(
-          itemCount: expenses.length,
+          itemCount: transactions.length,
           itemBuilder: (context, index) {
-            final expense = expenses[index];
+            final transaction = transactions[index];
             return Dismissible(
-              key: ValueKey(expense.id),
+              key: ValueKey(transaction.key),
               direction: DismissDirection.endToStart,
               onDismissed: (_) {
-                isarService.deleteExpense(expense.id);
+                _hiveService.deleteTransaction(transaction.key);
               },
               background: Container(
                 color: Colors.red.shade800,
@@ -265,7 +314,7 @@ class _ExpensesListScreenState extends State<ExpensesListScreen> {
                 padding: const EdgeInsets.only(right: 20.0),
                 child: const Icon(Icons.delete, color: Colors.white),
               ),
-              child: ExpenseListItem(expense: expense),
+              child: TransactionListItem(transaction: transaction),
             );
           },
         );

@@ -1,25 +1,25 @@
-import 'package:fynans/models/expense.dart';
+import 'package:fynans/models/transaction.dart';
 import 'package:intl/intl.dart';
 
 enum GroupingOption {
   group('Group'),
   tag('Tag'),
-  recipient('Recipient'),
+  party('Party'),
   month('Month');
 
   const GroupingOption(this.displayName);
   final String displayName;
 
-  List<String> getValues(Expense expense) {
+  List<String> getValues(Transaction transaction) {
     switch (this) {
       case GroupingOption.group:
-        return expense.group.isNotEmpty ? expense.group : ['No Groups'];
+        return transaction.group.isNotEmpty ? transaction.group : ['No Groups'];
       case GroupingOption.tag:
-        return expense.tags.isNotEmpty ? expense.tags : ['No Tag'];
-      case GroupingOption.recipient:
-        return [expense.recipient];
+        return transaction.tags.isNotEmpty ? transaction.tags : ['No Tag'];
+      case GroupingOption.party:
+        return [transaction.party];
       case GroupingOption.month:
-        return [DateFormat('yyyy MMMM').format(expense.date)];
+        return [DateFormat('yyyy MMMM').format(transaction.date)];
     }
   }
 }

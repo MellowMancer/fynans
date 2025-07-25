@@ -25,7 +25,7 @@ class TagIconWidget extends StatelessWidget {
       final tag = tags.first;
       return CircleAvatar(
         radius: size / 2,
-        backgroundColor: TagHelper.getColorForTag(tag).withOpacity(0.3),
+        backgroundColor: TagHelper.getColorForTag(tag).withAlpha(85),
         child: Icon(
           TagHelper.getIconForTag(tag),
           size: size * 0.6,
@@ -54,7 +54,7 @@ class TagIconWidget extends StatelessWidget {
                   child: Container(
                     width: size,
                     height: size,
-                    color: TagHelper.getColorForTag(tag1).withOpacity(0.3),
+                    color: TagHelper.getColorForTag(tag1).withAlpha(85),
                     child: Icon(TagHelper.getIconForTag(tag1), size: size * 0.5, color: TagHelper.getColorForTag(tag1)),
                   ),
                 ),
@@ -70,7 +70,7 @@ class TagIconWidget extends StatelessWidget {
                   child: Container(
                     width: size,
                     height: size,
-                    color: TagHelper.getColorForTag(tag2).withOpacity(0.3),
+                    color: TagHelper.getColorForTag(tag2).withAlpha(85),
                     child: Icon(TagHelper.getIconForTag(tag2), size: size * 0.5, color: TagHelper.getColorForTag(tag2)),
                   ),
                 ),

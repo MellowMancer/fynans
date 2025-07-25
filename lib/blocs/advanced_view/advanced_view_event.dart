@@ -27,11 +27,11 @@ final class AdvancedViewTagFilterChanged extends AdvancedViewEvent {
   AdvancedViewTagFilterChanged(this.tag);
 }
 
-/// Event to set or clear the filter for a specific recipient.
-final class AdvancedViewRecipientFilterChanged extends AdvancedViewEvent {
-  final String? recipient;
+/// Event to set or clear the filter for a specific party.
+final class AdvancedViewPartyFilterChanged extends AdvancedViewEvent {
+  final String? party;
 
-  AdvancedViewRecipientFilterChanged(this.recipient);
+  AdvancedViewPartyFilterChanged(this.party);
 }
 
 /// Event to update the multi-level grouping hierarchy.

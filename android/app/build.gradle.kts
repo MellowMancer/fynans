@@ -7,7 +7,9 @@ plugins {
 
 android {
     namespace = "com.example.fynans"
-    compileSdk = flutter.compileSdkVersion
+    // --- FIX #1: Override the default Flutter SDK version ---
+    // We are hardcoding this to 34 to solve the "lStar not found" error.
+    compileSdk = 35
     ndkVersion = "27.0.12077973"
 
     sourceSets {
@@ -24,20 +26,16 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.fynans"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // --- Also update the target SDK to match the compile SDK ---
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -45,4 +43,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.9.0")
+    api("androidx.core:core:1.9.0")
 }

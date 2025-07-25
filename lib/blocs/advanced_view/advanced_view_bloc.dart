@@ -1,15 +1,15 @@
 import 'package:bloc/bloc.dart';
-import 'package:fynans/main.dart';
-import 'package:fynans/models/advanced_view_summary.dart';
 import 'package:fynans/models/grouping_option.dart';
-import 'package:fynans/models/expense.dart';
-import 'package:isar/isar.dart';
+import 'package:fynans/models/transaction.dart';
+import 'package:fynans/services/hive_service.dart';
 import 'package:meta/meta.dart';
 
 part 'advanced_view_event.dart';
 part 'advanced_view_state.dart';
 
 class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
+  final HiveService _hiveService = HiveService();
+
   AdvancedViewBloc()
       : super(
           // Start with a successful but empty state.
@@ -25,7 +25,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     on<AdvancedViewHierarchyChanged>(_onHierarchyChanged);
     on<AdvancedViewGroupFilterChanged>(_onGroupFilterChanged);
     on<AdvancedViewTagFilterChanged>(_onTagFilterChanged);
-    on<AdvancedViewRecipientFilterChanged>(_onRecipientFilterChanged);
+    on<AdvancedViewPartyFilterChanged>(_onPartyFilterChanged);
   }
 
   void _onMonthChanged(AdvancedViewMonthChanged event, Emitter<AdvancedViewState> emit) {
@@ -60,10 +60,10 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     }
   }
 
-  void _onRecipientFilterChanged(AdvancedViewRecipientFilterChanged event, Emitter<AdvancedViewState> emit) {
+  void _onPartyFilterChanged(AdvancedViewPartyFilterChanged event, Emitter<AdvancedViewState> emit) {
     if (state is AdvancedViewLoadSuccess) {
       final currentState = state as AdvancedViewLoadSuccess;
-      emit(currentState.copyWith(filterRecipient: event.recipient, clearRecipient: event.recipient == null));
+      emit(currentState.copyWith(filterParty: event.party, clearParty: event.party == null));
       add(AdvancedViewDataFetched());
     }
   }
@@ -76,25 +76,18 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     emit(AdvancedViewLoading());
 
     try {
-      // 1. Fetch all expenses that match the top-level filters from Isar.
-      final (_, summaries) = await isarService.getAdvancedViews(
+      // 1. Fetch a clean, de-duplicated list of transactions matching the filters.
+      final allTransactions = await _hiveService.fetchTransactionsForMonth(
         month: currentState.selectedMonth,
-        groupBy: GroupingOption.month,
         filterGroup: currentState.filterGroup,
         filterTag: currentState.filterTag,
-        filterRecipient: currentState.filterRecipient,
+        filterParty: currentState.filterParty,
       );
 
-      // Flatten the list of summaries to get a single list of all expenses.
-      final allExpensesRaw = summaries.expand((s) => s.expenses).toList();
-      // De-duplicate the list of expenses based on their unique ID to prevent double-counting.
-      final seenIds = <Id>{};
-      final allExpenses = allExpensesRaw.where((expense) => seenIds.add(expense.id)).toList();
-
-      final totalAmount = allExpenses.fold(0.0, (sum, e) => sum + e.amount);
+      final totalAmount = allTransactions.fold(0.0, (sum, e) => sum + e.amount);
 
       // 2. Perform the hierarchical grouping on the client side.
-      final nodes = _groupExpenses(allExpenses, currentState.groupingHierarchy);
+      final nodes = _groupTransactions(allTransactions, currentState.groupingHierarchy);
 
       // 3. Emit the final success state with the processed data.
       emit(currentState.copyWith(
@@ -106,30 +99,30 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     }
   }
 
-  /// Recursively groups a list of expenses based on the defined hierarchy.
-  List<HierarchyNode> _groupExpenses(List<Expense> expenses, List<GroupingOption> hierarchy) {
-    if (hierarchy.isEmpty || expenses.isEmpty) return [];
+  /// Recursively groups a list of transactions based on the defined hierarchy.
+  List<HierarchyNode> _groupTransactions(List<Transaction> transactions, List<GroupingOption> hierarchy) {
+    if (hierarchy.isEmpty || transactions.isEmpty) return [];
 
     final currentLevelOption = hierarchy.first;
     final remainingHierarchy = hierarchy.sublist(1);
 
-    final Map<String, List<Expense>> groupedMap = {};
-    for (final expense in expenses) {
-      final keys = currentLevelOption.getValues(expense);
+    final Map<String, List<Transaction>> groupedMap = {};
+    for (final transaction in transactions) {
+      final keys = currentLevelOption.getValues(transaction);
       for (final key in keys) {
-        (groupedMap[key] ??= []).add(expense);
+        (groupedMap[key] ??= []).add(transaction);
       }
     }
 
     final nodes = groupedMap.entries.map((entry) {
-      final groupExpenses = entry.value;
-      final total = groupExpenses.fold(0.0, (sum, e) => sum + e.amount);
+      final groupTransactions = entry.value;
+      final total = groupTransactions.fold(0.0, (sum, e) => sum + e.amount);
       return HierarchyNode(
         name: entry.key,
         totalAmount: total,
-        expenseCount: groupExpenses.length,
-        children: _groupExpenses(groupExpenses, remainingHierarchy),
-        expenses: remainingHierarchy.isEmpty ? groupExpenses : [],
+        transactionCount: groupTransactions.length,
+        children: _groupTransactions(groupTransactions, remainingHierarchy),
+        transactions: remainingHierarchy.isEmpty ? groupTransactions : [],
       );
     }).toList();
 

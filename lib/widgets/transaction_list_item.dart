@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:fynans/models/expense.dart';
+import 'package:fynans/models/transaction.dart';
 import 'package:fynans/widgets/tag_icon_widget.dart';
 import 'package:intl/intl.dart';
 
-class ExpenseListItem extends StatefulWidget {
-  const ExpenseListItem({super.key, required this.expense});
+class TransactionListItem extends StatefulWidget {
+  const TransactionListItem({super.key, required this.transaction});
 
-  final Expense expense;
+  final Transaction transaction;
 
   @override
-  State<ExpenseListItem> createState() => _ExpenseListItemState();
+  State<TransactionListItem> createState() => _TransactionListItemState();
 }
 
-class _ExpenseListItemState extends State<ExpenseListItem> {
+class _TransactionListItemState extends State<TransactionListItem> {
   bool _isExpanded = false;
 
   @override
@@ -33,27 +33,27 @@ class _ExpenseListItemState extends State<ExpenseListItem> {
             children: [
               Row(
                 children: [
-                  TagIconWidget(tags: widget.expense.tags),
+                  TagIconWidget(tags: widget.transaction.tags),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.expense.tags.map((e) => e[0].toUpperCase() + e.substring(1)).join(', '),
+                          widget.transaction.tags.map((e) => e[0].toUpperCase() + e.substring(1)).join(', '),
                           style: Theme.of(context).textTheme.titleMedium,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '₹${widget.expense.amount.toStringAsFixed(2)}',
+                          '₹${widget.transaction.amount.toStringAsFixed(2)}',
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(DateFormat.yMd().format(widget.expense.date)),
+                  Text(DateFormat.yMd().format(widget.transaction.date)),
                   const SizedBox(width: 8),
                   AnimatedRotation(
                     turns: _isExpanded ? 0.5 : 0,
@@ -76,9 +76,9 @@ class _ExpenseListItemState extends State<ExpenseListItem> {
 
   Widget _buildExpandedDetails(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final note = widget.expense.note;
-    final group = widget.expense.group;
-    final recipient = widget.expense.recipient;
+    final note = widget.transaction.note;
+    final group = widget.transaction.group;
+    final party = widget.transaction.party;
 
     return Padding(
       padding: const EdgeInsets.only(top: 12.0),
@@ -97,14 +97,14 @@ class _ExpenseListItemState extends State<ExpenseListItem> {
                         padding: const EdgeInsets.symmetric(vertical: 4.0),
                         child: Text('Note: $note', style: textTheme.bodyMedium),
                       ),
-                    if (group != null && group.isNotEmpty)
+                    if (group.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4.0),
                         child: Text('Group: $group', style: textTheme.bodyMedium),
                       ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Text('Recipient: $recipient', style: textTheme.bodyMedium),
+                      child: Text('Recipient: $party', style: textTheme.bodyMedium),
                     ),
                   ],
                 ),

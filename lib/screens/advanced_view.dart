@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
-import 'package:fynans/main.dart';
 import 'package:fynans/models/grouping_option.dart';
-import 'package:fynans/widgets/expense_list_item.dart';
-import 'package:fynans/widgets/month_year_wheel_picker.dart';
-import 'package:intl/intl.dart';
+import 'package:fynans/widgets/transaction_list_item.dart';
+import 'package:fynans/services/hive_service.dart';
 
 /// Provides the AdvancedViewBloc to the AdvancedView widget tree.
 class AdvancedViewScreen extends StatelessWidget {
@@ -15,19 +13,21 @@ class AdvancedViewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => AdvancedViewBloc()..add(AdvancedViewDataFetched()),
-      child: const AdvancedView(),
+      child: AdvancedView(),
     );
   }
 }
 
 /// The main UI for the Advanced View, driven by the AdvancedViewBloc.
 class AdvancedView extends StatelessWidget {
-  const AdvancedView({super.key});
+  AdvancedView({super.key});
+  final HiveService _hiveService = HiveService();
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Advanced View')),
+      // appBar: AppBar(title: const Text('Advanced View')),
       body: BlocBuilder<AdvancedViewBloc, AdvancedViewState>(
         builder: (context, state) {
           if (state is AdvancedViewFailure) {
@@ -90,7 +90,7 @@ class AdvancedView extends StatelessWidget {
             onPressed: () => _showFilterSelectionDialog(
               context: context,
               title: 'Filter by Group',
-              itemsFuture: isarService.getAllGroups(),
+              itemsFuture: _hiveService.getAllGroups(),
               onSelected: (value) => context.read<AdvancedViewBloc>().add(AdvancedViewGroupFilterChanged(value)),
             ),
             onDeleted: () => context.read<AdvancedViewBloc>().add(AdvancedViewGroupFilterChanged(null)),
@@ -102,22 +102,22 @@ class AdvancedView extends StatelessWidget {
             onPressed: () => _showFilterSelectionDialog(
               context: context,
               title: 'Filter by Tag',
-              itemsFuture: isarService.getAllUniqueTags(),
+              itemsFuture: _hiveService.getAllUniqueTags(),
               onSelected: (value) => context.read<AdvancedViewBloc>().add(AdvancedViewTagFilterChanged(value)),
             ),
             onDeleted: () => context.read<AdvancedViewBloc>().add(AdvancedViewTagFilterChanged(null)),
           ),
           _buildFilterChip(
             context: context,
-            label: 'Recipient',
-            value: state.filterRecipient,
+            label: 'Party',
+            value: state.filterParty,
             onPressed: () => _showFilterSelectionDialog(
               context: context,
-              title: 'Filter by Recipient',
-              itemsFuture: isarService.getAllRecipients(),
-              onSelected: (value) => context.read<AdvancedViewBloc>().add(AdvancedViewRecipientFilterChanged(value)),
+              title: 'Filter by Party',
+              itemsFuture: _hiveService.getAllParties(),
+              onSelected: (value) => context.read<AdvancedViewBloc>().add(AdvancedViewPartyFilterChanged(value)),
             ),
-            onDeleted: () => context.read<AdvancedViewBloc>().add(AdvancedViewRecipientFilterChanged(null)),
+            onDeleted: () => context.read<AdvancedViewBloc>().add(AdvancedViewPartyFilterChanged(null)),
           ),
         ],
       ),
@@ -142,7 +142,7 @@ class AdvancedView extends StatelessWidget {
   /// Builds the main content area with the total card and the hierarchical list.
   Widget _buildContent(BuildContext context, AdvancedViewLoadSuccess state) {
     if (state.hierarchicalData.isEmpty) {
-      return const Center(child: Text('No expenses found for this selection.'));
+      return const Center(child: Text('No transactions found for this selection.'));
     }
 
     return ListView.builder(
@@ -164,7 +164,7 @@ class AdvancedView extends StatelessWidget {
 
   /// Recursively builds ExpansionTiles for the hierarchy.
   Widget _buildHierarchyNodeTile(HierarchyNode node, {required int level}) {
-    // A node is a leaf if it has no children, in which case we show its expenses.
+    // A node is a leaf if it has no children, in which case we show its transactions.
     final isLeafNode = node.children.isEmpty;
 
     // Add padding to the left to create the indentation effect.
@@ -184,7 +184,7 @@ class AdvancedView extends StatelessWidget {
         // By not providing a trailing widget, the default arrow will be used.
         initiallyExpanded: node.children.length == 1, // Auto-expand if there's only one sub-group
         children: isLeafNode
-            ? node.expenses.map((e) => ExpenseListItem(expense: e)).toList()
+            ? node.transactions.map((e) => TransactionListItem(transaction: e)).toList()
             : node.children.map((child) => _buildHierarchyNodeTile(child, level: level + 1)).toList(),
       ),
     );

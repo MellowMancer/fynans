@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:fynans/screens/expenses_list_screen.dart';
+import 'package:fynans/widgets/app_drawer.dart';
+import 'package:fynans/screens/transactions_list_screen.dart';
 import 'package:fynans/screens/analytics_screen.dart';
 import 'package:fynans/screens/advanced_view.dart';
-import 'package:fynans/services/read_sms_service.dart';
-import 'package:fynans/services/sms_parser_service.dart';
 import 'package:fynans/screens/test_sms_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -15,11 +14,18 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  final _readSmsService = ReadSmsService();
-  final _smsParserService = SmsParserService();
+  // final _readSmsService = ReadSmsService();
+  // final _smsParserService = SmsParserService();
+
+  static const List<String> _widgetTitles = <String>[
+    'Overview',
+    'Advanced View',
+    'Analytics',
+    'Test SMS',
+  ];
 
   static const List<Widget> _widgetOptions = <Widget>[
-    ExpensesListScreen(),
+    TransactionsListScreen(),
     AdvancedViewScreen(),
     AnalyticsScreen(),
     TestSmsScreen(),
@@ -46,7 +52,7 @@ class _MainScreenState extends State<MainScreen> {
   //     for (var message in transactionMessages) {
   //       debugPrint('--- Transaction SMS ---');
   //       debugPrint('From: ${message.sender}, Body: ${message.body}');
-  //       // TODO: Parse amount, recipient, etc., and save to Isar.
+  //       // TODO: Parse amount, party, etc., and save to Isar.
   //     }
   //   }
   // }
@@ -60,16 +66,25 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _widgetOptions.elementAt(_selectedIndex),
+      appBar: AppBar(
+        title: Text(_widgetTitles.elementAt(_selectedIndex)),
+      ),
+      endDrawer: const AppDrawer(),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _widgetOptions,
+      ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed, // Improves UI for 4+ items
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.list_alt),
             label: 'Expenses',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_outlined), 
-            label: 'Views'),
+            icon: Icon(Icons.analytics_outlined),
+            label: 'Views',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.pie_chart_outline),
             label: 'Analytics',

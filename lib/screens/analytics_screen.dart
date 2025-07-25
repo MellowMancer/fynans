@@ -1,10 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:fynans/main.dart';
 import 'package:fynans/models/monthly_analytics.dart';
 import 'package:fynans/utils/tag_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:fynans/widgets/month_year_wheel_picker.dart';
+import 'package:fynans/services/hive_service.dart';
 
 
 class AnalyticsScreen extends StatefulWidget {
@@ -15,6 +15,7 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
+  final HiveService _hiveService = HiveService();
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
   Future<MonthlyAnalytics>? _analyticsFuture;
 
@@ -26,7 +27,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   void _loadData() {
     setState(() {
-      _analyticsFuture = isarService.getAnalyticsForMonth(_selectedMonth);
+      _analyticsFuture = _hiveService.getAnalyticsForMonth(_selectedMonth);
     });
   }
 
@@ -51,9 +52,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Monthly Analytics'),
-      ),
+      // appBar: AppBar(
+      //   title: const Text('Monthly Analytics'),
+      // ),
       body: Column(
         children: [
           Padding(
@@ -116,7 +117,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       children: [
         Expanded(
           child: Card(
-            color: Colors.green.shade900.withOpacity(0.5),
+            color: Colors.green.shade900.withAlpha(127),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -133,7 +134,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         const SizedBox(width: 16),
         Expanded(
           child: Card(
-            color: Colors.red.shade900.withOpacity(0.5),
+            color: Colors.red.shade900.withAlpha(127),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(

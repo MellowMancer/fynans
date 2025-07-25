@@ -1,43 +1,42 @@
-import 'package:flutter/foundation.dart';
-import 'package:fynans/models/expense.dart';
+import 'package:fynans/models/transaction.dart';
 
 class MonthlySummary {
   final double total;
   final double totalIncome;
-  final double totalExpenses;
+  final double totalTransactions;
   final Map<String, double> topTags;
   final Map<String, double> topGroups;
 
   MonthlySummary({
     required this.total,
     required this.totalIncome,
-    required this.totalExpenses,
+    required this.totalTransactions,
     required this.topTags,
     required this.topGroups,
   });
 
-  factory MonthlySummary.fromExpenses(List<Expense> expenses) {
+  factory MonthlySummary.fromTransactions(List<Transaction> transactions) {
     double income = 0;
     double spent = 0;
     final Map<String, double> tagSpending = {};
     final Map<String, double> groupSpending = {};
 
-    for (var expense in expenses) {
-      if (expense.isCredit) {
-        income += expense.amount;
+    for (var transaction in transactions) {
+      if (transaction.isCredit) {
+        income += transaction.amount;
       } else {
-        spent += expense.amount;
+        spent += transaction.amount;
         // Only track spending for top groups/tags
-        for (var tag in expense.tags) {
+        for (var tag in transaction.tags) {
           final cleanTag = tag.trim().toLowerCase();
           if (cleanTag.isNotEmpty) {
-            tagSpending.update(cleanTag, (value) => value + expense.amount, ifAbsent: () => expense.amount);
+            tagSpending.update(cleanTag, (value) => value + transaction.amount, ifAbsent: () => transaction.amount);
           }
         }
-        for (var gr in expense.group) {
+        for (var gr in transaction.group) {
           final cleanGr = gr.trim().toLowerCase();
           if (cleanGr.trim().isNotEmpty) {
-            groupSpending.update(cleanGr, (value) => value + expense.amount, ifAbsent: () => expense.amount);
+            groupSpending.update(cleanGr, (value) => value + transaction.amount, ifAbsent: () => transaction.amount);
           }
         }
       }
@@ -50,6 +49,6 @@ class MonthlySummary {
     final topGroups = Map.fromEntries(sortedGroups.take(3));
 
     return MonthlySummary(
-        total: income - spent, totalIncome: income, totalExpenses: spent, topTags: topTags, topGroups: topGroups);
+        total: income - spent, totalIncome: income, totalTransactions: spent, topTags: topTags, topGroups: topGroups);
   }
 }
