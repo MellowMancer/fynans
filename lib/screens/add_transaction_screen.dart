@@ -15,6 +15,7 @@ class AddTransactionScreen extends StatefulWidget {
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _hiveService = HiveService();
   final _formKey = GlobalKey<FormState>();
+  final _tagFormFieldKey = GlobalKey<FormFieldState<List<String>>>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   final _groupController = TextEditingController();
@@ -349,8 +350,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
   }
 }
-
-final _tagFormFieldKey = GlobalKey<FormFieldState>();
 
 class MultiSelectDialog extends StatefulWidget {
   final List<String> items;

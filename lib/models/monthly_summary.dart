@@ -26,7 +26,6 @@ class MonthlySummary {
         income += transaction.amount;
       } else {
         spent += transaction.amount;
-        // Only track spending for top groups/tags
         for (var tag in transaction.tags) {
           final cleanTag = tag.trim().toLowerCase();
           if (cleanTag.isNotEmpty) {

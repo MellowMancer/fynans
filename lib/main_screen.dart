@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/widgets/app_drawer.dart';
 import 'package:fynans/screens/transactions_list_screen.dart';
 import 'package:fynans/screens/analytics_screen.dart';
 import 'package:fynans/screens/advanced_view.dart';
 import 'package:fynans/screens/test_sms_screen.dart';
+import 'package:fynans/screens/test_final_transaction_list_screen.dart';
+import 'package:fynans/blocs/transaction/transaction_cubit.dart';
+import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
+import 'package:fynans/services/hive_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -22,13 +27,26 @@ class _MainScreenState extends State<MainScreen> {
     'Advanced View',
     'Analytics',
     'Test SMS',
+    'Test Transactions',
   ];
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    TransactionsListScreen(),
-    AdvancedViewScreen(),
-    AnalyticsScreen(),
-    TestSmsScreen(),
+  static final List<Widget> _widgetOptions = <Widget>[
+    const TransactionsListScreen(),
+    const AdvancedViewScreen(),
+    const AnalyticsScreen(),
+    const TestSmsScreen(),
+    MultiBlocProvider(
+      providers: [
+        BlocProvider<TransactionCubit>(
+          create: (context) => TransactionCubit(HiveService()),
+        ),
+        BlocProvider<AdvancedViewBloc>(
+          create: (context) => AdvancedViewBloc()
+            ..add(AdvancedViewDataFetched()),
+        ),
+      ],
+      child: const TestTransactionsListScreen(),
+    )
   ];
 
   @override
@@ -92,6 +110,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
             label: 'TestSMS',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'TestTrans',
           ),
         ],
         currentIndex: _selectedIndex,

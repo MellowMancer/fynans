@@ -24,7 +24,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   void initState() {
     super.initState();
     _populateMonths();
-    // Set the current page to the last month in the list (most recent)
+    
     _currentPageIndex = _months.length - 1;
     _pageController = PageController(
       initialPage: _currentPageIndex >= 0 ? _currentPageIndex : 0,
