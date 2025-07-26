@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/widgets/app_drawer.dart';
-import 'package:fynans/screens/transactions_list_screen.dart';
 import 'package:fynans/screens/analytics_screen.dart';
-import 'package:fynans/screens/advanced_view.dart';
 import 'package:fynans/screens/test_sms_screen.dart';
-import 'package:fynans/screens/test_final_transaction_list_screen.dart';
+import 'package:fynans/screens/transactions_list_screen.dart';
 import 'package:fynans/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/services/hive_service.dart';
@@ -24,17 +22,11 @@ class _MainScreenState extends State<MainScreen> {
 
   static const List<String> _widgetTitles = <String>[
     'Overview',
-    'Advanced View',
     'Analytics',
     'Test SMS',
-    'Test Transactions',
   ];
 
   static final List<Widget> _widgetOptions = <Widget>[
-    const TransactionsListScreen(),
-    const AdvancedViewScreen(),
-    const AnalyticsScreen(),
-    const TestSmsScreen(),
     MultiBlocProvider(
       providers: [
         BlocProvider<TransactionCubit>(
@@ -45,8 +37,11 @@ class _MainScreenState extends State<MainScreen> {
             ..add(AdvancedViewDataFetched()),
         ),
       ],
-      child: const TestTransactionsListScreen(),
-    )
+      child: const TransactionsListScreen(),
+    ),
+    const AnalyticsScreen(),
+    const TestSmsScreen(),
+    
   ];
 
   @override
@@ -100,20 +95,12 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Expenses',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_outlined),
-            label: 'Views',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.pie_chart_outline),
             label: 'Analytics',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
             label: 'TestSMS',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'TestTrans',
           ),
         ],
         currentIndex: _selectedIndex,

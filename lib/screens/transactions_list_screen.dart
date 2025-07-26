@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:fynans/models/transaction.dart';
-import 'package:fynans/models/monthly_summary.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
+import 'package:fynans/blocs/transaction/transaction_cubit.dart';
+import 'package:fynans/blocs/transaction/transaction_state.dart';
 import 'package:fynans/screens/add_transaction_screen.dart';
 import 'package:fynans/services/hive_service.dart';
-import 'package:fynans/widgets/transaction_list_item.dart';
-import 'package:intl/intl.dart';
+import 'package:fynans/widgets/transaction_list_widgets.dart';
+import 'package:fynans/models/grouping_option.dart';
 import 'package:fynans/widgets/month_year_wheel_picker.dart';
+
+enum ViewMode { simple, advanced }
 
 class TransactionsListScreen extends StatefulWidget {
   const TransactionsListScreen({super.key});
 
   @override
-  State<TransactionsListScreen> createState() => _TransactionsListScreenState();
+  State<TransactionsListScreen> createState() =>
+      _TransactionsListScreenState();
 }
 
-class _TransactionsListScreenState extends State<TransactionsListScreen> {
+class _TransactionsListScreenState
+    extends State<TransactionsListScreen> {
+  ViewMode _currentViewMode = ViewMode.simple;
   final HiveService _hiveService = HiveService();
   late final PageController _pageController;
   final List<DateTime> _months = [];
@@ -24,11 +31,19 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   void initState() {
     super.initState();
     _populateMonths();
-    
-    _currentPageIndex = _months.length - 1;
+
+    _currentPageIndex = _months.isNotEmpty ? _months.length - 1 : 0;
     _pageController = PageController(
       initialPage: _currentPageIndex >= 0 ? _currentPageIndex : 0,
     );
+
+    if (_months.isNotEmpty) {
+      final initialMonth = _months[_currentPageIndex];
+      context.read<TransactionCubit>().fetchTransactionsForMonth(initialMonth);
+      context
+          .read<AdvancedViewBloc>()
+          .add(AdvancedViewMonthChanged(initialMonth));
+    }
   }
 
   @override
@@ -37,69 +52,88 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_months.isEmpty) {
-      return Scaffold(
-        // appBar: AppBar(title: const Text('Monthly Overview')),
-        body: const Center(child: Text('No data available.')),
-      );
-    }
-    final selectedMonth = _months[_currentPageIndex];
-
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddTransactionScreen(),
-            ),
-          );
-        },
-        tooltip: 'Add Transaction',
-        child: const Icon(Icons.add),
-      ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 320,
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: _months.length,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPageIndex = index;
-                });
-              },
-              itemBuilder: (context, index) {
-                return _buildSummaryCard(_months[index]);
-              },
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Divider(height: 1),
-          ),
-          Expanded(child: _buildMonthlyTransactionList(selectedMonth)),
-        ],
-      ),
-    );
-  }
-
   void _populateMonths() {
     final now = DateTime.now();
-    // Create a date range of 5 years back from the current month.
     final firstDate = DateTime(now.year - 5, now.month);
-
     DateTime monthIterator = DateTime(firstDate.year, firstDate.month, 1);
     final lastMonth = DateTime(now.year, now.month, 1);
-
     while (monthIterator.isBefore(lastMonth) ||
         monthIterator.isAtSameMomentAs(lastMonth)) {
       _months.add(monthIterator);
-      // This safely increments the month, handling year rollovers.
       monthIterator = DateTime(monthIterator.year, monthIterator.month + 1, 1);
+    }
+  }
+
+  void _editHierarchy(
+      BuildContext context, AdvancedViewLoadSuccess state) async {
+    final newHierarchy = await showDialog<List<GroupingOption>>(
+      context: context,
+      builder: (context) {
+        final availableOptions = GroupingOption.values.toList();
+        List<GroupingOption> tempHierarchy = List.from(state.groupingHierarchy);
+
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Edit Grouping Hierarchy'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ReorderableListView(
+                shrinkWrap: true,
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (oldIndex < newIndex) {
+                      newIndex -= 1;
+                    }
+                    final item = tempHierarchy.removeAt(oldIndex);
+                    tempHierarchy.insert(newIndex, item);
+                  });
+                },
+                children: [
+                  for (int i = 0; i < tempHierarchy.length; i++)
+                    ListTile(
+                      key: ValueKey(tempHierarchy[i]),
+                      title: Text('${i + 1}. ${tempHierarchy[i].displayName}'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () =>
+                            setState(() => tempHierarchy.removeAt(i)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              // Show dropdown to add a new level if not all options are used
+              if (tempHierarchy.length < GroupingOption.values.length)
+                DropdownButton<GroupingOption>(
+                  hint: const Text('Add level...'),
+                  items: availableOptions
+                      .where((o) => !tempHierarchy.contains(o))
+                      .map((option) => DropdownMenuItem(
+                          value: option, child: Text(option.displayName)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => tempHierarchy.add(value));
+                  },
+                ),
+              const Spacer(),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(context, tempHierarchy),
+                child: const Text('Apply'),
+              ),
+            ],
+          );
+        });
+      },
+    );
+
+    if (context.mounted && newHierarchy != null && newHierarchy.isNotEmpty) {
+      context
+          .read<AdvancedViewBloc>()
+          .add(AdvancedViewHierarchyChanged(newHierarchy));
     }
   }
 
@@ -126,198 +160,158 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     }
   }
 
-  Widget _buildSummaryCard(DateTime month) {
-    return StreamBuilder<List<Transaction>>(
-      stream: _hiveService.listenToTransactionsForMonth(month: month),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final summary = MonthlySummary.fromTransactions(snapshot.data!);
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          elevation: 4,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        DateFormat.yMMMM().format(month),
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                    ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddTransactionScreen(),
+            ),
+          ).then((_) {
+            if (!context.mounted) return;
 
-                    IconButton(
-                      icon: const Icon(Icons.calendar_today),
-                      onPressed: _selectMonth,
-                      tooltip: 'Select Month',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _buildFlowIndicator(
-                      context,
-                      title: 'Inflow',
-                      amount: summary.totalIncome,
-                      color: Colors.green.shade300,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFlowIndicator(
-                      context,
-                      title: 'Outflow',
-                      amount: summary.totalTransactions,
-                      color: Colors.red.shade300,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: Row(
-                    children: [
-                      _buildTopSpendingList('Top Tags', summary.topTags),
-                      const VerticalDivider(width: 24),
-                      _buildTopSpendingList('Top Groups', summary.topGroups),
-                    ],
-                  ),
-                ),
+            final now = DateTime.now();
+            context.read<TransactionCubit>().fetchTransactionsForMonth(now);
+            context.read<AdvancedViewBloc>().add(AdvancedViewDataFetched());
+          });
+        },
+        tooltip: 'Add Transaction',
+        child: const Icon(Icons.add),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(4.0),
+            child: SegmentedButton<ViewMode>(
+              segments: const <ButtonSegment<ViewMode>>[
+                ButtonSegment<ViewMode>(
+                    value: ViewMode.simple,
+                    label: Text('Simple'),
+                    icon: Icon(Icons.list)),
+                ButtonSegment<ViewMode>(
+                    value: ViewMode.advanced,
+                    label: Text('Advanced'),
+                    icon: Icon(Icons.account_tree)),
               ],
+              selected: {_currentViewMode},
+              onSelectionChanged: (Set<ViewMode> newSelection) {
+                setState(() {
+                  _currentViewMode = newSelection.first;
+                });
+              },
             ),
           ),
-        );
-      },
-    );
-  }
+          SizedBox(
+            height: _currentViewMode == ViewMode.simple ? 340.0 : 300.0,
+            child: PageView.builder(
+              controller: _pageController,
+              physics: _currentViewMode == ViewMode.advanced
+                  ? const NeverScrollableScrollPhysics()
+                  : const PageScrollPhysics(),
+              itemCount: _months.length,
+              onPageChanged: (index) {
+                setState(() => _currentPageIndex = index);
+                final newMonth = _months[index];
 
-  Widget _buildFlowIndicator(
-    BuildContext context, {
-    required String title,
-    required double amount,
-    required Color color,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 45, 45, 45),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(color: Colors.white70),
+                context
+                    .read<TransactionCubit>()
+                    .fetchTransactionsForMonth(newMonth);
+              },
+              itemBuilder: (context, index) {
+                return _buildSummaryCard();
+              },
             ),
-            const SizedBox(height: 4),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '₹${amount.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTopSpendingList(String title, Map<String, double> spending) {
-    String capitalize(String s) =>
-        s.isEmpty ? '' : s[0].toUpperCase() + s.substring(1);
-
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          if (spending.isEmpty)
-            const Text('None', style: TextStyle(fontStyle: FontStyle.italic))
-          else
-            Expanded(
-              child: ListView(
-                children: spending.entries
-                    .map(
-                      (entry) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                capitalize(entry.key),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Text('₹${entry.value.toStringAsFixed(0)}'),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Divider(height: 1),
+          ),
+          Expanded(
+            child: _currentViewMode == ViewMode.simple
+                ? _buildMonthlyTransactionList()
+                : _buildAdvancedHierarchicalView(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMonthlyTransactionList(DateTime month) {
-    return StreamBuilder<List<Transaction>>(
-      stream: _hiveService.listenToTransactionsForMonth(month: month),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+  Widget _buildSummaryCard() {
+    if (_currentViewMode == ViewMode.simple) {
+      return BlocBuilder<TransactionCubit, TransactionState>(
+        builder: (context, state) {
+          if (state is TransactionLoadSuccess) {
+            return SummaryCard(
+              summary: state.summary,
+              month: _months[_currentPageIndex],
+              isSimpleMode: true,
+              onSelectMonth: _selectMonth,
+              onEditHierarchy: _editHierarchy,
+              hiveService: _hiveService,
+            );
+          }
           return const Center(child: CircularProgressIndicator());
+        },
+      );
+    } else {
+      return BlocBuilder<AdvancedViewBloc, AdvancedViewState>(
+        builder: (context, state) {
+          if (state is AdvancedViewLoadSuccess) {
+            return SummaryCard(
+              summary: state.summary,
+              month: _months[_currentPageIndex],
+              isSimpleMode: false,
+              advancedState: state,
+              onSelectMonth: _selectMonth,
+              onEditHierarchy: _editHierarchy,
+              hiveService: _hiveService,
+            );
+          }
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+    }
+  }
+
+  Widget _buildMonthlyTransactionList() {
+    return BlocBuilder<TransactionCubit, TransactionState>(
+      builder: (context, state) {
+        if (state is TransactionLoadInProgress) {
+          return const CircularProgressIndicator();
         }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+        if (state is TransactionLoadFailure) {
+          return Center(child: Text('Error: ${state.error}'));
         }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(
-            child: Text(
-              'No transactions for this month.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18),
-            ),
+        if (state is TransactionLoadSuccess) {
+          return SimpleTransactionListView(
+            hiveService: _hiveService,
+            currentMonth: _months[_currentPageIndex],
           );
         }
+        return const Center(child: Text('Initializing Simple View...'));
+      },
+    );
+  }
 
-        final transactions = snapshot.data!;
-
-        return ListView.builder(
-          itemCount: transactions.length,
-          itemBuilder: (context, index) {
-            final transaction = transactions[index];
-            return Dismissible(
-              key: ValueKey(transaction.key),
-              direction: DismissDirection.endToStart,
-              onDismissed: (_) {
-                _hiveService.deleteTransaction(transaction.key);
-              },
-              background: Container(
-                color: Colors.red.shade800,
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: 20.0),
-                child: const Icon(Icons.delete, color: Colors.white),
-              ),
-              child: TransactionListItem(transaction: transaction),
-            );
-          },
-        );
+  Widget _buildAdvancedHierarchicalView() {
+    return BlocBuilder<AdvancedViewBloc, AdvancedViewState>(
+      builder: (context, state) {
+        if (state is AdvancedViewLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state is AdvancedViewFailure) {
+          return Center(child: Text('Error: ${state.error}'));
+        }
+        if (state is AdvancedViewLoadSuccess) {
+          return HierarchicalTransactionList(
+            nodes: state.hierarchicalData,
+            summary: state.summary,
+          );
+        }
+        return const Center(child: Text('Initializing Advanced View...'));
       },
     );
   }
