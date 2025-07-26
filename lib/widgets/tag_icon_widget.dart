@@ -34,7 +34,6 @@ class TagIconWidget extends StatelessWidget {
       );
     }
 
-    // For 2 or more tags, show a split icon
     final tag1 = tags[0];
     final tag2 = tags[1];
 
@@ -44,7 +43,6 @@ class TagIconWidget extends StatelessWidget {
       child: ClipOval(
         child: Stack(
           children: [
-            // Left half
             Align(
               alignment: Alignment.centerLeft,
               child: ClipRect(
@@ -60,7 +58,6 @@ class TagIconWidget extends StatelessWidget {
                 ),
               ),
             ),
-            // Right half
             Align(
               alignment: Alignment.centerRight,
               child: ClipRect(
