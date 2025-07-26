@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.READ_SMS" />
     <application
-        android:label="fynans"
+        android:label="Fynans"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
