@@ -67,6 +67,9 @@ class SmsParserService {
     'SBIUPI',
     'KOTAK',
     'COSMOS',
+    'AIRBNK', //Airtel
+    'BOBSMS',
+    'CENTBK',
   ];
 
   bool isTransactionSms(String sender, String messageBody) {
