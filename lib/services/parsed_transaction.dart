@@ -1,28 +1,25 @@
 import 'package:equatable/equatable.dart';
 
 // An enum to clearly define the transaction type.
-enum TransactionType {
-  credit,
-  debit,
-  unknown,
-}
+enum TransactionType { debit, credit, declined, unknown }
 
-// The final, structured result. Using Equatable is good practice for testing.
-class ParsedTransactionDetails extends Equatable {
-  const ParsedTransactionDetails({
-    required this.type,
-    required this.amount,
-    required this.date,
-    this.recipientOrSender,
-    this.accountNumber,
-  });
-
+class ParsedTransactionDetails {
   final TransactionType type;
   final double amount;
   final DateTime date;
-  final String? recipientOrSender;
+  final double? balance; // Added balance field
   final String? accountNumber;
+  final String? merchant; // Renamed from recipientOrSender
+
+  ParsedTransactionDetails({
+    required this.type,
+    required this.amount,
+    required this.date,
+    this.balance,
+    this.accountNumber,
+    this.merchant,
+  });
 
   @override
-  List<Object?> get props => [type, amount, date, recipientOrSender, accountNumber];
+  List<Object?> get props => [type, amount, date, balance, accountNumber, merchant];
 }

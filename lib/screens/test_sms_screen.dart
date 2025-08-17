@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:fynans/services/parsed_transaction.dart'; // <-- Use the new, correct file name
+import 'package:fynans/services/parsed_transaction.dart';
 import 'package:fynans/services/read_sms_service.dart';
 import 'package:fynans/services/sms_parser_service.dart';
+
+// --- NEW: A simple class to hold both parsed details and the original sender ---
+class TransactionDisplayData {
+  final ParsedTransactionDetails details;
+  final String sender; // This will hold the bank name
+
+  TransactionDisplayData({required this.details, required this.sender});
+}
 
 class TestSmsScreen extends StatefulWidget {
   const TestSmsScreen({super.key});
@@ -15,8 +23,8 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
   final _smsParserService = SmsParserService();
 
   bool _isLoading = true;
-  // This state variable now holds the final, parsed transaction details.
-  List<ParsedTransactionDetails> _parsedTransactions = [];
+  // --- MODIFIED: The state variable now holds our new data class ---
+  List<TransactionDisplayData> _transactionsToDisplay = [];
 
   @override
   void initState() {
@@ -24,62 +32,123 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
     _readAndParseSms();
   }
 
+  // --- MODIFIED: This method now stores the sender along with the parsed details ---
   Future<void> _readAndParseSms() async {
     if (mounted) setState(() => _isLoading = true);
+    debugPrint("--- Starting SMS Read and Parse ---");
 
-    // 1. Get all SMS messages
     final allMessages = await _readSmsService.getNewSms();
+    debugPrint("Step 1: Found ${allMessages.length} total messages in inbox.");
 
-    // 2. Filter and Parse in one step
-    final successfulParses = allMessages.map((msg) {
-        // First, check if it's a transaction SMS at all
-        if (msg.body != null && msg.sender != null && _smsParserService.isTransactionSms(msg.sender!, msg.body!)) {
-            // If it is, try to parse it. This will return a details object or null.
-            return _smsParserService.parseTransactionDetails(msg);
+    // The logic now populates a list of our new TransactionDisplayData class
+    final List<TransactionDisplayData> successfulParses = [];
+
+    for (final msg in allMessages) {
+      if (msg.body != null && msg.sender != null) {
+        final details = _smsParserService.parseTransactionDetails(msg);
+
+        if (details != null) {
+          // SUCCESS! Store both the details and the sender.
+          successfulParses.add(
+            TransactionDisplayData(details: details, sender: msg.sender!),
+          );
         }
-        return null;
-    }).whereType<ParsedTransactionDetails>().toList(); // .whereType conveniently filters out all the nulls.
+      }
+    }
+    
+    debugPrint("Successfully parsed ${successfulParses.length} transactions.");
+    debugPrint("--- Ending SMS Read and Parse ---");
+    debugPrint("Amount: ${successfulParses[0].details.amount}");
+    debugPrint("Type: ${successfulParses[0].details.type}");
+    debugPrint("Date: ${successfulParses[0].details.date}");
+    debugPrint("Balance: ${successfulParses[0].details.balance}");
+    debugPrint("Account Number: ${successfulParses[0].details.accountNumber}");
+    debugPrint("Merchant: ${successfulParses[0].details.merchant}");
+    
+
 
     if (mounted) {
       setState(() {
-        _parsedTransactions = successfulParses;
+        // Update the state with the new list
+        _transactionsToDisplay = successfulParses;
         _isLoading = false;
       });
-      debugPrint('Found and parsed ${_parsedTransactions.length} new transaction messages.');
     }
   }
 
   Widget _buildSmsList() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_parsedTransactions.isEmpty) {
+    if (_transactionsToDisplay.isEmpty) {
       return RefreshIndicator(
         onRefresh: _readAndParseSms,
-        child: const Center(child: Text('No new parsable transaction messages found.')),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height / 3),
+            const Center(child: Text('No new parsable transaction messages found.')),
+          ],
+        ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _readAndParseSms,
       child: ListView.builder(
-        itemCount: _parsedTransactions.length,
+        // --- MODIFIED: Use the new list's length ---
+        itemCount: _transactionsToDisplay.length,
         itemBuilder: (context, index) {
-          final details = _parsedTransactions[index];
-          final isDebit = details.type == TransactionType.debit;
-          final icon = isDebit ? Icons.arrow_upward : Icons.arrow_downward;
-          final color = isDebit ? Colors.red.shade400 : Colors.green.shade400;
+          // --- MODIFIED: Get the combined data object ---
+          final transactionData = _transactionsToDisplay[index];
+          final details = transactionData.details;
+          final bankName = transactionData.sender;
+
+          IconData icon;
+          Color color;
+          switch (details.type) {
+            case TransactionType.debit:
+              icon = Icons.arrow_upward;
+              color = Colors.red.shade400;
+              break;
+            case TransactionType.credit:
+              icon = Icons.arrow_downward;
+              color = Colors.green.shade400;
+              break;
+            case TransactionType.declined:
+              icon = Icons.block;
+              color = Colors.grey.shade600;
+              break;
+            default:
+              icon = Icons.help_outline;
+              color = Colors.blueGrey;
+          }
+
           final amountText = '₹${details.amount.toStringAsFixed(2)}';
+
+          // --- MODIFIED: A much more informative subtitle ---
+          // It dynamically builds a line of text with all available info.
+          final List<String> firstLineParts = [];
+          firstLineParts.add(bankName);
+          if (details.accountNumber != null) {
+            firstLineParts.add('A/c: ${details.accountNumber}');
+          }
+          if (details.balance != null) {
+            firstLineParts.add('Bal: ₹${details.balance!.toStringAsFixed(2)}');
+          }
+          
+          final String firstLine = firstLineParts.join('  •  ');
+          final String subtitleText = '$firstLine\n${details.date.toLocal()}';
+          // --- END OF SUBTITLE MODIFICATION ---
 
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
             child: ListTile(
               leading: Icon(icon, color: color),
               title: Text(
-                details.recipientOrSender ?? 'Unknown',
+                details.merchant ?? 'Unknown',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
-              subtitle: Text(
-                'A/c: ${details.accountNumber ?? 'N/A'}\n${details.date.toLocal()}',
-              ),
+              // Use the new, richer subtitle
+              subtitle: Text(subtitleText), 
               trailing: Text(
                 amountText,
                 style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 16),
