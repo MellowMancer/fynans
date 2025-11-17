@@ -1,8 +1,7 @@
 // lib/services/sms_parser_service.dart
 
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
-import 'package:fynans/services/parsed_transaction.dart'; // Make sure this path is correct
-import 'package:flutter/material.dart';
+import 'package:fynans/services/parsed_transaction.dart';
 
 class SmsParserService {
   static const List<String> _debitKeywords = [
@@ -80,16 +79,6 @@ class SmsParserService {
     'a/c',
     'ac no',
     'upi',
-  ];
-  static const List<String> _currencyKeywords = [
-    'rs',
-    'Rs',
-    'INR',
-    'inr',
-    'rupees',
-    '₹',
-    '\$',
-    'usd',
   ];
   static const List<String> _exclusionKeywords = [
     'otp',
@@ -239,82 +228,93 @@ class SmsParserService {
   }
 
   double? _getBalance(String lowerCaseBody) {
-  // A comprehensive list of keywords to identify the balance amount.
-  const balanceKeywords = [
-    'available balance', 'avl bal', 'a/c bal', 'ac bal', 'balance',
-    'bal', 'available', 'avl', 'total', 'tot', 'clr', 'updated bal', 'new bal'
-  ];
+    // A comprehensive list of keywords to identify the balance amount.
+    const balanceKeywords = [
+      'available balance',
+      'avl bal',
+      'a/c bal',
+      'ac bal',
+      'balance',
+      'bal',
+      'available',
+      'avl',
+      'total',
+      'tot',
+      'clr',
+      'updated bal',
+      'new bal',
+    ];
 
-  // Define multiple patterns to try. We start with the simplest and most common.
-  final patterns = [
-    // --- PATTERN 1: The most common format ---
-    // Looks for [Keyword] [Currency Symbol] [Amount] [Optional Unit]
-    // Examples: "Bal Rs. 100", "Available Balance: 5,000.50 CR"
-    RegExp(
-      // Non-capturing group for all possible keywords
-      '(?:${balanceKeywords.join('|')})' +
-      // Optional colon or 'is'
-      '\\s*(?:is|:)?' +
-      // Optional currency symbol
-      '\\s*(?:rs\\.?|inr)?' +
-      // The amount we want to capture (Group 1)
-      '\\s*([\\d,]+\\.?\\d*)' +
-      // Optional trailing characters and an optional unit (Group 2)
-      '\\/?-?\\s*(cr|crore|dr|l|lac|lakh)?',
-      caseSensitive: false,
-    ),
+    // Define multiple patterns to try. We start with the simplest and most common.
+    final patterns = [
+      // --- PATTERN 1: The most common format ---
+      // Looks for [Keyword] [Currency Symbol] [Amount] [Optional Unit]
+      // Examples: "Bal Rs. 100", "Available Balance: 5,000.50 CR"
+      RegExp(
+        // Non-capturing group for all possible keywords
+        '(?:${balanceKeywords.join('|')})'
+        // Optional colon or 'is'
+        '\\s*(?:is|:)?'
+        // Optional currency symbol
+        '\\s*(?:rs\\.?|inr)?'
+        // The amount we want to capture (Group 1)
+        '\\s*([\\d,]+\\.?\\d*)'
+        // Optional trailing characters and an optional unit (Group 2)
+        '\\/?-?\\s*(cr|crore|dr|l|lac|lakh)?',
+        caseSensitive: false,
+      ),
 
-    // --- PATTERN 2: A less common reversed format ---
-    // Looks for [Amount] is the [Keyword]
-    // Example: "Rs. 5,000 is your new balance"
-    RegExp(
-      // Optional currency symbol
-      '(?:rs\\.?|inr)?' +
-      // The amount we want to capture (Group 1)
-      '\\s*([\\d,]+\\.?\\d*)' +
-      // Optional unit (Group 2)
-      '\\/?-?\\s*(cr|crore|dr|l|lac|lakh)?' +
-      // Separator words
-      '\\s*is\\s*(?:the|your)?\\s*' +
-      // The keyword at the end
-      '(?:${balanceKeywords.join('|')})',
-      caseSensitive: false,
-    ),
-  ];
+      // --- PATTERN 2: A less common reversed format ---
+      // Looks for [Amount] is the [Keyword]
+      // Example: "Rs. 5,000 is your new balance"
+      RegExp(
+        // Optional currency symbol
+        '(?:rs\\.?|inr)?'
+        // The amount we want to capture (Group 1)
+        '\\s*([\\d,]+\\.?\\d*)'
+        // Optional unit (Group 2)
+        '\\/?-?\\s*(cr|crore|dr|l|lac|lakh)?'
+        // Separator words
+        '\\s*is\\s*(?:the|your)?\\s*'
+        // The keyword at the end
+        '(?:${balanceKeywords.join('|')})',
+        caseSensitive: false,
+      ),
+    ];
 
-  // Loop through the patterns and stop at the first successful match.
-  for (final pattern in patterns) {
-    final match = pattern.firstMatch(lowerCaseBody);
+    // Loop through the patterns and stop at the first successful match.
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(lowerCaseBody);
 
-    if (match != null) {
-      // Group 1 will always be the numeric amount string in our patterns.
-      final amountString = match.group(1);
-      // Group 2 will be the unit (like 'cr' or 'lakh'), if it exists.
-      final unitString = (match.groupCount > 1) ? match.group(2) : null;
+      if (match != null) {
+        // Group 1 will always be the numeric amount string in our patterns.
+        final amountString = match.group(1);
+        // Group 2 will be the unit (like 'cr' or 'lakh'), if it exists.
+        final unitString = (match.groupCount > 1) ? match.group(2) : null;
 
-      if (amountString != null) {
-        String? unitToProcess;
+        if (amountString != null) {
+          String? unitToProcess;
 
-        // This logic correctly separates balance types ('cr', 'dr') from
-        // actual monetary units ('crore', 'lakh') to prevent bugs.
-        if (unitString != null) {
+          // This logic correctly separates balance types ('cr', 'dr') from
+          // actual monetary units ('crore', 'lakh') to prevent bugs.
+          if (unitString != null) {
             final lowerUnit = unitString.toLowerCase();
             if (lowerUnit == 'crore' || lowerUnit.startsWith('l')) {
-                unitToProcess = lowerUnit;
+              unitToProcess = lowerUnit;
             }
-        }
-        
-        final balance = _cleanAmount(amountString, unitToProcess);
-        if (balance != null) {
-          // If we successfully parse a balance, return it immediately.
-          return balance;
+          }
+
+          final balance = _cleanAmount(amountString, unitToProcess);
+          if (balance != null) {
+            // If we successfully parse a balance, return it immediately.
+            return balance;
+          }
         }
       }
     }
-  }
 
-  return null;
-}
+    return null;
+  }
 
   String? _getAccountNumber(String lowerCaseBody) {
     final match = _accountRegex.firstMatch(lowerCaseBody);

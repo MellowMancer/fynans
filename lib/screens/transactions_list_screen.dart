@@ -184,7 +184,7 @@ class _TransactionsListScreenState
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(4.0),
+            padding: const EdgeInsets.all(8.0),
             child: SegmentedButton<ViewMode>(
               segments: const <ButtonSegment<ViewMode>>[
                 ButtonSegment<ViewMode>(
@@ -225,9 +225,12 @@ class _TransactionsListScreenState
               },
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Divider(
+              height: 1,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+            ),
           ),
           Expanded(
             child: _currentViewMode == ViewMode.simple

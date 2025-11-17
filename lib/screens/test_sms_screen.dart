@@ -3,7 +3,6 @@ import 'package:fynans/services/parsed_transaction.dart';
 import 'package:fynans/services/read_sms_service.dart';
 import 'package:fynans/services/sms_parser_service.dart';
 
-// --- NEW: A simple class to hold both parsed details and the original sender ---
 class TransactionDisplayData {
   final ParsedTransactionDetails details;
   final String sender; // This will hold the bank name
@@ -58,12 +57,16 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
     
     debugPrint("Successfully parsed ${successfulParses.length} transactions.");
     debugPrint("--- Ending SMS Read and Parse ---");
-    debugPrint("Amount: ${successfulParses[0].details.amount}");
-    debugPrint("Type: ${successfulParses[0].details.type}");
-    debugPrint("Date: ${successfulParses[0].details.date}");
-    debugPrint("Balance: ${successfulParses[0].details.balance}");
-    debugPrint("Account Number: ${successfulParses[0].details.accountNumber}");
-    debugPrint("Merchant: ${successfulParses[0].details.merchant}");
+
+    if (successfulParses.isNotEmpty) {
+      final first = successfulParses.first;
+      debugPrint("Amount: ${first.details.amount}");
+      debugPrint("Type: ${first.details.type}");
+      debugPrint("Date: ${first.details.date}");
+      debugPrint("Balance: ${first.details.balance}");
+      debugPrint("Account Number: ${first.details.accountNumber}");
+      debugPrint("Merchant: ${first.details.merchant}");
+    }
     
 
 
@@ -107,19 +110,19 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
           switch (details.type) {
             case TransactionType.debit:
               icon = Icons.arrow_upward;
-              color = Colors.red.shade400;
+              color = Theme.of(context).colorScheme.error;
               break;
             case TransactionType.credit:
               icon = Icons.arrow_downward;
-              color = Colors.green.shade400;
+              color = Theme.of(context).colorScheme.primary;
               break;
             case TransactionType.declined:
               icon = Icons.block;
-              color = Colors.grey.shade600;
+              color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
               break;
             default:
               icon = Icons.help_outline;
-              color = Colors.blueGrey;
+              color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
           }
 
           final amountText = '₹${details.amount.toStringAsFixed(2)}';
@@ -140,7 +143,7 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
           // --- END OF SUBTITLE MODIFICATION ---
 
           return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: ListTile(
               leading: Icon(icon, color: color),
               title: Text(

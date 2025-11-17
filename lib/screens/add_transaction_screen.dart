@@ -95,9 +95,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Transaction Saved!'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Text('Transaction Saved!'),
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       );
 
@@ -168,11 +172,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           : null,
                     ),
                   ),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 16),
                   Column(
                     children: [
-                      const Text('Credit', textScaler: TextScaler.linear(0.9)),
-                      const SizedBox(height: 1),
+                      Text(
+                        'Credit',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                      const SizedBox(height: 4),
                       Switch(
                         value: _creditFlag,
                         onChanged: (value) => setState(() {
@@ -182,23 +189,40 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(width: 12),
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Date: ${DateFormat.yMd().format(_selectedDate)}',
-                      style: Theme.of(context).textTheme.titleMedium,
+              InkWell(
+                onTap: _presentDatePicker,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                     ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  IconButton(
-                    onPressed: _presentDatePicker,
-                    icon: const Icon(Icons.calendar_month),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_month,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          DateFormat.yMMMMd().format(_selectedDate),
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
               const SizedBox(height: 16),
               FormField<List<String>>(
@@ -333,14 +357,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   _partyController.text = selection;
                 },
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _saveTransaction,
                 icon: const Icon(Icons.save),
                 label: const Text('Save Transaction'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
             ],
@@ -410,6 +433,9 @@ class _MultiSelectDialogState extends State<MultiSelectDialog> {
           child: const Text('OK'),
         ),
       ],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
     );
   }
 }

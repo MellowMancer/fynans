@@ -41,6 +41,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       lastDate: now,
     );
 
+    if (!mounted) return;
+
     if (pickedDate != null) {
       setState(() {
         _selectedMonth = DateTime(pickedDate.year, pickedDate.month, 1);
@@ -117,15 +119,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       children: [
         Expanded(
           child: Card(
-            color: Colors.green.shade900.withAlpha(127),
+            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  const Text('Inflow', style: TextStyle(fontSize: 16)),
+                  Text(
+                    'Inflow',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.green.shade300,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text('₹${analytics.totalInflow.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text(
+                    '₹${analytics.totalInflow.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade300,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -134,15 +146,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         const SizedBox(width: 16),
         Expanded(
           child: Card(
-            color: Colors.red.shade900.withAlpha(127),
+            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  const Text('Outflow', style: TextStyle(fontSize: 16)),
+                  Text(
+                    'Outflow',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.red.shade300,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text('₹${analytics.totalOutflow.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text(
+                    '₹${analytics.totalOutflow.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red.shade300,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -235,9 +257,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final pieChartSections = topTags.asMap().entries.map((entry) {
       final tag = entry.value.key;
       final amount = entry.value.value;
-      final isTouched = false; // Can be used for interaction later
-      final fontSize = isTouched ? 16.0 : 14.0;
-      final radius = isTouched ? 60.0 : 50.0;
+      const fontSize = 14.0;
+      const radius = 50.0;
 
       return PieChartSectionData(
         color: TagHelper.getColorForTag(tag),

@@ -162,7 +162,7 @@ class MonthYearWheelPickerState extends State<MonthYearWheelPicker>{
       child: Container(
         height: 38.0,
         decoration: BoxDecoration(
-          color: const Color(0xFFC3C9FA).withAlpha(26),
+          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(8.0),
         ),
       ),

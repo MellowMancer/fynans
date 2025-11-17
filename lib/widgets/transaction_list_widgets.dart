@@ -33,8 +33,6 @@ class SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 4,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -118,14 +116,17 @@ class AdvancedFilterControls extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ActionChip(
-            avatar: const Icon(Icons.sort, size: 16),
-            label: Text(
-              state.groupingHierarchy.map((e) => e.displayName).join(' > '),
-              overflow: TextOverflow.ellipsis,
-            ),
-            onPressed: () => onEditHierarchy(context, state),),
+          avatar: const Icon(Icons.sort, size: 16),
+          label: Text(
+            state.groupingHierarchy.map((e) => e.displayName).join(' > '),
+            overflow: TextOverflow.ellipsis,
+          ),
+          onPressed: () => onEditHierarchy(context, state),
+        ),
+        const SizedBox(height: 8),
         Wrap(
-          spacing: 4.0,
+          spacing: 8.0,
+          runSpacing: 8.0,
           children: [
             FilterChipWithDialog(
               label: 'Group',
@@ -180,7 +181,7 @@ class FilterChipWithDialog extends StatelessWidget {
         textScaler: TextScaler.linear(0.8),
         overflow: TextOverflow.ellipsis,
       ),
-      labelPadding: EdgeInsets.all(0.5),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       selected: value != null,
       onSelected: (_) => _showDialog(context),
       onDeleted: value != null ? () => onSelected(null) : null,
@@ -200,9 +201,13 @@ class FilterChipWithDialog extends StatelessWidget {
         children: [
           SimpleDialogOption(
             onPressed: () => Navigator.pop(context, null),
-            child: const Text('Clear Filter',
-                style:
-                    TextStyle(fontStyle: FontStyle.italic, color: Colors.red)),
+            child: Text(
+              'Clear Filter',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
           ),
           ...items.map((item) => SimpleDialogOption(
                 onPressed: () => Navigator.pop(context, item),
@@ -230,18 +235,20 @@ class _FlowIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 45, 45, 45),
-            borderRadius: BorderRadius.circular(8)),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(color: Colors.white70)),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
             const SizedBox(height: 4),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -278,20 +285,38 @@ class _TopSpendingList extends StatelessWidget {
           Text(title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           if (spending.isEmpty)
-            const Text('None', style: TextStyle(fontStyle: FontStyle.italic))
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                'None',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            )
           else
             Expanded(
               child: ListView(
                 children: spending.entries
                     .map((entry) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2.0),
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Flexible(
-                                  child: Text(_capitalize(entry.key),
-                                      overflow: TextOverflow.ellipsis)),
-                              Text('₹${entry.value.toStringAsFixed(0)}'),
+                                child: Text(
+                                  _capitalize(entry.key),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                              Text(
+                                '₹${entry.value.toStringAsFixed(0)}',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ],
                           ),
                         ))
@@ -376,11 +401,18 @@ class HierarchicalTransactionList extends StatelessWidget {
         if (index == 0) {
           // The "Total" card
           return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
+              leading: Icon(
+                Icons.account_balance_wallet,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               title: const Text('Total (Inflow + Outflow)'),
-              trailing: Text('₹${summary.total.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.titleLarge),
+              trailing: Text(
+                '₹${summary.total.toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           );
         }
