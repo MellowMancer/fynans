@@ -1,24 +1,26 @@
 import 'package:bloc/bloc.dart';
 import 'package:fynans/models/grouping_option.dart';
-import 'package:fynans/models/transaction.dart';
-import 'package:fynans/services/hive_service.dart';
-import 'package:meta/meta.dart';
 import 'package:fynans/models/monthly_summary.dart';
+import 'package:fynans/models/transaction.dart';
+import 'package:fynans/models/transaction_filter.dart';
+import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/use_cases/summarise_transactions.dart';
+import 'package:meta/meta.dart';
 
 part 'advanced_view_event.dart';
 part 'advanced_view_state.dart';
 
 class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
-  final HiveService _hiveService = HiveService();
+  final TransactionRepository _repository;
 
-  AdvancedViewBloc()
+  AdvancedViewBloc(this._repository)
       : super(
           // Start with a successful but empty state.
           AdvancedViewLoadSuccess(
             selectedMonth: DateTime(DateTime.now().year, DateTime.now().month, 1),
             groupingHierarchy: [GroupingOption.month], // Default hierarchy
             hierarchicalData: [],
-            summary: MonthlySummary(total: 0, totalIncome: 0, totalTransactions: 0, topTags: <String, double>{}, topGroups: <String, double>{})
+            summary: MonthlySummary.empty,
           )
         ) {
     on<AdvancedViewDataFetched>(_onDataFetched);
@@ -48,7 +50,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
   void _onGroupFilterChanged(AdvancedViewGroupFilterChanged event, Emitter<AdvancedViewState> emit) {
     if (state is AdvancedViewLoadSuccess) {
       final currentState = state as AdvancedViewLoadSuccess;
-      emit(currentState.copyWith(filterGroup: event.group, clearGroup: event.group == null));
+      emit(currentState.copyWith(filter: currentState.filter.copyWith(group: event.group)));
       add(AdvancedViewDataFetched());
     }
   }
@@ -56,7 +58,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
   void _onTagFilterChanged(AdvancedViewTagFilterChanged event, Emitter<AdvancedViewState> emit) {
     if (state is AdvancedViewLoadSuccess) {
       final currentState = state as AdvancedViewLoadSuccess;
-      emit(currentState.copyWith(filterTag: event.tag, clearTag: event.tag == null));
+      emit(currentState.copyWith(filter: currentState.filter.copyWith(tag: event.tag)));
       add(AdvancedViewDataFetched());
     }
   }
@@ -64,7 +66,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
   void _onPartyFilterChanged(AdvancedViewPartyFilterChanged event, Emitter<AdvancedViewState> emit) {
     if (state is AdvancedViewLoadSuccess) {
       final currentState = state as AdvancedViewLoadSuccess;
-      emit(currentState.copyWith(filterParty: event.party, clearParty: event.party == null));
+      emit(currentState.copyWith(filter: currentState.filter.copyWith(party: event.party)));
       add(AdvancedViewDataFetched());
     }
   }
@@ -73,20 +75,17 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
   Future<void> _onDataFetched(AdvancedViewDataFetched event, Emitter<AdvancedViewState> emit) async {
     if (state is! AdvancedViewLoadSuccess) return;
     final currentState = state as AdvancedViewLoadSuccess;
-    
 
     emit(AdvancedViewLoading());
 
     try {
       // 1. Fetch a clean, de-duplicated list of transactions matching the filters.
-      final allTransactions = await _hiveService.fetchTransactionsForMonth(
+      final allTransactions = await _repository.fetchTransactionsForMonth(
         month: currentState.selectedMonth,
-        filterGroup: currentState.filterGroup,
-        filterTag: currentState.filterTag,
-        filterParty: currentState.filterParty,
+        filter: currentState.filter.isEmpty ? null : currentState.filter,
       );
 
-      final summary = MonthlySummary.fromTransactions(allTransactions);
+      final summary = summariseTransactions(allTransactions);
 
       // 2. Perform the hierarchical grouping on the client side.
       final nodes = _groupTransactions(allTransactions, currentState.groupingHierarchy);
@@ -120,7 +119,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
       final groupTransactions = entry.value;
       return HierarchyNode(
         name: entry.key,
-        summary: MonthlySummary.fromTransactions(groupTransactions),
+        summary: summariseTransactions(groupTransactions),
         transactionCount: groupTransactions.length,
         children: _groupTransactions(groupTransactions, remainingHierarchy),
         transactions: remainingHierarchy.isEmpty ? groupTransactions : [],

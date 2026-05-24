@@ -1,18 +1,18 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fynans/models/monthly_summary.dart';
-import 'package:fynans/services/hive_service.dart';
+import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/use_cases/summarise_transactions.dart';
 import 'transaction_state.dart';
 
 class TransactionCubit extends Cubit<TransactionState> {
-  final HiveService _hiveService;
+  final TransactionRepository _repository;
 
-  TransactionCubit(this._hiveService) : super(TransactionInitial());
+  TransactionCubit(this._repository) : super(TransactionInitial());
 
   Future<void> fetchTransactionsForMonth(DateTime month) async {
     try {
       emit(TransactionLoadInProgress());
-      _hiveService.listenToTransactionsForMonth(month: month).listen((transactions) {
-        final summary = MonthlySummary.fromTransactions(transactions);
+      _repository.listenToTransactionsForMonth(month: month).listen((transactions) {
+        final summary = summariseTransactions(transactions);
         emit(TransactionLoadSuccess(summary: summary, transactions: transactions));
       });
     } catch (e) {
