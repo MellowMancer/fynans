@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fynans/models/transaction.dart';
-import 'package:fynans/services/hive_service.dart';
+import 'package:fynans/repositories/transaction_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:fynans/utils/tag_helper.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+  final TransactionRepository repository;
+
+  const AddTransactionScreen({super.key, required this.repository});
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
 }
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
-  final _hiveService = HiveService();
   final _formKey = GlobalKey<FormState>();
   final _tagFormFieldKey = GlobalKey<FormFieldState<List<String>>>();
   final _amountController = TextEditingController();
@@ -37,8 +38,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   void _loadSuggestions() async {
-    final groups = await _hiveService.getAllGroups();
-    final parties = await _hiveService.getAllParties();
+    final groups = await widget.repository.getAllGroups();
+    final parties = await widget.repository.getAllParties();
     if (mounted) {
       setState(() {
         _existingGroups = groups;
@@ -69,7 +70,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _selectedDate = pickedDate ?? _selectedDate;
     });
   }
-  
+
   void _saveTransaction() async {
     if (_formKey.currentState!.validate()) {
       final groupInputString = _groupController.text;
@@ -88,7 +89,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         ..party = _partyController.text.trim()
         ..isCredit = _creditFlag;
 
-      await _hiveService.saveTransaction(newTransaction);
+      await widget.repository.saveTransaction(newTransaction);
 
 
       // Check if the widget is still in the tree before using its context.
@@ -325,7 +326,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       focusNode,
                       onFieldSubmitted,
                     ) {
-                      // _partyController.value = textEditingController.value;
                       return TextFormField(
                         controller: _partyController,
                         readOnly: _creditFlag,
