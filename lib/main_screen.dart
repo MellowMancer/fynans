@@ -6,7 +6,8 @@ import 'package:fynans/screens/test_sms_screen.dart';
 import 'package:fynans/screens/transactions_list_screen.dart';
 import 'package:fynans/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
-import 'package:fynans/services/hive_service.dart';
+import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/services/hive_transaction_repository.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,8 +18,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  // final _readSmsService = ReadSmsService();
-  // final _smsParserService = SmsParserService();
 
   static const List<String> _widgetTitles = <String>[
     'Overview',
@@ -26,49 +25,30 @@ class _MainScreenState extends State<MainScreen> {
     'Test SMS',
   ];
 
-  static final List<Widget> _widgetOptions = <Widget>[
-    MultiBlocProvider(
-      providers: [
-        BlocProvider<TransactionCubit>(
-          create: (context) => TransactionCubit(HiveService()),
-        ),
-        BlocProvider<AdvancedViewBloc>(
-          create: (context) => AdvancedViewBloc()
-            ..add(AdvancedViewDataFetched()),
-        ),
-      ],
-      child: const TransactionsListScreen(),
-    ),
-    const AnalyticsScreen(),
-    const TestSmsScreen(),
-    
-  ];
+  late final TransactionRepository _repository;
+  late final List<Widget> _widgetOptions;
 
   @override
   void initState() {
     super.initState();
-    // _readAndFilterSms();
+    _repository = HiveTransactionRepository();
+    _widgetOptions = <Widget>[
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<TransactionCubit>(
+            create: (context) => TransactionCubit(_repository),
+          ),
+          BlocProvider<AdvancedViewBloc>(
+            create: (context) => AdvancedViewBloc(_repository)
+              ..add(AdvancedViewDataFetched()),
+          ),
+        ],
+        child: TransactionsListScreen(repository: _repository),
+      ),
+      AnalyticsScreen(repository: _repository),
+      const TestSmsScreen(),
+    ];
   }
-
-  // void _readAndFilterSms() async {
-  //   final newMessages = await _readSmsService.getNewSms();
-
-  //   // 2. Filter for transaction messages using our parser service.
-  //   final transactionMessages = newMessages.where((msg) {
-  //     if (msg.body == null) return false;
-  //     return _smsParserService.isTransactionSms(msg.body!);
-  //   }).toList();
-
-  //   if (mounted) {
-  //     debugPrint('Found ${transactionMessages.length} new transaction messages.');
-
-  //     for (var message in transactionMessages) {
-  //       debugPrint('--- Transaction SMS ---');
-  //       debugPrint('From: ${message.sender}, Body: ${message.body}');
-  //       // TODO: Parse amount, party, etc., and save to Isar.
-  //     }
-  //   }
-  // }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -88,7 +68,7 @@ class _MainScreenState extends State<MainScreen> {
         children: _widgetOptions,
       ),
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // Improves UI for 4+ items
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.list_alt),

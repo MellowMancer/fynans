@@ -1,21 +1,22 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fynans/models/monthly_analytics.dart';
+import 'package:fynans/repositories/transaction_repository.dart';
 import 'package:fynans/utils/tag_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:fynans/widgets/month_year_wheel_picker.dart';
-import 'package:fynans/services/hive_service.dart';
 
 
 class AnalyticsScreen extends StatefulWidget {
-  const AnalyticsScreen({super.key});
+  final TransactionRepository repository;
+
+  const AnalyticsScreen({super.key, required this.repository});
 
   @override
   State<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  final HiveService _hiveService = HiveService();
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
   Future<MonthlyAnalytics>? _analyticsFuture;
 
@@ -27,7 +28,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   void _loadData() {
     setState(() {
-      _analyticsFuture = _hiveService.getAnalyticsForMonth(_selectedMonth);
+      _analyticsFuture = widget.repository.getAnalyticsForMonth(_selectedMonth);
     });
   }
 
@@ -54,9 +55,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   title: const Text('Monthly Analytics'),
-      // ),
       body: Column(
         children: [
           Padding(
