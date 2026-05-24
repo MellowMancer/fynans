@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:amplify_flutter/amplify_flutter.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({
