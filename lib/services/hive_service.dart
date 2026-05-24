@@ -1,4 +1,5 @@
 import 'package:fynans/models/transaction.dart';
+import 'package:fynans/models/transaction_filter.dart';
 import 'package:fynans/models/grouping_option.dart';
 import 'package:fynans/models/advanced_view_summary.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -54,27 +55,16 @@ class HiveService {
 
   Stream<List<Transaction>> listenToTransactionsForMonth({
     required DateTime month,
-    String? filterGroup,
-    String? filterTag,
-    String? filterParty,
+    TransactionFilter? filter,
   }) async* {
     final (start, end) = _getMonthBounds(month);
 
     List<Transaction> getFilteredAndSortedList() {
-      var query = _transactionBox.values.where((e) => !e.date.isBefore(start) && !e.date.isAfter(end));
-
-      // Filter by group, tag, and party if present.
-      if (filterGroup != null) {
-        query = query.where((e) => e.group.contains(filterGroup));
-      }
-      if (filterTag != null) {
-        query = query.where((e) => e.tags.contains(filterTag));
-      }
-      if (filterParty != null) {
-        query = query.where((e) => e.party.toLowerCase() == filterParty.toLowerCase());
-      }
-
-      return query.toList()..sort((a, b) => b.date.compareTo(a.date));
+      return _transactionBox.values
+          .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
+          .where((e) => filter == null || filter.matches(e))
+          .toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
     }
 
     yield getFilteredAndSortedList();
@@ -86,27 +76,15 @@ class HiveService {
 
   Future<List<Transaction>> fetchTransactionsForMonth({
     required DateTime month,
-    String? filterGroup,
-    String? filterTag,
-    String? filterParty,
+    TransactionFilter? filter,
   }) async {
     final (start, end) = _getMonthBounds(month);
 
-    var query = _transactionBox.values.where((e) => !e.date.isBefore(start) && !e.date.isAfter(end));
-
-    // Filter by group, tag, and party if present.
-    if (filterGroup != null) {
-      query = query.where((e) => e.group.contains(filterGroup));
-    }
-    if (filterTag != null) {
-      query = query.where((e) => e.tags.contains(filterTag));
-    }
-    if (filterParty != null) {
-      query = query.where((e) => e.party.toLowerCase() == filterParty.toLowerCase());
-    }
-
-    return query.toList()..sort((a, b) => b.date.compareTo(a.date));
-
+    return _transactionBox.values
+        .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
+        .where((e) => filter == null || filter.matches(e))
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
   }
 
   Future<void> deleteTransaction(dynamic key) async {
@@ -116,27 +94,16 @@ class HiveService {
   Future<(double, List<AdvancedViewSummary>)> getAdvancedViews({
     required DateTime month,
     required GroupingOption groupBy,
-    String? filterGroup,
-    String? filterTag,
-    String? filterParty,
+    TransactionFilter? filter,
   }) async {
     final (start, end) = _getMonthBounds(month);
 
     // With Hive, we fetch the values and then filter them in Dart.
-    var query = _transactionBox.values
-        .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end));
-
-    if (filterGroup != null) {
-      query = query.where((e) => e.group.contains(filterGroup));
-    }
-    if (filterTag != null) {
-      query = query.where((e) => e.tags.contains(filterTag));
-    }
-    if (filterParty != null) {
-      query = query.where((e) => e.party.toLowerCase() == filterParty.toLowerCase());
-    }
-
-    final transactionsForMonth = query.toList()..sort((a, b) => b.date.compareTo(a.date));
+    final transactionsForMonth = _transactionBox.values
+        .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
+        .where((e) => filter == null || filter.matches(e))
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
 
     final double monthTotal = transactionsForMonth.fold(0, (sum, e) => sum + e.amount);
 
