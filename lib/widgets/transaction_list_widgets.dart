@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/blocs/transaction/transaction_state.dart';
-import 'package:fynans/services/hive_service.dart';
+import 'package:fynans/repositories/transaction_repository.dart';
 import 'package:fynans/widgets/transaction_list_item.dart';
 import 'package:intl/intl.dart';
 import 'package:fynans/models/monthly_summary.dart';
@@ -12,7 +12,7 @@ class SummaryCard extends StatelessWidget {
   final MonthlySummary summary;
   final DateTime month;
   final bool isSimpleMode;
-  final HiveService hiveService;
+  final TransactionRepository repository;
 
   final VoidCallback onSelectMonth;
 
@@ -24,7 +24,7 @@ class SummaryCard extends StatelessWidget {
     required this.summary,
     required this.month,
     required this.isSimpleMode,
-    required this.hiveService,
+    required this.repository,
     required this.onSelectMonth,
     this.advancedState,
     required this.onEditHierarchy,
@@ -61,7 +61,7 @@ class SummaryCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 _FlowIndicator(
                     title: 'Outflow',
-                    amount: summary.totalTransactions,
+                    amount: summary.totalExpenses,
                     color: Colors.red.shade300),
               ],
             ),
@@ -88,7 +88,7 @@ class SummaryCard extends StatelessWidget {
               AdvancedFilterControls(
                 state: advancedState!,
                 onEditHierarchy: onEditHierarchy,
-                hiveService: hiveService,
+                repository: repository,
               ),
             ]
           ],
@@ -100,13 +100,13 @@ class SummaryCard extends StatelessWidget {
 
 class AdvancedFilterControls extends StatelessWidget {
   final AdvancedViewLoadSuccess state;
-  final HiveService hiveService;
+  final TransactionRepository repository;
   final Function(BuildContext, AdvancedViewLoadSuccess) onEditHierarchy;
 
   const AdvancedFilterControls({
     super.key,
     required this.state,
-    required this.hiveService,
+    required this.repository,
     required this.onEditHierarchy,
   });
 
@@ -130,24 +130,24 @@ class AdvancedFilterControls extends StatelessWidget {
           children: [
             FilterChipWithDialog(
               label: 'Group',
-              value: state.filterGroup,
-              itemsFuture: hiveService.getAllGroups(),
+              value: state.filter.group,
+              itemsFuture: repository.getAllGroups(),
               onSelected: (value) => context
                   .read<AdvancedViewBloc>()
                   .add(AdvancedViewGroupFilterChanged(value)),
             ),
             FilterChipWithDialog(
               label: 'Tag',
-              value: state.filterTag,
-              itemsFuture: hiveService.getAllUniqueTags(),
+              value: state.filter.tag,
+              itemsFuture: repository.getAllUniqueTags(),
               onSelected: (value) => context
                   .read<AdvancedViewBloc>()
                   .add(AdvancedViewTagFilterChanged(value)),
             ),
             FilterChipWithDialog(
               label: 'Party',
-              value: state.filterParty,
-              itemsFuture: hiveService.getAllParties(),
+              value: state.filter.party,
+              itemsFuture: repository.getAllParties(),
               onSelected: (value) => context
                   .read<AdvancedViewBloc>()
                   .add(AdvancedViewPartyFilterChanged(value)),
@@ -329,12 +329,12 @@ class _TopSpendingList extends StatelessWidget {
 }
 
 class SimpleTransactionListView extends StatelessWidget {
-  final HiveService hiveService;
+  final TransactionRepository repository;
   final DateTime currentMonth;
 
   const SimpleTransactionListView({
     super.key,
-    required this.hiveService,
+    required this.repository,
     required this.currentMonth,
   });
 
@@ -354,7 +354,7 @@ class SimpleTransactionListView extends StatelessWidget {
                 key: ValueKey(transaction.key),
                 direction: DismissDirection.endToStart,
                 onDismissed: (_) {
-                  hiveService.deleteTransaction(transaction.key).then((_) {
+                  repository.deleteTransaction(transaction).then((_) {
                     if (!context.mounted) return;
                     context
                         .read<TransactionCubit>()
