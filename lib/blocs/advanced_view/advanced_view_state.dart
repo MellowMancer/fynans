@@ -38,18 +38,14 @@ final class AdvancedViewFailure extends AdvancedViewState {
 final class AdvancedViewLoadSuccess extends AdvancedViewState {
   final DateTime selectedMonth;
   final List<GroupingOption> groupingHierarchy;
-  final String? filterGroup;
-  final String? filterTag;
-  final String? filterParty;
+  final TransactionFilter filter;
   final List<HierarchyNode> hierarchicalData;
   final MonthlySummary summary;
 
   const AdvancedViewLoadSuccess({
     required this.selectedMonth,
     required this.groupingHierarchy,
-    this.filterGroup,
-    this.filterTag,
-    this.filterParty,
+    this.filter = const TransactionFilter.empty(),
     required this.hierarchicalData,
     required this.summary,
   });
@@ -57,25 +53,16 @@ final class AdvancedViewLoadSuccess extends AdvancedViewState {
   AdvancedViewLoadSuccess copyWith({
     DateTime? selectedMonth,
     List<GroupingOption>? groupingHierarchy,
-    String? filterGroup,
-    String? filterTag,
-    String? filterParty,
+    TransactionFilter? filter,
     List<HierarchyNode>? hierarchicalData,
     MonthlySummary? summary,
-    bool clearGroup = false,
-    bool clearTag = false,
-    bool clearParty = false,
   }) {
     return AdvancedViewLoadSuccess(
       selectedMonth: selectedMonth ?? this.selectedMonth,
       groupingHierarchy: groupingHierarchy ?? this.groupingHierarchy,
-      filterGroup: clearGroup ? null : filterGroup ?? this.filterGroup,
-      filterTag: clearTag ? null : filterTag ?? this.filterTag,
-      filterParty: clearParty ? null : filterParty ?? this.filterParty,
+      filter: filter ?? this.filter,
       hierarchicalData: hierarchicalData ?? this.hierarchicalData,
       summary: summary ?? this.summary,
     );
   }
 }
-
-
