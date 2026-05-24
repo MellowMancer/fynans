@@ -42,20 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final result = await Amplify.Auth.signIn(
-        username: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      if (result.isSignedIn) {
-        if (!mounted) return;
-        // Force a rebuild of the app by navigating to root
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-      }
-    } on AuthException catch (e) {
-      setState(() {
-        _errorMessage = e.message;
-      });
+      throw UnimplementedError('Auth removed');
     } catch (e) {
       setState(() {
         _errorMessage = 'An unexpected error occurred: $e';
@@ -78,31 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final userAttributes = {
-        AuthUserAttributeKey.email: _emailController.text.trim(),
-      };
-
-      final result = await Amplify.Auth.signUp(
-        username: _emailController.text.trim(),
-        password: _passwordController.text,
-        options: SignUpOptions(
-          userAttributes: userAttributes,
-        ),
-      );
-
-      if (result.isSignUpComplete) {
-        if (!mounted) return;
-        Navigator.of(context).pushReplacementNamed('/');
-      } else {
-        setState(() {
-          _isConfirmSignUp = true;
-          _emailForConfirmation = _emailController.text.trim();
-        });
-      }
-    } on AuthException catch (e) {
-      setState(() {
-        _errorMessage = e.message;
-      });
+      throw UnimplementedError('Auth removed');
     } catch (e) {
       setState(() {
         _errorMessage = 'An unexpected error occurred: $e';
@@ -125,33 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final result = await Amplify.Auth.confirmSignUp(
-        username: _emailForConfirmation ?? _emailController.text.trim(),
-        confirmationCode: _confirmationCodeController.text.trim(),
-      );
-
-      if (result.isSignUpComplete) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Account confirmed! Please sign in.'),
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-        setState(() {
-          _isConfirmSignUp = false;
-          _isSignUp = false;
-          _confirmationCodeController.clear();
-        });
-      }
-    } on AuthException catch (e) {
-      setState(() {
-        _errorMessage = e.message;
-      });
+      throw UnimplementedError('Auth removed');
     } catch (e) {
       setState(() {
         _errorMessage = 'An unexpected error occurred: $e';
@@ -179,19 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await Amplify.Auth.resetPassword(
-        username: _emailController.text.trim(),
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _isResetPassword = true;
-        _emailForConfirmation = _emailController.text.trim();
-      });
-    } on AuthException catch (e) {
-      setState(() {
-        _errorMessage = e.message;
-      });
+      throw UnimplementedError('Auth removed');
     } catch (e) {
       setState(() {
         _errorMessage = 'An unexpected error occurred: $e';
@@ -214,33 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await Amplify.Auth.confirmResetPassword(
-        username: _emailForConfirmation ?? _emailController.text.trim(),
-        newPassword: _passwordController.text,
-        confirmationCode: _confirmationCodeController.text.trim(),
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Password reset successful! Please sign in.'),
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
-      setState(() {
-        _isResetPassword = false;
-        _isForgotPassword = false;
-        _confirmationCodeController.clear();
-        _passwordController.clear();
-      });
-    } on AuthException catch (e) {
-      setState(() {
-        _errorMessage = e.message;
-      });
+      throw UnimplementedError('Auth removed');
     } catch (e) {
       setState(() {
         _errorMessage = 'An unexpected error occurred: $e';
