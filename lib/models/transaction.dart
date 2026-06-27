@@ -25,4 +25,10 @@ class Transaction extends HiveObject {
 
   @HiveField(6)
   String? note;
+
+  /// Scam-risk score (0–100) when this transaction was auto-imported from an
+  /// SMS that FinShield also scanned. Null for manually-added transactions or
+  /// SMS that scored low risk. ≥25 = suspicious, ≥55 = likely scam.
+  @HiveField(7)
+  int? scamScore;
 }

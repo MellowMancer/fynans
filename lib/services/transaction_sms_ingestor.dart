@@ -15,10 +15,13 @@ class TransactionSmsIngestor {
   static const _sigCap = 300;
 
   /// Returns true if a new transaction was saved.
+  /// [scamScore] (0–100) is the FinShield risk score for the same SMS; stored
+  /// on the transaction when it's suspicious (≥25) so the UI can flag it.
   Future<bool> ingest({
     required String sender,
     required String body,
     required DateTime date,
+    int? scamScore,
   }) async {
     final details = _parser.parseTransactionDetails(
       sender: sender,
@@ -46,7 +49,8 @@ class TransactionSmsIngestor {
           : sender
       ..tags = <String>[]
       ..group = <String>[]
-      ..note = _buildNote(sender, details);
+      ..note = _buildNote(sender, details)
+      ..scamScore = (scamScore != null && scamScore >= 25) ? scamScore : null;
 
     await _hive.saveTransaction(t);
 

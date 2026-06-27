@@ -48,6 +48,10 @@ class _TransactionListItemState extends State<TransactionListItem> {
                           '₹${widget.transaction.amount.toStringAsFixed(2)}',
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                         ),
+                        if ((widget.transaction.scamScore ?? 0) >= 25) ...[
+                          const SizedBox(height: 6),
+                          _scamChip(context, widget.transaction.scamScore!),
+                        ],
                       ],
                     ),
                   ),
@@ -78,6 +82,34 @@ class _TransactionListItemState extends State<TransactionListItem> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _scamChip(BuildContext context, int score) {
+    final cs = Theme.of(context).colorScheme;
+    final high = score >= 55;
+    final color = high ? cs.error : const Color(0xFFF5A623);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            high ? 'Likely scam · $score/100' : 'Suspicious · $score/100',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

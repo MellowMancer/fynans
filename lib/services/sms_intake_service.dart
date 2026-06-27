@@ -63,8 +63,13 @@ class SmsIntakeService {
         }
 
         // Fork 2: transaction ingest (Hive available on the main isolate).
-        final saved =
-            await _ingestor.ingest(sender: sender, body: body, date: date);
+        // Pass the scam score so a risky transaction gets flagged in the UI.
+        final saved = await _ingestor.ingest(
+          sender: sender,
+          body: body,
+          date: date,
+          scamScore: result.score,
+        );
 
         onForeground?.call(result, saved);
       },
@@ -81,14 +86,15 @@ class SmsIntakeService {
     final List<InboxSms> messages = await ReadSmsService().getNewSms();
     var imported = 0;
     for (final m in messages) {
+      final result = analyze(m.body);
       final saved = await _ingestor.ingest(
         sender: m.sender,
         body: m.body,
         date: m.date,
+        scamScore: result.score,
       );
       if (saved) imported++;
 
-      final result = analyze(m.body);
       if (result.verdict.level != 'low') {
         await Store.pushHistory(HistoryItem.fromResult(result, 'sms'));
       }
