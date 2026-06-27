@@ -26,6 +26,9 @@ dependencies:
   equatable: ^2.0.7
   bloc: ^9.0.0
   meta: ^1.16.0
+  # FinShield (Protection module) — on-device scam detection
+  flutter_local_notifications: ^18.0.1 # scam-alert notifications
+  another_telephony: ^0.4.1            # read + listen for incoming SMS (Tier C)
 
 dev_dependencies:
   flutter_test:

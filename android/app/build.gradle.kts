@@ -31,17 +31,20 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // Required by flutter_local_notifications (Protection module).
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
         applicationId = "com.example.fynans"
-        minSdk = flutter.minSdkVersion
+        // minSdk 23 for the SMS + notifications plugins (FinShield Protection module).
+        minSdk = maxOf(23, flutter.minSdkVersion)
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -77,4 +80,6 @@ flutter {
 dependencies {
     implementation("androidx.core:core-ktx:1.9.0")
     api("androidx.core:core:1.9.0")
+    // Required by flutter_local_notifications (Protection module).
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

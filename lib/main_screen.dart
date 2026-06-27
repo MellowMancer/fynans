@@ -7,6 +7,7 @@ import 'package:fynans/screens/transactions_list_screen.dart';
 import 'package:fynans/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/services/hive_service.dart';
+import 'package:fynans/scam/protection_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -24,6 +25,7 @@ class _MainScreenState extends State<MainScreen> {
     'Overview',
     'Analytics',
     'Test SMS',
+    'Protection',
   ];
 
   static final List<Widget> _widgetOptions = <Widget>[
@@ -41,7 +43,7 @@ class _MainScreenState extends State<MainScreen> {
     ),
     const AnalyticsScreen(),
     const TestSmsScreen(),
-    
+    const ProtectionScreen(),
   ];
 
   @override
@@ -101,6 +103,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
             label: 'TestSMS',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shield_outlined),
+            label: 'Protection',
           ),
         ],
         currentIndex: _selectedIndex,
