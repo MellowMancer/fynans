@@ -202,14 +202,20 @@ class SmsParserService {
 
   double? _getAmount(String lowerCaseBody) {
     const amountValue = r'([\d,]+\.?\d*)';
-    const amountUnit = r'\s*(cr|crore|l|lac|lakh)?';
+    // The trailing unit (crore/lakh) must be a standalone word. The \b stops
+    // us from reading the "cr" in "credited" (or an "l" word) as a multiplier,
+    // which previously inflated amounts by 1e7 / 1e5.
+    const amountUnit = r'(?:\s*(crore|lakh|lac|cr|l)\b)?';
     final allTransactionKeywords = [..._debitKeywords, ..._creditKeywords];
+    // Connector words that can sit between the action keyword and the amount in
+    // UPI SMS, e.g. SBI's "A/C x1234 debited by 500.0" (no Rs/INR prefix).
+    const connector = r'(?:by|for|of|with|inr|rs\.?)?\s*';
 
     final patterns = [
       RegExp('(?:rs\\.?|inr)\\s*$amountValue$amountUnit', caseSensitive: false),
       RegExp('$amountValue$amountUnit\\s*(?:rs\\.?|inr)', caseSensitive: false),
       RegExp(
-          '(?:${allTransactionKeywords.join('|')})\\s+$amountValue$amountUnit',
+          '(?:${allTransactionKeywords.join('|')})\\s+$connector$amountValue$amountUnit',
           caseSensitive: false),
     ];
 
@@ -259,8 +265,10 @@ class SmsParserService {
         '\\s*(?:rs\\.?|inr)?'
         // The amount we want to capture (Group 1)
         '\\s*([\\d,]+\\.?\\d*)'
-        // Optional trailing characters and an optional unit (Group 2)
-        '\\/?-?\\s*(cr|crore|dr|l|lac|lakh)?',
+        // Optional trailing characters and an optional unit (Group 2). The \\b
+        // keeps a following word like "credited"/"later" from being misread as
+        // a cr/lakh unit and inflating the balance.
+        '\\/?-?\\s*(crore|lakh|lac|cr|dr|l)?\\b',
         caseSensitive: false,
       ),
 
