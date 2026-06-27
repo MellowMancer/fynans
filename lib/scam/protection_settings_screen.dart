@@ -70,8 +70,8 @@ class _ProtectionSettingsScreenState extends State<ProtectionSettingsScreen> {
                   },
                 ),
                 _toggle(
-                  'Scam alert notifications',
-                  'Show a notification when a scanned message looks risky.',
+                  'SMS check notifications',
+                  'Get a notification for every scanned SMS — safe, suspicious, or scam — so you always know it was checked.',
                   _s.notify,
                   (v) async {
                     if (v) {

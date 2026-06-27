@@ -25,8 +25,10 @@ void onIntakeBackgroundSms(SmsMessage message) async {
   if (body.trim().isEmpty) return;
   final result = analyze(body);
   await Store.pushHistory(HistoryItem.fromResult(result, 'sms'));
-  if (result.verdict.level != 'low') {
-    await Notifications.alertScam(result, from: message.address);
+  final settings = await Store.getSettings();
+  if (settings.notify) {
+    // Notify for every SMS — safe or scam — so the user always gets a verdict.
+    await Notifications.notifyResult(result, from: message.address);
   }
 }
 
@@ -55,11 +57,12 @@ class SmsIntakeService {
             ? DateTime.fromMillisecondsSinceEpoch(message.date!)
             : DateTime.now();
 
-        // Fork 1: scam scan.
+        // Fork 1: scam scan — notify for every SMS (safe or scam).
         final result = analyze(body);
         await Store.pushHistory(HistoryItem.fromResult(result, 'sms'));
-        if (result.verdict.level != 'low') {
-          await Notifications.alertScam(result, from: sender);
+        final settings = await Store.getSettings();
+        if (settings.notify) {
+          await Notifications.notifyResult(result, from: sender);
         }
 
         // Fork 2: transaction ingest (Hive available on the main isolate).
