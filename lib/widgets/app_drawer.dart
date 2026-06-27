@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:fynans/scam/protection_settings_screen.dart';
+import 'package:fynans/scam/learn_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({
@@ -22,6 +24,29 @@ class AppDrawer extends StatelessWidget {
                   ),
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.shield_outlined),
+            title: const Text('Scam protection'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ProtectionSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.school_outlined),
+            title: const Text('Spot scams'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LearnScreen()),
+              );
+            },
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Settings'),
