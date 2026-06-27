@@ -1,4 +1,3 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/services/hive_service.dart';
 import 'package:fynans/services/parsed_transaction.dart';
@@ -6,13 +5,10 @@ import 'package:fynans/services/sms_parser_service.dart';
 
 /// Turns a bank-transaction SMS into a saved [Transaction]. Used by both the
 /// live listener (SmsIntakeService) and the launch catch-up scan, so it
-/// de-dupes by message content to avoid importing the same SMS twice.
+/// de-dupes against the Hive box to avoid importing the same SMS twice.
 class TransactionSmsIngestor {
   final SmsParserService _parser = SmsParserService();
   final HiveService _hive = HiveService();
-
-  static const _sigKey = 'sms_ingested_signatures';
-  static const _sigCap = 300;
 
   /// Returns true if a new transaction was saved.
   /// [scamScore] (0–100) is the FinShield risk score for the same SMS; stored
@@ -35,35 +31,35 @@ class TransactionSmsIngestor {
       return false;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final sig = _signature(sender, body);
-    final seen = prefs.getStringList(_sigKey) ?? <String>[];
-    if (seen.contains(sig)) return false;
+    final isCredit = details.type == TransactionType.credit;
+    final party = (details.merchant?.trim().isNotEmpty ?? false)
+        ? details.merchant!.trim()
+        : sender;
+
+    // De-dupe against the box itself so the full-inbox launch sweep stays
+    // idempotent (and a cleared database correctly re-imports).
+    if (_hive.hasMatchingTransaction(
+      date: details.date,
+      amount: details.amount,
+      isCredit: isCredit,
+      party: party,
+    )) {
+      return false;
+    }
 
     final t = Transaction()
       ..amount = details.amount
       ..date = details.date
-      ..isCredit = details.type == TransactionType.credit
-      ..party = (details.merchant?.trim().isNotEmpty ?? false)
-          ? details.merchant!.trim()
-          : sender
+      ..isCredit = isCredit
+      ..party = party
       ..tags = <String>[]
       ..group = <String>[]
       ..note = _buildNote(sender, details)
       ..scamScore = (scamScore != null && scamScore >= 25) ? scamScore : null;
 
     await _hive.saveTransaction(t);
-
-    seen.add(sig);
-    if (seen.length > _sigCap) {
-      seen.removeRange(0, seen.length - _sigCap);
-    }
-    await prefs.setStringList(_sigKey, seen);
     return true;
   }
-
-  String _signature(String sender, String body) =>
-      '${sender.trim()}|${body.trim().hashCode}';
 
   String _buildNote(String sender, ParsedTransactionDetails d) {
     final parts = <String>['Auto-imported from SMS · $sender'];
