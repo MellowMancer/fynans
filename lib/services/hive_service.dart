@@ -22,6 +22,24 @@ class HiveService {
     await _transactionBox.add(newTransaction);
   }
 
+  /// True if a transaction with the same date, amount, direction and party
+  /// already exists. Used to keep the launch SMS sweep idempotent — the source
+  /// of truth is the box itself, so re-scanning the whole inbox (or re-importing
+  /// after a clear) never creates duplicates. SMS-derived dates come straight
+  /// from the message timestamp, so they're stable across re-scans.
+  bool hasMatchingTransaction({
+    required DateTime date,
+    required double amount,
+    required bool isCredit,
+    required String party,
+  }) {
+    return _transactionBox.values.any((t) =>
+        t.amount == amount &&
+        t.isCredit == isCredit &&
+        t.date.isAtSameMomentAs(date) &&
+        t.party == party);
+  }
+
   Stream<List<Transaction>> listenToTransactions() async* {
     // Yield the initial list, sorted
     yield _transactionBox.values.toList()

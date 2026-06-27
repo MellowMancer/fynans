@@ -82,11 +82,14 @@ class SmsIntakeService {
     return true;
   }
 
-  /// One-shot inbox sweep for messages received while the app was closed.
-  /// Ingests transactions and scam-scans each (de-dupes internally).
+  /// One-shot inbox sweep run on every launch. Scans the FULL inbox (not just
+  /// messages since a cursor) so the dashboard always reflects every parsable
+  /// bank transaction — exactly what the TestSMS diagnostic shows. The ingestor
+  /// de-dupes against Hive, so re-scanning every launch never creates
+  /// duplicates and a cleared database correctly re-imports.
   /// Returns the number of new transactions imported.
   static Future<int> catchUp() async {
-    final List<InboxSms> messages = await ReadSmsService().getNewSms();
+    final List<InboxSms> messages = await ReadSmsService().getAllSms();
     var imported = 0;
     for (final m in messages) {
       final result = analyze(m.body);
