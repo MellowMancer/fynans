@@ -12,16 +12,8 @@ Fynans reads the transaction alerts your bank already sends over SMS, parses out
 - [Screenshots](#screenshots)
 - [How It Works](#how-it-works)
 - [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-  - [Layered Overview](#layered-overview)
-  - [Application Shell](#application-shell)
-  - [State Management](#state-management)
-  - [Data Layer](#data-layer)
-  - [SMS Pipeline](#sms-pipeline)
-  - [Data Model](#data-model)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
-- [Common Commands](#common-commands)
 - [Testing](#testing)
 - [Permissions & Privacy](#permissions--privacy)
 - [Docker Dev Environment](#docker-dev-environment)
@@ -32,15 +24,13 @@ Fynans reads the transaction alerts your bank already sends over SMS, parses out
 
 ## Features
 
-- **Automatic SMS parsing** — Recognizes transaction alerts from major Indian banks (ICICI, HDFC, SBI, Kotak, Bank of Baroda, Central Bank, Airtel Payments Bank, and more) and extracts amount, transaction type (debit/credit/declined), party/merchant, account number, and available balance.
-- **Manual entry & editing** — Add or adjust transactions by hand, with autocomplete for party and group fields sourced from your existing data.
-- **Tags & groups** — Categorize each transaction with multiple tags and groups. A curated [`TagHelper`](lib/utils/tag_helper.dart) maps common categories (food, transport, bills, groceries…) to icons and colors.
-- **Monthly navigation** — Swipe horizontally through months across a five-year window.
+- **Fully offline & local** — Everything runs on your phone. No authentication, no network calls for your data, no cloud sync — your financial data never leaves the device.
+- **Automatic SMS parsing** — Reads transaction alerts from major Indian banks (ICICI, HDFC, SBI, Kotak, Bank of Baroda, Central Bank, Airtel Payments Bank, and more) using a regex-based parser to extract amount, transaction type (debit/credit/declined), party/merchant, account number, and available balance. _(A local-AI parsing option is planned.)_
+- **Manual entry & editing** — On top of automatic reading, you can add or adjust transactions by hand, with autocomplete for party and group fields sourced from your existing data.
+- **Tags & groups** — Categorize each transaction with groups and **multiple tags at once** — a single transaction can carry several tags simultaneously. A curated [`TagHelper`](lib/utils/tag_helper.dart) maps common categories (food, transport, bills, groceries…) to icons and colors.
 - **Simple and Advanced views** — Toggle between a flat chronological list and a hierarchical tree that groups transactions by group → tag → party → month in any order you choose.
-- **Filtering** — Narrow the view by group, tag, or party.
-- **Analytics** — Per-month bar chart of daily spending plus a pie chart of spending by tag, powered by [`fl_chart`](https://pub.dev/packages/fl_chart).
+- **Analytics _(work in progress)_** — Per-month bar chart of daily spending plus a pie chart of spending by tag, powered by [`fl_chart`](https://pub.dev/packages/fl_chart).
 - **Reactive UI** — The transaction list updates automatically whenever the underlying Hive box changes, via Dart streams.
-- **Fully offline & local** — No authentication, no network calls for your data, no cloud sync.
 
 ## Screenshots
 
@@ -78,96 +68,6 @@ Fynans reads the transaction alerts your bank already sends over SMS, parses out
 | Value equality | [`equatable`](https://pub.dev/packages/equatable) |
 
 **Target platform:** Android (the SMS-reading feature is Android-only). The repository also contains scaffolding for iOS, web, macOS, Linux, and Windows, but those targets cannot read SMS and are not supported.
-
----
-
-## Architecture
-
-### Layered Overview
-
-```
-┌───────────────────────────────────────────────────────────┐
-│  UI (screens/ + widgets/)                                  │
-│  TransactionsListScreen · AnalyticsScreen · TestSmsScreen  │
-└───────────────┬───────────────────────────────────────────┘
-                │ reads state / dispatches events
-┌───────────────▼───────────────────────────────────────────┐
-│  State (blocs/)                                            │
-│  TransactionCubit (stream)   AdvancedViewBloc (grouping)   │
-└───────────────┬───────────────────────────────────────────┘
-                │ calls
-┌───────────────▼───────────────────────────────────────────┐
-│  Data (services/hive_service.dart)                        │
-│  Single access layer over the Hive 'transactions' box      │
-└───────────────┬───────────────────────────────────────────┘
-                │ persists
-┌───────────────▼───────────────────────────────────────────┐
-│  Hive box  'transactions'  (Transaction, typeId: 0)       │
-└───────────────────────────────────────────────────────────┘
-
-   SMS ingestion (parallel path):
-   ReadSmsService ──▶ SmsParserService ──▶ ParsedTransactionDetails
-```
-
-### Application Shell
-
-- **[`lib/main.dart`](lib/main.dart)** — Initializes Hive, registers `TransactionAdapter`, opens the `'transactions'` box, and launches straight into `MainScreen`. Configures a dark Material 3 theme seeded from blue-grey. No auth gate.
-- **[`lib/main_screen.dart`](lib/main_screen.dart)** — A `BottomNavigationBar` over an `IndexedStack` (state is preserved across tab switches) with three tabs:
-  1. **Expenses** — `TransactionsListScreen`, wrapped in a `MultiBlocProvider` supplying `TransactionCubit` and `AdvancedViewBloc`.
-  2. **Analytics** — `AnalyticsScreen`.
-  3. **Test SMS** — `TestSmsScreen`, a developer/debug surface for inspecting SMS parsing.
-
-### State Management
-
-Built on `flutter_bloc`:
-
-- **[`TransactionCubit`](lib/blocs/transaction/transaction_cubit.dart)** — Subscribes to `HiveService.listenToTransactionsForMonth()` for the selected month. Because it listens to a stream backed by `box.watch()`, the UI stays in sync with any database change. Emits a `MonthlySummary` plus the transaction list via `TransactionLoadSuccess`.
-- **[`AdvancedViewBloc`](lib/blocs/advanced_view/advanced_view_bloc.dart)** — Owns filtering and hierarchical grouping. It fetches a flat list for the month, then recursively groups it into a tree of `HierarchyNode`s according to a configurable `List<GroupingOption>` hierarchy. Each node carries its own `MonthlySummary`, and siblings are sorted by total amount. Events:
-  - `AdvancedViewDataFetched` — (re)compute the tree.
-  - `AdvancedViewMonthChanged` — change the active month.
-  - `AdvancedViewHierarchyChanged` — change the group-by ordering.
-  - `AdvancedViewGroupFilterChanged` / `AdvancedViewTagFilterChanged` / `AdvancedViewPartyFilterChanged` — apply or clear filters.
-
-### Data Layer
-
-**[`HiveService`](lib/services/hive_service.dart)** is the single source of truth for transaction access. Hive has no query engine, so **all filtering, sorting, and aggregation happens in Dart** over `box.values`. Key methods:
-
-| Method | Purpose |
-| --- | --- |
-| `saveTransaction` / `deleteTransaction` | Create / remove records |
-| `listenToTransactionsForMonth` | Reactive stream of a month's transactions (filterable) |
-| `fetchTransactionsForMonth` | One-shot `Future` variant of the above |
-| `getAdvancedViews` | Grouped summaries for a `GroupingOption` |
-| `getAnalyticsForMonth` | Inflow/outflow totals, daily spending, spending by tag |
-| `getAllGroups` / `getAllUniqueTags` / `getAllParties` | Distinct values for autocomplete |
-| `getLatestTransaction` | Most recent record |
-| `clearDatabase` | Wipe the box |
-
-Month boundaries are computed by a private `_getMonthBounds` helper that returns the first and last microsecond of the month.
-
-### SMS Pipeline
-
-Three collaborating pieces under [`lib/services/`](lib/services/):
-
-- **[`ReadSmsService`](lib/services/read_sms_service.dart)** — Requests the `READ_SMS` permission, queries the last 200 inbox messages (the package returns them newest-first), and filters to messages newer than a `last_read_timestamp` persisted in `SharedPreferences` (falling back to the last 7 days on first run).
-- **[`SmsParserService`](lib/services/sms_parser_service.dart)** — A stateless parser that:
-  1. **Filters** — rejects messages containing exclusion keywords (`otp`, `offer`, `cashback`…), requires the sender to match a whitelist of bank IDs, and requires at least one transactional keyword.
-  2. **Classifies** — maps the body to a `TransactionType` (`debit`, `credit`, `declined`, `unknown`) via keyword lists.
-  3. **Extracts** — pulls `amount` (with `lakh`/`crore` unit scaling), `balance`, `accountNumber`, and `merchant` using a layered set of regular expressions. Merchant extraction prioritizes UPI IDs, then keyword-anchored capture with terminators, with validation to avoid mistaking amounts or dates for a party name.
-- **[`ParsedTransactionDetails`](lib/services/parsed_transaction.dart)** — Immutable, `Equatable` value object holding the structured parse result.
-
-> Extending bank coverage usually means adding a sender ID to `_whiteListedSenders` and, if needed, new keywords/patterns in `SmsParserService`.
-
-### Data Model
-
-Defined in [`lib/models/`](lib/models/):
-
-- **[`Transaction`](lib/models/transaction.dart)** — `@HiveType(typeId: 0)`. Fields: `amount` (double), `date` (DateTime), `tags` (List), `group` (List), `party` (String), `isCredit` (bool), `note` (String?). The generated adapter lives in `transaction.g.dart`.
-  > ⚠️ **Do not change `typeId` or renumber `@HiveField`s without writing a migration** — existing on-device data is keyed by these.
-- **[`GroupingOption`](lib/models/grouping_option.dart)** — Enum (`group`, `tag`, `party`, `month`) where each value implements `getValues(Transaction)` to drive hierarchical grouping.
-- **`MonthlySummary`** — Aggregate of income, spend, top tags, and top groups for a set of transactions.
-- **`MonthlyAnalytics`** — Total inflow/outflow, daily spending map, and spending-by-tag map for the analytics screen.
-- **`AdvancedViewSummary`** / **`HierarchyNode`** — Grouped/tree summaries for the advanced view.
 
 ---
 
@@ -228,22 +128,6 @@ On first launch the app will request the **SMS read** permission. Grant it to en
 
 ---
 
-## Common Commands
-
-```bash
-flutter pub get                                              # Install dependencies
-flutter run -d android                                       # Run on Android
-flutter run                                                  # Run on default device
-flutter analyze                                              # Lint / static analysis
-flutter test                                                 # Run all tests
-flutter test test/widget_test.dart                           # Run a single test file
-dart run build_runner build --delete-conflicting-outputs     # Regenerate Hive adapters
-```
-
-> After editing any `@HiveType` / `@HiveField` annotation, you **must** rerun `build_runner` to regenerate `transaction.g.dart`.
-
----
-
 ## Testing
 
 Tests live in [`test/`](test/) and run with `flutter test`. The current `widget_test.dart` is the default Flutter scaffold and is a good first target to replace with meaningful coverage — high-value candidates include `SmsParserService` (pure, deterministic, easy to unit test) and `HiveService` aggregation logic.
@@ -296,7 +180,3 @@ These are intentionally surfaced so contributors know where the rough edges are:
 2. Run `flutter analyze` and `flutter test` before opening a PR.
 3. If you touch a Hive model, regenerate adapters and never change an existing `typeId` without a migration.
 4. Keep new bank-specific parsing rules in `SmsParserService` and new tag definitions in `TagHelper`.
-
----
-
-_Fynans — your money, on your device, parsed for you._
