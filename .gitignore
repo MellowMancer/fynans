@@ -52,3 +52,5 @@ docs/**
 
 # Local planning docs (not committed)
 FINSHIELD_MERGE_PLAN.md
+# Build artifacts (sideload only)
+*.apk

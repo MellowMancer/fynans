@@ -2,9 +2,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:fynans/services/sms_intake_service.dart';
 import 'detector.dart';
 import 'notifications.dart';
-import 'sms_service.dart';
 import 'storage.dart';
 
 // FinShield scam-detection module, embedded into Fynans as the "Protection" tab.
@@ -65,9 +65,8 @@ class _ProtectionScreenState extends State<ProtectionScreen> {
     final s = await Store.getSettings();
     if (!mounted) return;
     setState(() => _settings = s);
-    if (s.smsWatch) {
-      SmsService.enable();
-    }
+    // Launch-time enabling + inbox catch-up is handled in main(); the toggle
+    // below handles turning monitoring on/off interactively.
   }
 
   void _onSettingsChanged(Settings s) {
@@ -640,15 +639,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _toggle(
           'Monitor incoming SMS',
-          'Automatically scan SMS as they arrive and warn you about scams. Requires SMS permission.',
+          'Scan SMS as they arrive for scams, and auto-import bank transactions into Expenses. Requires SMS permission.',
           s.smsWatch,
           (v) async {
             if (v) {
-              final ok = await SmsService.enable();
+              final ok = await SmsIntakeService.enable();
               if (!ok) {
                 _snack('SMS permission denied');
                 return;
               }
+              final imported = await SmsIntakeService.catchUp();
+              _snack(imported > 0
+                  ? 'Monitoring on · imported $imported transaction${imported == 1 ? '' : 's'} from your inbox'
+                  : 'Monitoring on · watching for new messages');
             }
             setState(() => s.smsWatch = v);
             _save();

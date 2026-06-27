@@ -43,15 +43,17 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
     final List<TransactionDisplayData> successfulParses = [];
 
     for (final msg in allMessages) {
-      if (msg.body != null && msg.sender != null) {
-        final details = _smsParserService.parseTransactionDetails(msg);
+      final details = _smsParserService.parseTransactionDetails(
+        sender: msg.sender,
+        body: msg.body,
+        date: msg.date,
+      );
 
-        if (details != null) {
-          // SUCCESS! Store both the details and the sender.
-          successfulParses.add(
-            TransactionDisplayData(details: details, sender: msg.sender!),
-          );
-        }
+      if (details != null) {
+        // SUCCESS! Store both the details and the sender.
+        successfulParses.add(
+          TransactionDisplayData(details: details, sender: msg.sender),
+        );
       }
     }
     

@@ -1,6 +1,5 @@
 // lib/services/sms_parser_service.dart
 
-import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:fynans/services/parsed_transaction.dart';
 
 class SmsParserService {
@@ -127,13 +126,14 @@ class SmsParserService {
         .any((keyword) => lowerCaseBody.contains(keyword));
   }
 
-  ParsedTransactionDetails? parseTransactionDetails(SmsMessage message) {
-    if (message.body == null || message.date == null) return null;
+  ParsedTransactionDetails? parseTransactionDetails({
+    required String sender,
+    required String body,
+    required DateTime date,
+  }) {
+    if (body.trim().isEmpty) return null;
 
-    final sender = message.sender;
-    if (sender == null) return null;
-
-    final lowerCaseBody = message.body!.toLowerCase();
+    final lowerCaseBody = body.toLowerCase();
 
     if (!isTransactionSms(sender, lowerCaseBody)){
       return null;
@@ -159,7 +159,7 @@ class SmsParserService {
     return ParsedTransactionDetails(
       type: transactionType,
       amount: amount,
-      date: message.date!,
+      date: date,
       balance: balance,
       accountNumber: accountNumber,
       merchant: merchant,

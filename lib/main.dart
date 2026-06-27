@@ -2,13 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/main_screen.dart';
+import 'package:fynans/scam/notifications.dart';
+import 'package:fynans/scam/storage.dart';
+import 'package:fynans/services/sms_intake_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(TransactionAdapter());
   await Hive.openBox<Transaction>('transactions');
+  await Notifications.init();
   runApp(const MyApp());
+  // After the UI is up, wire the unified SMS pipeline if the user enabled it:
+  // start the live listener and sweep the inbox for anything missed offline.
+  _initSmsMonitoring();
+}
+
+Future<void> _initSmsMonitoring() async {
+  final settings = await Store.getSettings();
+  if (!settings.smsWatch) return;
+  final granted = await SmsIntakeService.enable();
+  if (granted) {
+    await SmsIntakeService.catchUp();
+  }
 }
 
 class MyApp extends StatelessWidget {
