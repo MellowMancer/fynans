@@ -36,7 +36,9 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
     if (mounted) setState(() => _isLoading = true);
     debugPrint("--- Starting SMS Read and Parse ---");
 
-    final allMessages = await _readSmsService.getNewSms();
+    // Non-consuming read: re-scan the whole inbox every time so this diagnostic
+    // list always shows ALL parsable transactions, including on refresh.
+    final allMessages = await _readSmsService.getAllSms();
     debugPrint("Step 1: Found ${allMessages.length} total messages in inbox.");
 
     // The logic now populates a list of our new TransactionDisplayData class

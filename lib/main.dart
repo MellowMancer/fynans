@@ -19,11 +19,16 @@ Future<void> main() async {
 }
 
 Future<void> _initSmsMonitoring() async {
+  // Importing bank-transaction SMS is the app's core purpose, so always sweep
+  // the inbox on launch (de-dupe keeps it idempotent). On a fresh install this
+  // imports the full history so the dashboard's inflow/outflow is populated
+  // from the first run — independent of the opt-in scam watch below.
+  await SmsIntakeService.catchUp();
+
+  // The live incoming-SMS listener (real-time import + scam alerts) is opt-in.
   final settings = await Store.getSettings();
-  if (!settings.smsWatch) return;
-  final granted = await SmsIntakeService.enable();
-  if (granted) {
-    await SmsIntakeService.catchUp();
+  if (settings.smsWatch) {
+    await SmsIntakeService.enable();
   }
 }
 
