@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/main_screen.dart';
+import 'package:fynans/services/sms_intake_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -9,6 +10,11 @@ Future<void> main() async {
   Hive.registerAdapter(TransactionAdapter());
   await Hive.openBox<Transaction>('transactions');
   runApp(const MyApp());
+  // After the UI is up, sweep the inbox for bank-transaction SMS. Importing
+  // them is the app's core purpose, so we always sweep on launch (de-dupe keeps
+  // it idempotent). On a fresh install this imports the full history so the
+  // dashboard's inflow/outflow is populated from the first run.
+  SmsIntakeService.catchUp();
 }
 
 class MyApp extends StatelessWidget {
