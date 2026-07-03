@@ -136,45 +136,11 @@ class SmsParserService {
     // Canara
     'CANBNK',
     'CANARA',
-    // Axis
-    'AXISBK',
-    'AXIS',
-    // Kotak
-    'KOTAK',
-    // Punjab National Bank
-    'PNBSMS',
-    'PNBBNK',
     // Bank of Baroda
     'BOBSMS',
     'BOBTXN',
-    // Union Bank of India
-    'UNIONB',
-    'UBOIBK',
     // Bank of India
     'BOIIND',
-    // IDFC First
-    'IDFCFB',
-    'IDFCBK',
-    // IDBI
-    'IDBIBK',
-    'IDBI',
-    // Yes Bank
-    'YESBNK',
-    // IndusInd
-    'INDUSB',
-    'INDUS',
-    // Federal Bank
-    'FEDBNK',
-    // RBL
-    'RBLBNK',
-    // Indian Bank
-    'INDBNK',
-    // Central Bank of India
-    'CENTBK',
-    // Others
-    'COSMOS',
-    'AIRBNK', //Airtel
-    'PAYZAP',
   ];
 
   // Credit-card senders. Checked BEFORE the whitelist so they're rejected even
@@ -189,11 +155,8 @@ class SmsParserService {
     'ONECRD', // OneCard
     'ONECARD',
     'CITICC',
-    'AXISCC',
     'HDFCCC',
     'ICICCC',
-    'RBLCRD',
-    'INDUSCC',
   ];
 
   // Content markers that identify a credit-card SMS even when it arrives from a
