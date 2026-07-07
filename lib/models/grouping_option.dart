@@ -1,6 +1,5 @@
-import 'package:fynans/models/transaction.dart';
-import 'package:intl/intl.dart';
-
+/// A dimension transactions can be grouped by in the advanced view.
+/// Pure enum: the key-derivation policy lives in [BuildTransactionHierarchy].
 enum GroupingOption {
   group('Group'),
   tag('Tag'),
@@ -8,18 +7,7 @@ enum GroupingOption {
   month('Month');
 
   const GroupingOption(this.displayName);
-  final String displayName;
 
-  List<String> getValues(Transaction transaction) {
-    switch (this) {
-      case GroupingOption.group:
-        return transaction.group.isNotEmpty ? transaction.group : ['No Groups'];
-      case GroupingOption.tag:
-        return transaction.tags.isNotEmpty ? transaction.tags : ['No Tag'];
-      case GroupingOption.party:
-        return [transaction.party];
-      case GroupingOption.month:
-        return [DateFormat('yyyy MMMM').format(transaction.date)];
-    }
-  }
+  /// Human-readable label for the grouping dimension.
+  final String displayName;
 }

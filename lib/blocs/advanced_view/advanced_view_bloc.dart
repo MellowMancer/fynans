@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:fynans/models/grouping_option.dart';
+import 'package:fynans/models/hierarchy_node.dart';
 import 'package:fynans/models/monthly_summary.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/models/transaction_filter.dart';
 import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/use_cases/build_transaction_hierarchy.dart';
 import 'package:fynans/use_cases/summarise_transactions.dart';
 import 'package:meta/meta.dart';
 
@@ -12,16 +16,23 @@ part 'advanced_view_state.dart';
 
 class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
   final TransactionRepository _repository;
+  final BuildTransactionHierarchy _buildHierarchy;
+  StreamSubscription<List<Transaction>>? _subscription;
 
-  AdvancedViewBloc(this._repository)
-      : super(
+  AdvancedViewBloc(
+    this._repository, {
+    DateTime? initialMonth,
+    BuildTransactionHierarchy buildHierarchy = const BuildTransactionHierarchy(),
+  })  : _buildHierarchy = buildHierarchy,
+        super(
           // Start with a successful but empty state.
           AdvancedViewLoadSuccess(
-            selectedMonth: DateTime(DateTime.now().year, DateTime.now().month, 1),
+            selectedMonth: initialMonth ??
+                DateTime(DateTime.now().year, DateTime.now().month, 1),
             groupingHierarchy: [GroupingOption.month], // Default hierarchy
             hierarchicalData: [],
             summary: MonthlySummary.empty,
-          )
+          ),
         ) {
     on<AdvancedViewDataFetched>(_onDataFetched);
     on<AdvancedViewMonthChanged>(_onMonthChanged);
@@ -29,6 +40,8 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     on<AdvancedViewGroupFilterChanged>(_onGroupFilterChanged);
     on<AdvancedViewTagFilterChanged>(_onTagFilterChanged);
     on<AdvancedViewPartyFilterChanged>(_onPartyFilterChanged);
+    on<_AdvancedViewTransactionsUpdated>(_onTransactionsUpdated);
+    on<_AdvancedViewStreamFailed>(_onStreamFailed);
   }
 
   void _onMonthChanged(AdvancedViewMonthChanged event, Emitter<AdvancedViewState> emit) {
@@ -71,63 +84,49 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     }
   }
 
-  /// The main logic for fetching and processing data.
-  Future<void> _onDataFetched(AdvancedViewDataFetched event, Emitter<AdvancedViewState> emit) async {
+  /// Subscribes to the selected month's transactions so the advanced view
+  /// live-updates on box changes, cancelling any prior subscription first.
+  Future<void> _onDataFetched(
+      AdvancedViewDataFetched event, Emitter<AdvancedViewState> emit) async {
     if (state is! AdvancedViewLoadSuccess) return;
     final currentState = state as AdvancedViewLoadSuccess;
 
+    await _subscription?.cancel();
     emit(AdvancedViewLoading());
 
-    try {
-      // 1. Fetch a clean, de-duplicated list of transactions matching the filters.
-      final allTransactions = await _repository.fetchTransactionsForMonth(
-        month: currentState.selectedMonth,
-        filter: currentState.filter.isEmpty ? null : currentState.filter,
-      );
-
-      final summary = summariseTransactions(allTransactions);
-
-      // 2. Perform the hierarchical grouping on the client side.
-      final nodes = _groupTransactions(allTransactions, currentState.groupingHierarchy);
-
-      // 3. Emit the final success state with the processed data.
-      emit(currentState.copyWith(
-        hierarchicalData: nodes,
-        summary: summary,
-      ));
-    } catch (e) {
-      emit(AdvancedViewFailure(e.toString()));
-    }
+    _subscription = _repository
+        .listenToTransactionsForMonth(
+          month: currentState.selectedMonth,
+          filter: currentState.filter.isEmpty ? null : currentState.filter,
+        )
+        .listen(
+          (transactions) =>
+              add(_AdvancedViewTransactionsUpdated(transactions, currentState)),
+          onError: (Object error) =>
+              add(_AdvancedViewStreamFailed(error.toString())),
+        );
   }
 
-  /// Recursively groups a list of transactions based on the defined hierarchy.
-  List<HierarchyNode> _groupTransactions(List<Transaction> transactions, List<GroupingOption> hierarchy) {
-    if (hierarchy.isEmpty || transactions.isEmpty) return [];
+  /// Rebuilds the grouped success state from a fresh transaction snapshot.
+  void _onTransactionsUpdated(_AdvancedViewTransactionsUpdated event,
+      Emitter<AdvancedViewState> emit) {
+    final summary = summariseTransactions(event.transactions);
+    final nodes =
+        _buildHierarchy(event.transactions, event.baseState.groupingHierarchy);
+    emit(event.baseState.copyWith(
+      hierarchicalData: nodes,
+      summary: summary,
+    ));
+  }
 
-    final currentLevelOption = hierarchy.first;
-    final remainingHierarchy = hierarchy.sublist(1);
+  void _onStreamFailed(
+      _AdvancedViewStreamFailed event, Emitter<AdvancedViewState> emit) {
+    emit(AdvancedViewFailure(event.error));
+  }
 
-    final Map<String, List<Transaction>> groupedMap = {};
-    for (final transaction in transactions) {
-      final keys = currentLevelOption.getValues(transaction);
-      for (final key in keys) {
-        (groupedMap[key] ??= []).add(transaction);
-      }
-    }
-
-    final nodes = groupedMap.entries.map((entry) {
-      final groupTransactions = entry.value;
-      return HierarchyNode(
-        name: entry.key,
-        summary: summariseTransactions(groupTransactions),
-        transactionCount: groupTransactions.length,
-        children: _groupTransactions(groupTransactions, remainingHierarchy),
-        transactions: remainingHierarchy.isEmpty ? groupTransactions : [],
-      );
-    }).toList();
-
-    // Sort nodes by total amount in descending order for better visualization.
-    nodes.sort((a, b) => b.summary.total.compareTo(a.summary.total));
-    return nodes;
+  @override
+  Future<void> close() async {
+    await _subscription?.cancel();
+    return super.close();
   }
 }

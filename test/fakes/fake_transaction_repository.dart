@@ -1,4 +1,3 @@
-import 'package:fynans/models/monthly_analytics.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/models/transaction_filter.dart';
 import 'package:fynans/repositories/transaction_repository.dart';
@@ -70,32 +69,4 @@ class FakeTransactionRepository implements TransactionRepository {
       .where((p) => p.isNotEmpty)
       .toSet()
       .toList();
-
-  @override
-  Future<MonthlyAnalytics> getAnalyticsForMonth(DateTime month) async {
-    final txns = await fetchTransactionsForMonth(month: month);
-    double outflow = 0;
-    double inflow = 0;
-    final Map<int, double> daily = {};
-    final Map<String, double> byTag = {};
-
-    for (final t in txns) {
-      if (t.isCredit) {
-        inflow += t.amount;
-      } else {
-        outflow += t.amount;
-        daily.update(t.date.day, (v) => v + t.amount, ifAbsent: () => t.amount);
-        for (final tag in t.tags) {
-          byTag.update(tag, (v) => v + t.amount, ifAbsent: () => t.amount);
-        }
-      }
-    }
-
-    return MonthlyAnalytics(
-      totalOutflow: outflow,
-      totalInflow: inflow,
-      dailySpending: daily,
-      spendingByTag: byTag,
-    );
-  }
 }
