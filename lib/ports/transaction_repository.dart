@@ -1,0 +1,25 @@
+import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/entities/transaction_filter.dart';
+
+/// Abstract seam between the domain/presentation layer and any
+/// persistence back-end.
+abstract class TransactionRepository {
+  Future<void> saveTransaction(Transaction transaction);
+  Future<void> deleteTransaction(Transaction transaction);
+
+  /// True if a transaction with the given raw-SMS identity hash already exists
+  /// — used to keep SMS import idempotent without collapsing distinct SMS.
+  bool existsWithSmsId(String smsId);
+
+  Stream<List<Transaction>> listenToTransactionsForMonth({
+    required DateTime month,
+    TransactionFilter? filter,
+  });
+  Future<List<Transaction>> fetchTransactionsForMonth({
+    required DateTime month,
+    TransactionFilter? filter,
+  });
+  Future<List<String>> getAllGroups();
+  Future<List<String>> getAllUniqueTags();
+  Future<List<String>> getAllParties();
+}

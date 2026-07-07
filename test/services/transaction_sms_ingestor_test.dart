@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/services/transaction_sms_ingestor.dart';
+import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 
 import '../fakes/fake_transaction_repository.dart';
 

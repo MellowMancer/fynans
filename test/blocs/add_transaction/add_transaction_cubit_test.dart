@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/blocs/add_transaction/add_transaction_cubit.dart';
-import 'package:fynans/blocs/add_transaction/add_transaction_state.dart';
-import 'package:fynans/models/transaction.dart';
+import 'package:fynans/adapters/blocs/add_transaction/add_transaction_cubit.dart';
+import 'package:fynans/adapters/blocs/add_transaction/add_transaction_state.dart';
+import 'package:fynans/entities/transaction.dart';
 
 import '../../fakes/fake_transaction_repository.dart';
 

@@ -1,6 +1,6 @@
-import 'package:fynans/models/transaction.dart';
-import 'package:fynans/repositories/transaction_repository.dart';
-import 'package:fynans/utils/amount_parser.dart';
+import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/ports/transaction_repository.dart';
+import 'package:fynans/use_cases/amount_parser.dart';
 
 /// Separator between group names in the raw CSV group field.
 const String kGroupSeparator = ',';

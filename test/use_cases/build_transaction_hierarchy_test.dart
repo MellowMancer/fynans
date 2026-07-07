@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/models/grouping_option.dart';
-import 'package:fynans/models/transaction.dart';
+import 'package:fynans/entities/grouping_option.dart';
+import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/build_transaction_hierarchy.dart';
 
 Transaction _txn({

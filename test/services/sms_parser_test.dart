@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/services/parsed_transaction.dart';
-import 'package:fynans/services/sms_parser_service.dart';
+import 'package:fynans/adapters/sms/parsed_transaction.dart';
+import 'package:fynans/adapters/sms/sms_parser_service.dart';
 
 /// Proves the transaction fork of the unified SMS pipeline: a whitelisted
 /// bank SMS parses into the right transaction type + amount, while non-bank

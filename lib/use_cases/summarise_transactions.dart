@@ -1,5 +1,5 @@
-import 'package:fynans/models/monthly_summary.dart';
-import 'package:fynans/models/transaction.dart';
+import 'package:fynans/entities/monthly_summary.dart';
+import 'package:fynans/entities/transaction.dart';
 
 const int kDefaultTopN = 3;
 
