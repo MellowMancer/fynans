@@ -6,13 +6,13 @@ import 'package:fynans/blocs/transaction/transaction_state.dart';
 import 'package:fynans/repositories/transaction_repository.dart';
 import 'package:fynans/widgets/transaction_list_item.dart';
 import 'package:intl/intl.dart';
+import 'package:fynans/models/hierarchy_node.dart';
 import 'package:fynans/models/monthly_summary.dart';
 
 class SummaryCard extends StatelessWidget {
   final MonthlySummary summary;
   final DateTime month;
   final bool isSimpleMode;
-  final TransactionRepository repository;
 
   final VoidCallback onSelectMonth;
 
@@ -24,7 +24,6 @@ class SummaryCard extends StatelessWidget {
     required this.summary,
     required this.month,
     required this.isSimpleMode,
-    required this.repository,
     required this.onSelectMonth,
     this.advancedState,
     required this.onEditHierarchy,
@@ -88,7 +87,6 @@ class SummaryCard extends StatelessWidget {
               AdvancedFilterControls(
                 state: advancedState!,
                 onEditHierarchy: onEditHierarchy,
-                repository: repository,
               ),
             ]
           ],
@@ -100,18 +98,17 @@ class SummaryCard extends StatelessWidget {
 
 class AdvancedFilterControls extends StatelessWidget {
   final AdvancedViewLoadSuccess state;
-  final TransactionRepository repository;
   final Function(BuildContext, AdvancedViewLoadSuccess) onEditHierarchy;
 
   const AdvancedFilterControls({
     super.key,
     required this.state,
-    required this.repository,
     required this.onEditHierarchy,
   });
 
   @override
   Widget build(BuildContext context) {
+    final repository = context.read<TransactionRepository>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -329,17 +326,16 @@ class _TopSpendingList extends StatelessWidget {
 }
 
 class SimpleTransactionListView extends StatelessWidget {
-  final TransactionRepository repository;
   final DateTime currentMonth;
 
   const SimpleTransactionListView({
     super.key,
-    required this.repository,
     required this.currentMonth,
   });
 
   @override
   Widget build(BuildContext context) {
+    final repository = context.read<TransactionRepository>();
     return BlocBuilder<TransactionCubit, TransactionState>(
       builder: (context, state) {
         if (state is TransactionLoadSuccess) {

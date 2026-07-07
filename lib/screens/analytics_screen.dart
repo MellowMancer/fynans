@@ -1,35 +1,44 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fynans/blocs/analytics/analytics_cubit.dart';
+import 'package:fynans/blocs/analytics/analytics_state.dart';
 import 'package:fynans/models/monthly_analytics.dart';
 import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/use_cases/get_monthly_analytics.dart';
 import 'package:fynans/utils/tag_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:fynans/widgets/month_year_wheel_picker.dart';
 
 
-class AnalyticsScreen extends StatefulWidget {
-  final TransactionRepository repository;
-
-  const AnalyticsScreen({super.key, required this.repository});
+class AnalyticsScreen extends StatelessWidget {
+  const AnalyticsScreen({super.key});
 
   @override
-  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => AnalyticsCubit(
+        GetMonthlyAnalytics(context.read<TransactionRepository>()),
+      ),
+      child: const _AnalyticsView(),
+    );
+  }
 }
 
-class _AnalyticsScreenState extends State<AnalyticsScreen> {
+class _AnalyticsView extends StatefulWidget {
+  const _AnalyticsView();
+
+  @override
+  State<_AnalyticsView> createState() => _AnalyticsViewState();
+}
+
+class _AnalyticsViewState extends State<_AnalyticsView> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
-  Future<MonthlyAnalytics>? _analyticsFuture;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
-  }
-
-  void _loadData() {
-    setState(() {
-      _analyticsFuture = widget.repository.getAnalyticsForMonth(_selectedMonth);
-    });
+    context.read<AnalyticsCubit>().loadAnalytics(_selectedMonth);
   }
 
   void _selectMonth() async {
@@ -48,7 +57,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       setState(() {
         _selectedMonth = DateTime(pickedDate.year, pickedDate.month, 1);
       });
-      _loadData();
+      context.read<AnalyticsCubit>().loadAnalytics(_selectedMonth);
     }
   }
 
@@ -77,20 +86,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
           ),
           Expanded(
-            child: FutureBuilder<MonthlyAnalytics>(
-              future: _analyticsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: BlocBuilder<AnalyticsCubit, AnalyticsState>(
+              builder: (context, state) {
+                if (state is AnalyticsLoadFailure) {
+                  return Center(child: Text('Error: ${state.error}'));
+                }
+                if (state is! AnalyticsLoadSuccess) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData || snapshot.data!.totalOutflow == 0) {
+                if (state.analytics.totalOutflow == 0) {
                   return const Center(child: Text('No data for this month.'));
                 }
 
-                final analytics = snapshot.data!;
+                final analytics = state.analytics;
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -243,25 +251,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildSpendingByTagChart(BuildContext context, MonthlyAnalytics analytics) {
-    final sortedTags = analytics.spendingByTag.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final slices = analytics.tagSlices;
 
-    final List<MapEntry<String, double>> topTags = sortedTags.take(5).toList();
-    if (sortedTags.length > 5) {
-      final double othersValue = sortedTags.skip(5).fold(0.0, (sum, item) => sum + item.value);
-      topTags.add(MapEntry('Others', othersValue));
-    }
-
-    final pieChartSections = topTags.asMap().entries.map((entry) {
-      final tag = entry.value.key;
-      final amount = entry.value.value;
+    final pieChartSections = slices.map((slice) {
       const fontSize = 14.0;
       const radius = 50.0;
 
       return PieChartSectionData(
-        color: TagHelper.getColorForTag(tag),
-        value: amount,
-        title: '${(amount / analytics.totalOutflow * 100).toStringAsFixed(0)}%',
+        color: TagHelper.getColorForTag(slice.label),
+        value: slice.amount,
+        title: '${slice.percentage.toStringAsFixed(0)}%',
         radius: radius,
         titleStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.white),
       );
@@ -284,14 +283,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: topTags.map((entry) {
+                children: slices.map((slice) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4.0),
                     child: Row(
                       children: [
-                        Container(width: 12, height: 12, color: TagHelper.getColorForTag(entry.key)),
+                        Container(width: 12, height: 12, color: TagHelper.getColorForTag(slice.label)),
                         const SizedBox(width: 8),
-                        Text(entry.key[0].toUpperCase() + entry.key.substring(1)),
+                        Text(slice.label[0].toUpperCase() + slice.label.substring(1)),
                       ],
                     ),
                   );

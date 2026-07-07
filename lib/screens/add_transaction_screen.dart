@@ -1,21 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fynans/models/transaction.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fynans/blocs/add_transaction/add_transaction_cubit.dart';
+import 'package:fynans/blocs/add_transaction/add_transaction_state.dart';
 import 'package:fynans/repositories/transaction_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:fynans/utils/amount_parser.dart';
 import 'package:fynans/utils/tag_helper.dart';
 
-class AddTransactionScreen extends StatefulWidget {
-  final TransactionRepository repository;
-
-  const AddTransactionScreen({super.key, required this.repository});
+/// Provides the [AddTransactionCubit] (built from the repository in context)
+/// and renders the transaction entry form.
+class AddTransactionScreen extends StatelessWidget {
+  const AddTransactionScreen({super.key});
 
   @override
-  State<AddTransactionScreen> createState() => _AddTransactionScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) =>
+          AddTransactionCubit(context.read<TransactionRepository>())
+            ..loadSuggestions(),
+      child: const _AddTransactionForm(),
+    );
+  }
 }
 
-class _AddTransactionScreenState extends State<AddTransactionScreen> {
+class _AddTransactionForm extends StatefulWidget {
+  const _AddTransactionForm();
+
+  @override
+  State<_AddTransactionForm> createState() => _AddTransactionFormState();
+}
+
+class _AddTransactionFormState extends State<_AddTransactionForm> {
   final _formKey = GlobalKey<FormState>();
   final _tagFormFieldKey = GlobalKey<FormFieldState<List<String>>>();
   final _amountController = TextEditingController();
@@ -25,28 +41,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   DateTime _selectedDate = DateTime.now();
   final List<String> _selectedTags = [];
   List<String> _allTags = [];
-  List<String> _existingGroups = [];
-  List<String> _existingParties = [];
   bool _creditFlag = false;
-  String party = '';
-
 
   @override
   void initState() {
     super.initState();
     _allTags = TagHelper.getAllTags();
-    _loadSuggestions();
-  }
-
-  void _loadSuggestions() async {
-    final groups = await widget.repository.getAllGroups();
-    final parties = await widget.repository.getAllParties();
-    if (mounted) {
-      setState(() {
-        _existingGroups = groups;
-        _existingParties = parties;
-      });
-    }
   }
 
   @override
@@ -72,55 +72,67 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     });
   }
 
-  void _saveTransaction() async {
+  void _submitForm() {
     if (_formKey.currentState!.validate()) {
-      final amountResult = parseAmount(_amountController.text);
-      if (amountResult.value == null) return;
-
-      final groupInputString = _groupController.text;
-      final List<String> groups = groupInputString
-          .split(',')
-          .map((g) => g.trim())
-          .where((g) => g.isNotEmpty)
-          .toList();
-
-      final newTransaction = Transaction()
-        ..amount = amountResult.value!
-        ..date = _selectedDate
-        ..tags = _selectedTags
-        ..note = _noteController.text.isNotEmpty ? _noteController.text : null
-        ..group = groups
-        ..party = _partyController.text.trim()
-        ..isCredit = _creditFlag;
-
-      await widget.repository.saveTransaction(newTransaction);
-
-
-      // Check if the widget is still in the tree before using its context.
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Transaction Saved!'),
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
-
-      _formKey.currentState!.reset();
-      setState(() {
-        _selectedTags.clear();
-        _selectedDate = DateTime.now();
-        _creditFlag = false;
-        _partyController.text = '';
-        _tagFormFieldKey.currentState?.didChange(<String>[]);
-      });
-      FocusScope.of(context).unfocus();
-      _loadSuggestions();
+      context.read<AddTransactionCubit>().save(
+            amount: _amountController.text,
+            party: _partyController.text,
+            group: _groupController.text,
+            tags: List.of(_selectedTags),
+            isCredit: _creditFlag,
+            note: _noteController.text,
+            date: _selectedDate,
+          );
     }
+  }
+
+  void _onStatusChanged(AddTransactionState state) {
+    switch (state.status) {
+      case SaveStatus.success:
+        _handleSaveSuccess();
+      case SaveStatus.invalid:
+      case SaveStatus.failure:
+        _showMessage(state.message ?? 'Could not save transaction');
+      case SaveStatus.idle:
+      case SaveStatus.inProgress:
+        break;
+    }
+  }
+
+  void _handleSaveSuccess() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Transaction Saved!'),
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+
+    _formKey.currentState!.reset();
+    setState(() {
+      _selectedTags.clear();
+      _selectedDate = DateTime.now();
+      _creditFlag = false;
+      _partyController.text = '';
+      _tagFormFieldKey.currentState?.didChange(<String>[]);
+    });
+    FocusScope.of(context).unfocus();
+    context.read<AddTransactionCubit>().loadSuggestions();
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 
   void _showMultiSelectTagsDialog() async {
@@ -148,9 +160,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Add Transaction')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
+      body: BlocConsumer<AddTransactionCubit, AddTransactionState>(
+        listenWhen: (previous, current) => previous.status != current.status,
+        listener: (context, state) => _onStatusChanged(state),
+        buildWhen: (previous, current) =>
+            previous.groups != current.groups ||
+            previous.parties != current.parties,
+        builder: (context, state) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -309,7 +327,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   if (textEditingValue.text == '') {
                     return const Iterable<String>.empty();
                   }
-                  return _existingGroups.where((String option) {
+                  return state.groups.where((String option) {
                     return option.toLowerCase().contains(
                       textEditingValue.text.toLowerCase(),
                     );
@@ -349,7 +367,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   if (textEditingValue.text == '') {
                     return const Iterable<String>.empty();
                   }
-                  return _existingParties.where((String option) {
+                  return state.parties.where((String option) {
                     return option.toLowerCase().contains(
                       textEditingValue.text.toLowerCase(),
                     );
@@ -361,7 +379,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: _saveTransaction,
+                onPressed: _submitForm,
                 icon: const Icon(Icons.save),
                 label: const Text('Save Transaction'),
                 style: ElevatedButton.styleFrom(
@@ -369,6 +387,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

@@ -1,4 +1,3 @@
-import 'package:fynans/models/monthly_analytics.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/models/transaction_filter.dart';
 
@@ -23,5 +22,4 @@ abstract class TransactionRepository {
   Future<List<String>> getAllGroups();
   Future<List<String>> getAllUniqueTags();
   Future<List<String>> getAllParties();
-  Future<MonthlyAnalytics> getAnalyticsForMonth(DateTime month);
 }

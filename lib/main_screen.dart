@@ -7,7 +7,6 @@ import 'package:fynans/screens/transactions_list_screen.dart';
 import 'package:fynans/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/repositories/transaction_repository.dart';
-import 'package:fynans/services/hive_transaction_repository.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,27 +24,27 @@ class _MainScreenState extends State<MainScreen> {
     'Test SMS',
   ];
 
-  late final TransactionRepository _repository;
   late final List<Widget> _widgetOptions;
 
   @override
   void initState() {
     super.initState();
-    _repository = HiveTransactionRepository();
     _widgetOptions = <Widget>[
       MultiBlocProvider(
         providers: [
           BlocProvider<TransactionCubit>(
-            create: (context) => TransactionCubit(_repository),
+            create: (context) =>
+                TransactionCubit(context.read<TransactionRepository>()),
           ),
           BlocProvider<AdvancedViewBloc>(
-            create: (context) => AdvancedViewBloc(_repository)
-              ..add(AdvancedViewDataFetched()),
+            create: (context) =>
+                AdvancedViewBloc(context.read<TransactionRepository>())
+                  ..add(AdvancedViewDataFetched()),
           ),
         ],
-        child: TransactionsListScreen(repository: _repository),
+        child: const TransactionsListScreen(),
       ),
-      AnalyticsScreen(repository: _repository),
+      const AnalyticsScreen(),
       const TestSmsScreen(),
     ];
   }
