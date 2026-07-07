@@ -55,3 +55,4 @@ coverage/
 
 # Track the architecture review even though docs/** is ignored
 !docs/ARCHITECTURE_REVIEW.md
+!docs/REMEDIATION_DECISIONS.md

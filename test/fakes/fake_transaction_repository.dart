@@ -24,6 +24,20 @@ class FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
+  bool hasMatchingTransaction({
+    required DateTime date,
+    required double amount,
+    required bool isCredit,
+    required String party,
+  }) {
+    return _transactions.any((t) =>
+        t.amount == amount &&
+        t.isCredit == isCredit &&
+        t.date.isAtSameMomentAs(date) &&
+        t.party == party);
+  }
+
+  @override
   Stream<List<Transaction>> listenToTransactionsForMonth({
     required DateTime month,
     TransactionFilter? filter,

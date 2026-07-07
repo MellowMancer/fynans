@@ -7,6 +7,16 @@ import 'package:fynans/models/transaction_filter.dart';
 abstract class TransactionRepository {
   Future<void> saveTransaction(Transaction transaction);
   Future<void> deleteTransaction(Transaction transaction);
+
+  /// True if a transaction with the same date, amount, direction and party
+  /// already exists — used to keep SMS import idempotent.
+  bool hasMatchingTransaction({
+    required DateTime date,
+    required double amount,
+    required bool isCredit,
+    required String party,
+  });
+
   Stream<List<Transaction>> listenToTransactionsForMonth({
     required DateTime month,
     TransactionFilter? filter,
