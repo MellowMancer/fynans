@@ -49,3 +49,9 @@ amplify_outputs*
 amplifyconfiguration*
 .env
 docs/**
+# Claude Code local state (worktrees, local settings)
+.claude/
+coverage/
+
+# Track the architecture review even though docs/** is ignored
+!docs/ARCHITECTURE_REVIEW.md
