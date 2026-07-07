@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
-import 'package:fynans/models/transaction.dart';
-import 'package:fynans/models/transaction_filter.dart';
-import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/adapters/blocs/advanced_view/advanced_view_bloc.dart';
+import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/entities/transaction_filter.dart';
+import 'package:fynans/ports/transaction_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockTransactionRepository extends Mock

@@ -286,3 +286,21 @@ targets in this run.
 All other target locations already exist. No `.dart` stubs are created: F0 is a
 no-code-change gate, and empty stubs would be speculative. Developers create their
 layer files at the paths in §2.
+
+---
+
+## UPDATE (F21 applied) — physical Clean Architecture layout is now in place
+
+The "no folder rename / import-discipline only" decision above was **superseded** by the
+user's request to do the full Part 4 restructure. F21 physically moved `lib/` into:
+
+```
+lib/
+  entities/    (was models/)          ports/       (was repositories/)
+  use_cases/   (+ amount_parser)      adapters/blocs|data|sms   (was blocs/, services/)
+  ui/screens|widgets|utils            main.dart (composition root)
+```
+
+All imports across `lib/` and `test/` were rewritten to the new `package:fynans/…` prefixes.
+This is a pure move — no logic or class renames — verified by 50 green tests. The layer
+mapping and dependency rules in §1–§6 still hold; only the physical paths changed.

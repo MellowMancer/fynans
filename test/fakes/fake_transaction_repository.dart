@@ -1,6 +1,6 @@
-import 'package:fynans/models/transaction.dart';
-import 'package:fynans/models/transaction_filter.dart';
-import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/entities/transaction_filter.dart';
+import 'package:fynans/ports/transaction_repository.dart';
 
 /// In-memory [TransactionRepository] for use in tests.
 class FakeTransactionRepository implements TransactionRepository {
