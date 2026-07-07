@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/repositories/transaction_repository.dart';
 import 'package:intl/intl.dart';
+import 'package:fynans/utils/amount_parser.dart';
 import 'package:fynans/utils/tag_helper.dart';
 
 class AddTransactionScreen extends StatefulWidget {
@@ -73,6 +74,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   void _saveTransaction() async {
     if (_formKey.currentState!.validate()) {
+      final amountResult = parseAmount(_amountController.text);
+      if (amountResult.value == null) return;
+
       final groupInputString = _groupController.text;
       final List<String> groups = groupInputString
           .split(',')
@@ -81,7 +85,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           .toList();
 
       final newTransaction = Transaction()
-        ..amount = double.parse(_amountController.text)
+        ..amount = amountResult.value!
         ..date = _selectedDate
         ..tags = _selectedTags
         ..note = _noteController.text.isNotEmpty ? _noteController.text : null
@@ -168,9 +172,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           RegExp(r'^\d+\.?\d{0,2}'),
                         ),
                       ],
-                      validator: (value) => (value == null || value.isEmpty)
-                          ? 'Please enter an amount'
-                          : null,
+                      validator: (value) => parseAmount(value).error,
                     ),
                   ),
                   const SizedBox(width: 16),
