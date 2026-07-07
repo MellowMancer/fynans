@@ -1,5 +1,6 @@
 import 'package:fynans/models/transaction.dart';
-import 'package:fynans/services/hive_service.dart';
+import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/services/hive_transaction_repository.dart';
 import 'package:fynans/services/parsed_transaction.dart';
 import 'package:fynans/services/sms_parser_service.dart';
 
@@ -8,7 +9,7 @@ import 'package:fynans/services/sms_parser_service.dart';
 /// de-dupes against the Hive box to avoid importing the same SMS twice.
 class TransactionSmsIngestor {
   final SmsParserService _parser = SmsParserService();
-  final HiveService _hive = HiveService();
+  final TransactionRepository _repository = HiveTransactionRepository();
 
   /// Returns true if a new transaction was saved.
   Future<bool> ingest({
@@ -35,7 +36,7 @@ class TransactionSmsIngestor {
 
     // De-dupe against the box itself so the full-inbox launch sweep stays
     // idempotent (and a cleared database correctly re-imports).
-    if (_hive.hasMatchingTransaction(
+    if (_repository.hasMatchingTransaction(
       date: details.date,
       amount: details.amount,
       isCredit: isCredit,
@@ -53,7 +54,7 @@ class TransactionSmsIngestor {
       ..group = <String>[]
       ..note = _buildNote(sender, details);
 
-    await _hive.saveTransaction(t);
+    await _repository.saveTransaction(t);
     return true;
   }
 
