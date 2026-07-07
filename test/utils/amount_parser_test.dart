@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/utils/amount_parser.dart';
+import 'package:fynans/use_cases/amount_parser.dart';
 
 void main() {
   group('parseAmount', () {

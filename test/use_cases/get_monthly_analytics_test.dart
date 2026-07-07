@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/models/transaction.dart';
+import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/get_monthly_analytics.dart';
 
 import '../fakes/fake_transaction_repository.dart';

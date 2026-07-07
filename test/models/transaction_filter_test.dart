@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/models/transaction.dart';
-import 'package:fynans/models/transaction_filter.dart';
+import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/entities/transaction_filter.dart';
 
 Transaction makeTransaction({
   required double amount,

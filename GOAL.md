@@ -166,6 +166,16 @@ Each feature writes a failing regression test first, then makes it pass.
       parallel-with: none
       RESOLVED: `AdvancedViewBloc` reactivity is handled in F12, not here.
 
+### Structural — physical Clean Architecture layout (user-requested)
+
+- [x] F21 Restructure `lib/` into review Part 4 layout — depends on: F1–F14
+      Physically move `models→entities`, `repositories→ports`, `blocs→adapters/blocs`,
+      `services→adapters/{data,sms}`, `screens/widgets/utils→ui/…`; rewrite all `lib/` + `test/`
+      imports. Pure move, no logic/class changes.
+      criteria: `ls lib/` = `entities ports use_cases adapters ui main.dart`, no old top-level
+      dirs; `rg "package:fynans/(models|repositories|blocs|services|screens|widgets)/"` returns
+      nothing; `flutter analyze` clean but for the pre-existing deprecation; 50 tests green. DONE.
+
 ---
 ## DEFERRED — Phases 3–5 (NOT built in this run; kept for the follow-up epic)
 ---

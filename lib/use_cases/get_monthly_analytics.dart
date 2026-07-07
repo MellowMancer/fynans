@@ -1,6 +1,6 @@
-import 'package:fynans/models/monthly_analytics.dart';
-import 'package:fynans/models/transaction.dart';
-import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:fynans/entities/monthly_analytics.dart';
+import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/ports/transaction_repository.dart';
 
 /// Number of individual tag slices shown before the rest fold into "Others".
 const int kAnalyticsTopN = 5;

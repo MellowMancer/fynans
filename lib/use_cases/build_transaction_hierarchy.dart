@@ -1,6 +1,6 @@
-import 'package:fynans/models/grouping_option.dart';
-import 'package:fynans/models/hierarchy_node.dart';
-import 'package:fynans/models/transaction.dart';
+import 'package:fynans/entities/grouping_option.dart';
+import 'package:fynans/entities/hierarchy_node.dart';
+import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/summarise_transactions.dart';
 import 'package:intl/intl.dart';
 

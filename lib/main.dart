@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:fynans/models/transaction.dart';
-import 'package:fynans/main_screen.dart';
-import 'package:fynans/repositories/transaction_repository.dart';
-import 'package:fynans/services/hive_transaction_repository.dart';
-import 'package:fynans/services/sms_intake_service.dart';
+import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/ui/main_screen.dart';
+import 'package:fynans/ports/transaction_repository.dart';
+import 'package:fynans/adapters/data/hive_transaction_repository.dart';
+import 'package:fynans/adapters/sms/sms_intake_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
