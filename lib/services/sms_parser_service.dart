@@ -249,14 +249,17 @@ class SmsParserService {
   // --- PRIVATE HELPER METHODS ---
 
   TransactionType _getTransactionType(String lowerCaseBody) {
+    // Bug #3 fix: a declined/failed SMS usually still contains a debit-ish
+    // keyword ("spent"/"debited"), so the decline check MUST run first —
+    // otherwise the money movement is recorded as a real outflow.
+    if (_declinedKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
+      return TransactionType.declined;
+    }
     if (_debitKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.debit;
     }
     if (_creditKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.credit;
-    }
-    if (_declinedKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
-      return TransactionType.declined;
     }
     // Fallback for NEFT/IMPS/RTGS/ATM transfer notices that state the rail and an
     // amount but omit "debited"/"credited" (e.g. "Rs.500 transferred from A/c
@@ -315,15 +318,29 @@ class SmsParserService {
       ..._creditKeywords,
       ..._transferModeKeywords,
     ];
-    // Connector words that can sit between the action keyword and the amount in
-    // UPI SMS, e.g. SBI's "A/C x1234 debited by 500.0" (no Rs/INR prefix).
-    const connector = r'(?:by|for|of|with|inr|rs\.?)?\s*';
+    // Connector words (incl. a currency prefix) that can sit between the action
+    // keyword and the amount, e.g. "debited by 500.0", "debit of Rs.250.00",
+    // "credited with Rs.2000.00". Repeatable so a word + symbol ("of Rs.") both
+    // get consumed before the digits.
+    const connector = r'(?:(?:by|for|of|with|to|inr|rs\.?)\s*)*';
 
+    // Bug #4 guard: a Rs/INR figure directly announced as a balance ("Avl Bal
+    // Rs.9,999") must never be read as the transaction amount. Excludes the
+    // common balance phrasings that sit immediately before the currency token.
+    const balanceGuard =
+        r'(?<!(?:avl bal|available balance|a/c bal|ac bal|balance|bal|available|avl)\s*)';
+
+    // Bug #4 fix: try the action-anchored pattern FIRST so the amount is tied to
+    // the debit/credit/transfer verb rather than to whichever Rs/INR figure
+    // appears first (which is often the available balance). The Rs/INR patterns
+    // remain as fallbacks but skip any figure attached to a balance clause.
     final patterns = [
-      RegExp('(?:rs\\.?|inr)\\s*$amountValue$amountUnit', caseSensitive: false),
-      RegExp('$amountValue$amountUnit\\s*(?:rs\\.?|inr)', caseSensitive: false),
       RegExp(
           '(?:${allTransactionKeywords.join('|')})\\s+$connector$amountValue$amountUnit',
+          caseSensitive: false),
+      RegExp('$balanceGuard(?:rs\\.?|inr)\\s*$amountValue$amountUnit',
+          caseSensitive: false),
+      RegExp('$balanceGuard$amountValue$amountUnit\\s*(?:rs\\.?|inr)',
           caseSensitive: false),
     ];
 
@@ -467,7 +484,7 @@ class SmsParserService {
     // --- FIX #1: Corrected the regular expression for terminators ---
     // This now correctly looks for terminator keywords OR symbols like '(', ';', ',', or the end of the string.
     final terminators =
-        "(?=(\\s+(${terminatorKeywords.join('|')}))|\\s*\\(|\\\$|;|\\,)";
+        "(?=(\\s+(${terminatorKeywords.join('|')}))|\\s*\\(|\$|;|\\,)";
     
     // --- FIX #2: Create a MODIFIABLE copy of the keyword lists ---
     List<String> keywords;

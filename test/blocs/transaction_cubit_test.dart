@@ -1,9 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/blocs/transaction/transaction_state.dart';
 import 'package:fynans/models/transaction.dart';
+import 'package:fynans/repositories/transaction_repository.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../fakes/fake_transaction_repository.dart';
+
+class _MockTransactionRepository extends Mock
+    implements TransactionRepository {}
 
 Transaction _txn({
   required double amount,
@@ -75,6 +82,90 @@ void main() {
       );
 
       await cubit.fetchTransactionsForMonth(DateTime(2026, 7));
+      await expectation;
+    });
+  });
+
+  group('TransactionCubit subscription lifecycle', () {
+    late _MockTransactionRepository repo;
+
+    setUpAll(() => registerFallbackValue(DateTime(2026)));
+
+    setUp(() => repo = _MockTransactionRepository());
+
+    test('cancels the previous subscription when re-fetching', () async {
+      final controllers = <StreamController<List<Transaction>>>[];
+      when(() => repo.listenToTransactionsForMonth(
+            month: any(named: 'month'),
+          )).thenAnswer((_) {
+        final controller = StreamController<List<Transaction>>();
+        controllers.add(controller);
+        addTearDown(controller.close);
+        return controller.stream;
+      });
+
+      final cubit = TransactionCubit(repo);
+      addTearDown(cubit.close);
+
+      await cubit.fetchTransactionsForMonth(DateTime(2026, 7));
+      await cubit.fetchTransactionsForMonth(DateTime(2026, 8));
+
+      expect(controllers, hasLength(2));
+      expect(
+        controllers[0].hasListener,
+        isFalse,
+        reason: 'the first subscription must be cancelled on the second fetch',
+      );
+      expect(controllers[1].hasListener, isTrue);
+    });
+
+    test('does not emit a success state after close', () async {
+      late StreamController<List<Transaction>> controller;
+      when(() => repo.listenToTransactionsForMonth(
+            month: any(named: 'month'),
+          )).thenAnswer((_) {
+        controller = StreamController<List<Transaction>>();
+        addTearDown(controller.close);
+        return controller.stream;
+      });
+
+      final cubit = TransactionCubit(repo);
+      final states = <TransactionState>[];
+      final sub = cubit.stream.listen(states.add);
+      addTearDown(sub.cancel);
+
+      await cubit.fetchTransactionsForMonth(DateTime(2026, 7));
+      await cubit.close();
+
+      controller.add([
+        _txn(amount: 10, date: DateTime(2026, 7, 1), isCredit: false),
+      ]);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(states.whereType<TransactionLoadSuccess>(), isEmpty);
+    });
+
+    test('forwards stream errors to TransactionLoadFailure', () async {
+      final controller = StreamController<List<Transaction>>();
+      addTearDown(controller.close);
+      when(() => repo.listenToTransactionsForMonth(
+            month: any(named: 'month'),
+          )).thenAnswer((_) => controller.stream);
+
+      final cubit = TransactionCubit(repo);
+      addTearDown(cubit.close);
+
+      final expectation = expectLater(
+        cubit.stream,
+        emitsInOrder([
+          isA<TransactionLoadInProgress>(),
+          isA<TransactionLoadFailure>()
+              .having((s) => s.error, 'error', contains('boom')),
+        ]),
+      );
+
+      await cubit.fetchTransactionsForMonth(DateTime(2026, 7));
+      controller.addError(StateError('boom'));
       await expectation;
     });
   });

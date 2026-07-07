@@ -62,7 +62,7 @@ unavailable** — assert cubits via `cubit.stream` + `emitsInOrder`, per
 
 Each feature writes a failing regression test first, then makes it pass.
 
-- [ ] F4 Fix dedup data-loss — depends on: F3
+- [x] F4 Fix dedup data-loss — depends on: F3
       Bug #1: dedup keys on parsed `(date, amount, isCredit, party)`, so two genuine
       transactions in the same minute with equal amount/party collapse into one.
       criteria: a repository/ingestor test seeds two distinct bank SMS that share
@@ -70,7 +70,7 @@ Each feature writes a failing regression test first, then makes it pass.
       green after). Interim fix only — the O(1) indexed raw-SMS key is F17.  (Bug #1)  risk: med
       parallel-with: F5, F6, F7, F8, F9
 
-- [ ] F5 Fix declined-as-debit — depends on: F0
+- [x] F5 Fix declined-as-debit — depends on: F0
       Bug #3: debit keywords are matched before the "declined" check, so a declined SMS is
       recorded as real outflow (`sms_parser_service.dart:251-260`).
       criteria: `test/services/sms_parser_test.dart` gains a case: a declined-transaction SMS
@@ -78,14 +78,14 @@ Each feature writes a failing regression test first, then makes it pass.
       transaction. Red before, green after.  (Bug #3)  risk: low
       parallel-with: F4, F6, F7, F8, F9
 
-- [ ] F6 Fix amount-vs-balance capture — depends on: F0
+- [x] F6 Fix amount-vs-balance capture — depends on: F0
       Bug #4: the amount extractor can capture the available-balance figure instead of the
       transaction amount (`sms_parser_service.dart:307-323`).
       criteria: parser test with a real-shaped SMS containing both "debited ₹X" and "Avl Bal
       ₹Y" asserts the parsed `amount == X`. Red before, green after.  (Bug #4)  risk: med
       parallel-with: F4, F5, F7, F8, F9
 
-- [ ] F7 Fix cubit subscription leak — depends on: F0
+- [x] F7 Fix cubit subscription leak — depends on: F0
       Bug #9: `TransactionCubit.fetchTransactionsForMonth` opens a new never-cancelled
       `.listen()` on every call (init, month-swipe, refresh), the sync `try/catch` cannot
       catch async stream errors, and emits can fire after `close()`
@@ -95,7 +95,7 @@ Each feature writes a failing regression test first, then makes it pass.
       in `close()`. Red before, green after.  (Bug #9)  risk: med
       parallel-with: F4, F5, F6, F8, F9
 
-- [ ] F8 Fix amount-parse crash — depends on: F0
+- [x] F8 Fix amount-parse crash — depends on: F0
       Bug #10: `double.parse(_amountController.text)` with a validator that only checks
       non-empty crashes on non-numeric input (`add_transaction_screen.dart:84`).
       criteria: an extracted, pure amount validator/parser rejects non-numeric / negative /
@@ -104,7 +104,7 @@ Each feature writes a failing regression test first, then makes it pass.
       minimal safe fix.)  (Bug #10)  risk: low
       parallel-with: F4, F5, F6, F7, F9
 
-- [ ] F9 Fix merchant over-capture regex — depends on: F0
+- [x] F9 Fix merchant over-capture regex — depends on: F0
       Bug #5: an over-escaped end-anchor (`\\$` matching a literal `$`) means the
       end-of-string merchant terminator never fires (`sms_parser_service.dart:470`).
       criteria: parser test with a merchant name at end-of-body asserts the merchant is not
