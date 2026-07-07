@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/blocs/transaction/transaction_state.dart';
-import 'package:fynans/repositories/transaction_repository.dart';
 import 'package:fynans/screens/add_transaction_screen.dart';
 import 'package:fynans/widgets/transaction_list_widgets.dart';
 import 'package:fynans/models/grouping_option.dart';
@@ -12,9 +11,7 @@ import 'package:fynans/widgets/month_year_wheel_picker.dart';
 enum ViewMode { simple, advanced }
 
 class TransactionsListScreen extends StatefulWidget {
-  final TransactionRepository repository;
-
-  const TransactionsListScreen({super.key, required this.repository});
+  const TransactionsListScreen({super.key});
 
   @override
   State<TransactionsListScreen> createState() =>
@@ -169,7 +166,7 @@ class _TransactionsListScreenState
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AddTransactionScreen(repository: widget.repository),
+              builder: (context) => const AddTransactionScreen(),
             ),
           ).then((_) {
             if (!context.mounted) return;
@@ -254,7 +251,6 @@ class _TransactionsListScreenState
               isSimpleMode: true,
               onSelectMonth: _selectMonth,
               onEditHierarchy: _editHierarchy,
-              repository: widget.repository,
             );
           }
           return const Center(child: CircularProgressIndicator());
@@ -271,7 +267,6 @@ class _TransactionsListScreenState
               advancedState: state,
               onSelectMonth: _selectMonth,
               onEditHierarchy: _editHierarchy,
-              repository: widget.repository,
             );
           }
           return const Center(child: CircularProgressIndicator());
@@ -291,7 +286,6 @@ class _TransactionsListScreenState
         }
         if (state is TransactionLoadSuccess) {
           return SimpleTransactionListView(
-            repository: widget.repository,
             currentMonth: _months[_currentPageIndex],
           );
         }

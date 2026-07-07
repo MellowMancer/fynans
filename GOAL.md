@@ -113,7 +113,7 @@ Each feature writes a failing regression test first, then makes it pass.
 
 ### Phase 2 — Finish the Clean Architecture migration (review Part 5 Phase 2 / Finding #4)
 
-- [ ] F10 Provide the repository once via `RepositoryProvider` — depends on: F3
+- [x] F10 Provide the repository once via `RepositoryProvider` — depends on: F3
       Stop drilling `repository:` through `AddTransactionScreen` → `SummaryCard` →
       `SimpleTransactionListView` → `AnalyticsScreen`. Build the one repository in the
       composition root and expose it via `RepositoryProvider`; widgets read `context.read`.
@@ -122,7 +122,7 @@ Each feature writes a failing regression test first, then makes it pass.
       (Finding #3)  risk: med
       parallel-with: F11
 
-- [ ] F11 Move `HierarchyNode` to the model/entity layer — depends on: F0
+- [x] F11 Move `HierarchyNode` to the model/entity layer — depends on: F0
       `HierarchyNode` is trapped as `part of advanced_view_bloc.dart`, forcing widgets to
       import the BLoC to render a tree.
       criteria: `HierarchyNode` lives in `lib/models/` (or `lib/entities/`); no widget imports
@@ -130,7 +130,7 @@ Each feature writes a failing regression test first, then makes it pass.
       (Finding #4)  risk: low
       parallel-with: F10
 
-- [ ] F12 Single `BuildTransactionHierarchy` use case — depends on: F2, F11
+- [x] F12 Single `BuildTransactionHierarchy` use case — depends on: F2, F11
       Move `_groupTransactions` (`advanced_view_bloc.dart:104-132`) and all bucketing rules
       into one use case; reduce `GroupingOption` to a pure `(name, displayName)` enum (drop
       its `Transaction`/`intl` imports and embedded policy). Canonical labels (resolved):
@@ -146,7 +146,7 @@ Each feature writes a failing regression test first, then makes it pass.
       (Finding #4, Finding #6)  risk: med
       parallel-with: F13
 
-- [ ] F13 `GetMonthlyAnalytics` use case + `AnalyticsCubit` — depends on: F10
+- [x] F13 `GetMonthlyAnalytics` use case + `AnalyticsCubit` — depends on: F10
       Move inflow/outflow/daily/by-tag aggregation out of the repository
       (`hive_transaction_repository.dart:87-134`) into a use case, and the "top-5 + Others"
       bucketing + percentage math out of `analytics_screen.dart:245-268` into the use
@@ -156,7 +156,7 @@ Each feature writes a failing regression test first, then makes it pass.
       (Finding #2, Finding #4)  risk: med
       parallel-with: F12
 
-- [ ] F14 `AddTransactionCubit` — depends on: F8, F10
+- [x] F14 `AddTransactionCubit` — depends on: F8, F10
       Move entity construction, amount parsing, CSV group split, and validation out of
       `add_transaction_screen.dart:74-120` into a cubit that calls a `SaveTransaction` use
       case; the widget only dispatches intents and renders state.

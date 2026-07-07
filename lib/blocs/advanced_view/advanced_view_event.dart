@@ -41,3 +41,20 @@ final class AdvancedViewHierarchyChanged extends AdvancedViewEvent {
 
   AdvancedViewHierarchyChanged(this.newHierarchy);
 }
+
+/// Internal: the repository stream pushed a fresh transaction snapshot.
+/// Carries the view config captured when the subscription was opened so the
+/// success state can be rebuilt after the interim loading state.
+final class _AdvancedViewTransactionsUpdated extends AdvancedViewEvent {
+  final List<Transaction> transactions;
+  final AdvancedViewLoadSuccess baseState;
+
+  _AdvancedViewTransactionsUpdated(this.transactions, this.baseState);
+}
+
+/// Internal: the repository stream emitted an error.
+final class _AdvancedViewStreamFailed extends AdvancedViewEvent {
+  final String error;
+
+  _AdvancedViewStreamFailed(this.error);
+}

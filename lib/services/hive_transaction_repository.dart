@@ -1,4 +1,3 @@
-import 'package:fynans/models/monthly_analytics.dart';
 import 'package:fynans/models/transaction.dart';
 import 'package:fynans/models/transaction_filter.dart';
 import 'package:fynans/repositories/transaction_repository.dart';
@@ -86,56 +85,6 @@ class HiveTransactionRepository implements TransactionRepository {
         .where((p) => p.isNotEmpty)
         .toSet()
         .toList();
-  }
-
-  @override
-  Future<MonthlyAnalytics> getAnalyticsForMonth(DateTime month) async {
-    final (start, end) = _getMonthBounds(month);
-
-    final transactionsForMonth = _box.values
-        .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
-        .toList();
-
-    final double totalOutflow = transactionsForMonth.fold(
-      0,
-      (sum, t) => t.isCredit ? sum : sum + t.amount,
-    );
-
-    final double totalInflow = transactionsForMonth.fold(
-      0,
-      (sum, t) => t.isCredit ? sum + t.amount : sum,
-    );
-
-    final Map<int, double> dailySpending = {};
-    for (final t in transactionsForMonth) {
-      if (!t.isCredit) {
-        dailySpending.update(
-          t.date.day,
-          (value) => value + t.amount,
-          ifAbsent: () => t.amount,
-        );
-      }
-    }
-
-    final Map<String, double> spendingByTag = {};
-    for (final t in transactionsForMonth) {
-      if (!t.isCredit) {
-        for (final tag in t.tags) {
-          spendingByTag.update(
-            tag,
-            (value) => value + t.amount,
-            ifAbsent: () => t.amount,
-          );
-        }
-      }
-    }
-
-    return MonthlyAnalytics(
-      totalOutflow: totalOutflow,
-      totalInflow: totalInflow,
-      dailySpending: dailySpending,
-      spendingByTag: spendingByTag,
-    );
   }
 
   /// Dev-only utility. Not on the [TransactionRepository] interface.
