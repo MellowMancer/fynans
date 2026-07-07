@@ -8,8 +8,14 @@ import 'package:fynans/services/sms_parser_service.dart';
 /// live listener (SmsIntakeService) and the launch catch-up scan, so it
 /// de-dupes against the Hive box to avoid importing the same SMS twice.
 class TransactionSmsIngestor {
-  final SmsParserService _parser = SmsParserService();
-  final TransactionRepository _repository = HiveTransactionRepository();
+  final SmsParserService _parser;
+  final TransactionRepository _repository;
+
+  /// [repository] defaults to the Hive-backed impl for production; tests inject
+  /// a fake. Full constructor DI of the parser/source is the deferred F16.
+  TransactionSmsIngestor({TransactionRepository? repository})
+      : _parser = SmsParserService(),
+        _repository = repository ?? HiveTransactionRepository();
 
   /// Returns true if a new transaction was saved.
   Future<bool> ingest({
@@ -34,14 +40,11 @@ class TransactionSmsIngestor {
         ? details.merchant!.trim()
         : sender;
 
-    // De-dupe against the box itself so the full-inbox launch sweep stays
-    // idempotent (and a cleared database correctly re-imports).
-    if (_repository.hasMatchingTransaction(
-      date: details.date,
-      amount: details.amount,
-      isCredit: isCredit,
-      party: party,
-    )) {
+    // De-dupe on the RAW SMS identity so the full-inbox launch sweep stays
+    // idempotent, while two genuinely distinct SMS that share
+    // minute+amount+party are still imported separately (Bug #1 fix).
+    final smsId = _smsId(sender: sender, body: body, date: date);
+    if (_repository.existsWithSmsId(smsId)) {
       return false;
     }
 
@@ -52,10 +55,23 @@ class TransactionSmsIngestor {
       ..party = party
       ..tags = <String>[]
       ..group = <String>[]
-      ..note = _buildNote(sender, details);
+      ..note = _buildNote(sender, details)
+      ..smsId = smsId;
 
     await _repository.saveTransaction(t);
     return true;
+  }
+
+  /// Deterministic identity of a raw SMS: hex of a stable hash over
+  /// (sender, body, date). No randomness/wall-clock, so re-scans match.
+  String _smsId({
+    required String sender,
+    required String body,
+    required DateTime date,
+  }) {
+    final hash =
+        Object.hash(sender, body, date.millisecondsSinceEpoch);
+    return hash.toUnsigned(32).toRadixString(16);
   }
 
   String _buildNote(String sender, ParsedTransactionDetails d) {

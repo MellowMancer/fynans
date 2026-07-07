@@ -71,6 +71,61 @@ void main() {
     expect(r.amount, 250.50);
   });
 
+  test('declined SMS with a debit keyword -> declined (not debit)', () {
+    // Bug #3: this SMS carries the debit keyword "spent" AND the decline
+    // markers "declined"/"failed". It must classify as declined so the
+    // ingestor drops it instead of recording a phantom outflow.
+    final r = parser.parseTransactionDetails(
+      sender: 'HDFCBK',
+      body:
+          'Rs.500.00 spent on your Debit Card at AMAZON on 27-06-26 was declined. Txn failed.',
+      date: now,
+    );
+    expect(r, isNotNull);
+    expect(r!.type, TransactionType.declined);
+    expect(r.type, isNot(TransactionType.debit));
+
+    // The ingestor only persists debit/credit types (see TransactionSmsIngestor),
+    // so a declined classification guarantees no saved transaction.
+    final isSaved = r.type == TransactionType.debit ||
+        r.type == TransactionType.credit;
+    expect(isSaved, isFalse);
+  });
+
+  test('balance stated before the amount is not captured as the amount', () {
+    // Bug #4: _getAmount used to return the FIRST Rs/INR-prefixed number. When
+    // the available balance is worded before the debit clause, that balance
+    // figure (Rs.9,999.00) was recorded as the transaction amount instead of
+    // the actual debit (Rs.250.00). The amount must anchor to the debit action.
+    final r = parser.parseTransactionDetails(
+      sender: 'HDFCBK',
+      body:
+          'Avl Bal in A/c XX1234 is Rs.9,999.00 after a debit of Rs.250.00 on 27-06-26. -HDFC Bank',
+      date: now,
+    );
+    expect(r, isNotNull);
+    expect(r!.type, TransactionType.debit);
+    expect(r.amount, 250.00);
+    expect(r.amount, isNot(9999.00));
+  });
+
+  test('merchant at the very end of the SMS is not over-captured', () {
+    // Bug #5: the merchant regex's end-of-string terminator was over-escaped
+    // (\$ compiled to a literal dollar sign, which never appears in SMS text),
+    // so a merchant token sitting at the END of the body had no anchor to stop
+    // on. The lazy match failed to terminate cleanly, dropping the merchant.
+    // The clean name must be captured, ending exactly at end-of-body.
+    final r = parser.parseTransactionDetails(
+      sender: 'HDFCBK',
+      body: 'Rs.250.00 debited from a/c XX1234 on 27-06-26 at STARBUCKS',
+      date: now,
+    );
+    expect(r, isNotNull);
+    expect(r!.type, TransactionType.debit);
+    expect(r.amount, 250.00);
+    expect(r.merchant, 'Starbucks');
+  });
+
   test('non-whitelisted sender is ignored', () {
     final r = parser.parseTransactionDetails(
       sender: 'AMAZON',

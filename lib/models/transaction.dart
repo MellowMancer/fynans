@@ -25,4 +25,9 @@ class Transaction extends HiveObject {
 
   @HiveField(6)
   String? note;
+
+  /// Stable per-SMS identity hash (sender+body+date) for auto-imported
+  /// records; null for manually added transactions. Keeps SMS import idempotent.
+  @HiveField(7)
+  String? smsId;
 }
