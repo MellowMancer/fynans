@@ -17,14 +17,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.4.1"
-  another_telephony:
-    dependency: "direct main"
-    description:
-      name: another_telephony
-      sha256: "7dd16759099ea3e4ce762c4f5bbfa097940335555d5caa916aaa52eec6a70cb6"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.1"
   args:
     dependency: transitive
     description:
@@ -267,6 +259,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_sms_inbox:
+    dependency: "direct main"
+    description:
+      name: flutter_sms_inbox
+      sha256: "319721d50e5502ce811bb4ba2bbc9d12396da7a5764558087dc88d4b5909bcbb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.5"
   flutter_test:
     dependency: "direct dev"
     description: flutter

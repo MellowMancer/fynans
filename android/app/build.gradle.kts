@@ -41,8 +41,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.fynans"
-        // minSdk 23 required by another_telephony (SMS inbox read).
-        minSdk = maxOf(23, flutter.minSdkVersion)
+        minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
