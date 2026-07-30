@@ -30,4 +30,13 @@ class Transaction extends HiveObject {
   /// records; null for manually added transactions. Keeps SMS import idempotent.
   @HiveField(7)
   String? smsId;
+
+  /// The verbatim SMS this record was parsed from, kept so the original text
+  /// can be shown next to the transaction. Null for manual entries, and for
+  /// SMS records imported before this field existed.
+  @HiveField(8)
+  String? smsBody;
+
+  /// True when this record came from the SMS importer rather than the form.
+  bool get isAutoImported => smsId != null;
 }
