@@ -22,6 +22,8 @@ Transaction _txn({
 }
 
 void main() {
+  _dayWeekGroupingTests();
+
   const build = BuildTransactionHierarchy();
 
   group('BuildTransactionHierarchy', () {
@@ -63,12 +65,13 @@ void main() {
       expect(nodes.single.name, kUncategorizedBucket);
     });
 
-    test('formats a month bucket with DateFormat.yMMMM()', () {
+    test('formats a month bucket with a three-letter month', () {
       final txns = [_txn(amount: 10, date: DateTime(2026, 7, 15))];
 
       final nodes = build(txns, [GroupingOption.month]);
 
-      expect(nodes.single.name, 'July 2026');
+      expect(nodes.single.name, 'Jul 2026');
+      expect(nodes.single.name, isNot(contains('July')));
     });
 
     test('sorts sibling nodes by descending total', () {
@@ -84,6 +87,65 @@ void main() {
         nodes.map((n) => n.name).toList(),
         ['Big', 'Mid', 'Small'],
       );
+    });
+  });
+}
+
+void _dayWeekGroupingTests() {
+  Transaction txn(DateTime date, {double amount = 10}) => Transaction()
+    ..amount = amount
+    ..date = date
+    ..tags = <String>[]
+    ..group = <String>[]
+    ..party = 'x'
+    ..isCredit = false;
+
+  const build = BuildTransactionHierarchy();
+
+  group('day and week grouping', () {
+    test('day buckets by calendar date', () {
+      final nodes = build([
+        txn(DateTime(2026, 7, 15, 9)),
+        txn(DateTime(2026, 7, 15, 22)),
+        txn(DateTime(2026, 7, 16, 1)),
+      ], [GroupingOption.day]);
+
+      expect(nodes, hasLength(2));
+      expect(
+        nodes.map((n) => n.name),
+        containsAll(<String>['15 Jul 2026', '16 Jul 2026']),
+      );
+      final fifteenth = nodes.firstWhere((n) => n.name == '15 Jul 2026');
+      expect(fifteenth.transactionCount, 2);
+    });
+
+    test('week buckets Monday..Sunday and matches the preset boundary', () {
+      // 13 Jul 2026 is a Monday; 19 Jul is that Sunday, 20 Jul the next Monday.
+      final nodes = build([
+        txn(DateTime(2026, 7, 13)),
+        txn(DateTime(2026, 7, 19, 23)),
+        txn(DateTime(2026, 7, 20)),
+      ], [GroupingOption.week]);
+
+      expect(nodes, hasLength(2));
+      final firstWeek = nodes.firstWhere((n) => n.name.contains('19 Jul'));
+      expect(firstWeek.transactionCount, 2,
+          reason: 'Mon 13th and Sun 19th belong to the same week');
+      expect(firstWeek.name, '13 – 19 Jul 2026');
+    });
+
+    test('week label spells out the month when it straddles two', () {
+      final nodes = build(
+        [txn(DateTime(2026, 7, 30))],
+        [GroupingOption.week],
+      );
+      // Mon 27 Jul .. Sun 2 Aug
+      expect(nodes.single.name, '27 Jul – 2 Aug 2026');
+    });
+
+    test('day and week are offered as grouping options', () {
+      expect(GroupingOption.values.map((o) => o.displayName),
+          containsAll(<String>['Day', 'Week', 'Month']));
     });
   });
 }
