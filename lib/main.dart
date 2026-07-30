@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fynans/entities/transaction.dart';
@@ -6,17 +7,23 @@ import 'package:fynans/ui/main_screen.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/data/hive_transaction_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
+import 'package:fynans/ui/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(TransactionAdapter());
   await Hive.openBox<Transaction>('transactions');
+
+  // One-time upgrade path: drop auto-imported rows stamped with the old,
+  // non-reproducible smsId scheme. Without this the sweep below cannot match
+  // them and would import every message a second time.
+  await HiveTransactionRepository().purgeLegacySmsRecords();
+
   runApp(const MyApp());
-  // After the UI is up, sweep the inbox for bank-transaction SMS. Importing
-  // them is the app's core purpose, so we always sweep on launch (de-dupe keeps
-  // it idempotent). On a fresh install this imports the full history so the
-  // dashboard's inflow/outflow is populated from the first run.
+  // After the UI is up, sweep the inbox for bank-transaction SMS. De-dupe on
+  // the raw-SMS id keeps this idempotent, so re-running on every launch never
+  // creates duplicates; each imported record also keeps its original SMS text.
   SmsIntakeService.catchUp();
 }
 
@@ -32,41 +39,12 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Fynans',
         debugShowCheckedModeBanner: false,
-        supportedLocales: const [Locale('en')],
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blueGrey,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          cardTheme: CardThemeData(
-            elevation: 2,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            clipBehavior: Clip.antiAlias,
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
+        // en_IN gives the date pickers DD/MM/YYYY input and Indian digit
+        // grouping, matching the ₹ formatting used throughout.
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        supportedLocales: const [Locale('en', 'IN'), Locale('en')],
+        locale: const Locale('en', 'IN'),
+        theme: AppTheme.light(),
         home: const MainScreen(),
       ),
     );

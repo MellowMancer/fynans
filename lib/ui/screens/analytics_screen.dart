@@ -5,11 +5,23 @@ import 'package:fynans/adapters/blocs/analytics/analytics_cubit.dart';
 import 'package:fynans/adapters/blocs/analytics/analytics_state.dart';
 import 'package:fynans/entities/monthly_analytics.dart';
 import 'package:fynans/ports/transaction_repository.dart';
-import 'package:fynans/use_cases/get_monthly_analytics.dart';
+import 'package:fynans/ui/theme/app_colors.dart';
+import 'package:fynans/ui/theme/app_spacing.dart';
+import 'package:fynans/ui/theme/app_typography.dart';
+import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/utils/tag_helper.dart';
-import 'package:intl/intl.dart';
+import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/ui/widgets/month_year_wheel_picker.dart';
+import 'package:fynans/use_cases/get_monthly_analytics.dart';
 
+/// Every Nth day gets an axis label on the daily chart.
+const int _kAxisLabelInterval = 5;
+const double _kChartHeight = 190;
+const double _kPieDiameter = 148;
+
+/// Axis with no labels — used for three of the bar chart's four sides.
+const AxisTitles _hiddenAxis =
+    AxisTitles(sideTitles: SideTitles(showTitles: false));
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -33,7 +45,11 @@ class _AnalyticsView extends StatefulWidget {
 }
 
 class _AnalyticsViewState extends State<_AnalyticsView> {
-  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
 
   @override
   void initState() {
@@ -41,265 +57,314 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
     context.read<AnalyticsCubit>().loadAnalytics(_selectedMonth);
   }
 
-  void _selectMonth() async {
+  Future<void> _selectMonth() async {
     final now = DateTime.now();
-    final firstDate = DateTime(now.year - 5, now.month);
-    final pickedDate = await MonthYearWheelPicker.show(
+    final picked = await MonthYearWheelPicker.show(
       context: context,
       initialDate: _selectedMonth,
-      firstDate: firstDate,
+      firstDate: DateTime(now.year - 5, now.month),
       lastDate: now,
     );
+    if (picked == null || !mounted) return;
 
-    if (!mounted) return;
-
-    if (pickedDate != null) {
-      setState(() {
-        _selectedMonth = DateTime(pickedDate.year, pickedDate.month, 1);
-      });
-      context.read<AnalyticsCubit>().loadAnalytics(_selectedMonth);
-    }
+    setState(() => _selectedMonth = DateTime(picked.year, picked.month, 1));
+    context.read<AnalyticsCubit>().loadAnalytics(_selectedMonth);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: TextButton.icon(
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    label: Text(
-                      DateFormat.yMMMM().format(_selectedMonth),
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                    ),
-                    onPressed: _selectMonth,
-                  ),
-                ),
-              ],
-            ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.gutter,
+            AppSpacing.sm,
+            AppSpacing.gutter,
+            AppSpacing.md,
           ),
-          Expanded(
-            child: BlocBuilder<AnalyticsCubit, AnalyticsState>(
-              builder: (context, state) {
-                if (state is AnalyticsLoadFailure) {
-                  return Center(child: Text('Error: ${state.error}'));
-                }
-                if (state is! AnalyticsLoadSuccess) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (state.analytics.totalOutflow == 0) {
-                  return const Center(child: Text('No data for this month.'));
-                }
-
-                final analytics = state.analytics;
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildInOutFlowCards(analytics),
-                      const SizedBox(height: 24),
-                      _buildDailySpendingChart(context, analytics),
-                      const SizedBox(height: 24),
-                      _buildSpendingByTagChart(context, analytics),
-                    ],
-                  ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const AppSectionLabel('Reporting on'),
+                    AppSpacing.gapXxs,
+                    Text(
+                      Fmt.monthYear(_selectedMonth),
+                      style: AppTypography.h2,
+                    ),
+                  ],
+                ),
+              ),
+              AppButton(
+                label: 'Change',
+                icon: Icons.calendar_today_outlined,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: _selectMonth,
+              ),
+            ],
+          ),
+        ),
+        const Divider(),
+        Expanded(
+          child: BlocBuilder<AnalyticsCubit, AnalyticsState>(
+            builder: (context, state) {
+              if (state is AnalyticsLoadFailure) {
+                return AppErrorView(
+                  title: 'Could not load analytics',
+                  message: state.error,
                 );
-              },
+              }
+              if (state is! AnalyticsLoadSuccess) return const AppLoading();
+
+              final analytics = state.analytics;
+              if (analytics.totalOutflow == 0 && analytics.totalInflow == 0) {
+                return const AppEmptyState(
+                  icon: Icons.insights_outlined,
+                  title: 'Nothing to chart yet',
+                  message: 'Add or import transactions for this month to see '
+                      'the breakdown.',
+                );
+              }
+
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.gutter,
+                  AppSpacing.lg,
+                  AppSpacing.gutter,
+                  AppSpacing.xxxl,
+                ),
+                children: [
+                  _FlowSummary(analytics: analytics),
+                  AppSpacing.gapLg,
+                  _DailySpendingCard(
+                    analytics: analytics,
+                    month: _selectedMonth,
+                  ),
+                  AppSpacing.gapLg,
+                  _SpendingByTagCard(analytics: analytics),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FlowSummary extends StatelessWidget {
+  const _FlowSummary({required this.analytics});
+
+  final MonthlyAnalytics analytics;
+
+  @override
+  Widget build(BuildContext context) {
+    final net = analytics.totalInflow - analytics.totalOutflow;
+
+    return AppCard(
+      label: 'This month',
+      title: 'Cash flow',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: AppMetricTile(
+                  label: 'Inflow',
+                  amount: analytics.totalInflow,
+                  tone: MoneyTone.positive,
+                  icon: Icons.south_west_rounded,
+                ),
+              ),
+              AppSpacing.hGapSm,
+              Expanded(
+                child: AppMetricTile(
+                  label: 'Outflow',
+                  amount: analytics.totalOutflow,
+                  tone: MoneyTone.negative,
+                  icon: Icons.north_east_rounded,
+                ),
+              ),
+            ],
+          ),
+          AppSpacing.gapMd,
+          AppKeyValue(
+            label: 'Net position',
+            inline: true,
+            valueWidget: MoneyText(
+              net,
+              tone: net < 0 ? MoneyTone.negative : MoneyTone.positive,
+              style: AppTypography.amountSmall,
+              signed: true,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildInOutFlowCards(MonthlyAnalytics analytics) {
-    return Row(
-      children: [
-        Expanded(
-          child: Card(
-            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Text(
-                    'Inflow',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.green.shade300,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '₹${analytics.totalInflow.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade300,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Card(
-            color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Text(
-                    'Outflow',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.red.shade300,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '₹${analytics.totalOutflow.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade300,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+class _DailySpendingCard extends StatelessWidget {
+  const _DailySpendingCard({required this.analytics, required this.month});
 
-  Widget _buildDailySpendingChart(BuildContext context, MonthlyAnalytics analytics) {
-    final daysInMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
-    final barGroups = List.generate(daysInMonth, (index) {
-      final day = index + 1;
-      final spending = analytics.dailySpending[day] ?? 0;
-      return BarChartGroupData(
-        x: day,
-        barRods: [
-          BarChartRodData(
-            toY: spending,
-            color: Theme.of(context).colorScheme.primary,
-            width: 6,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-          ),
-        ],
-      );
-    });
+  final MonthlyAnalytics analytics;
+  final DateTime month;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Daily Spending', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 200,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              barGroups: barGroups,
-              titlesData: FlTitlesData(
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 30,
-                    getTitlesWidget: (value, meta) {
-                      if (value.toInt() % 5 == 0 || value.toInt() == 1 || value.toInt() == daysInMonth) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(value.toInt().toString(), style: const TextStyle(fontSize: 10)),
-                        );
-                      }
-                      return const Text('');
-                    },
-                  ),
+  @override
+  Widget build(BuildContext context) {
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+
+    return AppCard(
+      label: 'Outflow by day',
+      title: 'Daily spending',
+      child: SizedBox(
+        height: _kChartHeight,
+        child: BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            barGroups: [
+              for (var day = 1; day <= daysInMonth; day++)
+                BarChartGroupData(
+                  x: day,
+                  barRods: [
+                    BarChartRodData(
+                      toY: analytics.dailySpending[day] ?? 0,
+                      color: AppColors.accent,
+                      width: 5,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(3),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              borderData: FlBorderData(show: false),
-              gridData: const FlGridData(show: true, drawVerticalLine: false),
-              barTouchData: BarTouchData(
-                touchTooltipData: BarTouchTooltipData(
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    return BarTooltipItem(
-                      'Day ${group.x.toInt()}\n',
-                      const TextStyle(fontWeight: FontWeight.bold),
-                      children: [
-                        TextSpan(text: '₹${rod.toY.toStringAsFixed(2)}'),
-                      ],
+            ],
+            titlesData: FlTitlesData(
+              topTitles: _hiddenAxis,
+              rightTitles: _hiddenAxis,
+              leftTitles: _hiddenAxis,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 26,
+                  getTitlesWidget: (value, meta) {
+                    final day = value.toInt();
+                    final isEdge = day == 1 || day == daysInMonth;
+                    if (!isEdge && day % _kAxisLabelInterval != 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: MonoText.small('$day'),
                     );
                   },
                 ),
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSpendingByTagChart(BuildContext context, MonthlyAnalytics analytics) {
-    final slices = analytics.tagSlices;
-
-    final pieChartSections = slices.map((slice) {
-      const fontSize = 14.0;
-      const radius = 50.0;
-
-      return PieChartSectionData(
-        color: TagHelper.getColorForTag(slice.label),
-        value: slice.amount,
-        title: '${slice.percentage.toStringAsFixed(0)}%',
-        radius: radius,
-        titleStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.white),
-      );
-    }).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Spending by Tag', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            SizedBox(
-              height: 150,
-              width: 150,
-              child: PieChart(PieChartData(sections: pieChartSections, centerSpaceRadius: 40)),
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: slices.map((slice) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      children: [
-                        Container(width: 12, height: 12, color: TagHelper.getColorForTag(slice.label)),
-                        const SizedBox(width: 8),
-                        Text(slice.label[0].toUpperCase() + slice.label.substring(1)),
-                      ],
+            borderData: FlBorderData(show: false),
+            gridData: const FlGridData(show: true, drawVerticalLine: false),
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (_) => AppColors.ink,
+                // TextSpan can't go through MonoText, so the mono-is-upper-case
+                // rule is applied to the string here.
+                getTooltipItem: (group, _, rod, __) => BarTooltipItem(
+                  '${Fmt.dayMonth(DateTime(month.year, month.month, group.x.toInt())).toUpperCase()}\n',
+                  AppTypography.monoSmall.copyWith(color: AppColors.onDark),
+                  children: [
+                    TextSpan(
+                      text: Fmt.money(rod.toY),
+                      style: AppTypography.amountSmall.copyWith(
+                        color: AppColors.onDark,
+                      ),
                     ),
-                  );
-                }).toList(),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _SpendingByTagCard extends StatelessWidget {
+  const _SpendingByTagCard({required this.analytics});
+
+  final MonthlyAnalytics analytics;
+
+  @override
+  Widget build(BuildContext context) {
+    final slices = analytics.tagSlices;
+
+    if (slices.isEmpty) {
+      return const AppCard(
+        label: 'Where it went',
+        title: 'Spending by tag',
+        child: Text('No tagged spending yet.', style: AppTypography.small),
+      );
+    }
+
+    return AppCard(
+      label: 'Where it went',
+      title: 'Spending by tag',
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            height: _kPieDiameter,
+            width: _kPieDiameter,
+            child: PieChart(
+              PieChartData(
+                centerSpaceRadius: 42,
+                sectionsSpace: 2,
+                sections: [
+                  for (final slice in slices)
+                    PieChartSectionData(
+                      color: TagHelper.getColorForTag(slice.label),
+                      value: slice.amount,
+                      title: '${slice.percentage.toStringAsFixed(0)}%',
+                      radius: 26,
+                      titleStyle: AppTypography.monoSmall.copyWith(
+                        color: AppColors.onDark,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          AppSpacing.hGapLg,
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final slice in slices)
+                  AppAmountRow(
+                    label: Fmt.capitalize(slice.label),
+                    amount: slice.amount,
+                    leading: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: TagHelper.getColorForTag(slice.label),
+                        borderRadius: AppRadius.pillAll,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

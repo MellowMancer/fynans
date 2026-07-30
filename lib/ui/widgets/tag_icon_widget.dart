@@ -1,90 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:fynans/ui/theme/app_colors.dart';
+import 'package:fynans/ui/theme/app_spacing.dart';
+import 'package:fynans/ui/theme/app_typography.dart';
 import 'package:fynans/ui/utils/tag_helper.dart';
+import 'package:fynans/ui/widgets/common/common.dart';
 
+/// Rounded-square avatar for a transaction's tags: the leading tag's glyph on
+/// a tint of its own colour, with a `+n` badge when there are more.
+///
+/// (The old version hand-built a two-tag split-circle out of nested `ClipRect`
+/// aligns and magic fractions; a single glyph reads better at list density and
+/// removes that geometry entirely.)
 class TagIconWidget extends StatelessWidget {
-  final List<String> tags;
-  final double size;
-
   const TagIconWidget({
     super.key,
     required this.tags,
-    this.size = 48.0,
+    this.size = 40.0,
   });
+
+  final List<String> tags;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
-    if (tags.isEmpty) {
-      return CircleAvatar(
-        radius: size / 2,
-        backgroundColor: Colors.grey.shade800,
-        child: Icon(Icons.label_outline, size: size * 0.6, color: Colors.white70),
-      );
-    }
-
-    if (tags.length == 1) {
-      final tag = tags.first;
-      return CircleAvatar(
-        radius: size / 2,
-        backgroundColor: TagHelper.getColorForTag(tag).withAlpha(85),
-        child: Icon(
-          TagHelper.getIconForTag(tag),
-          size: size * 0.6,
-          color: TagHelper.getColorForTag(tag),
-        ),
-      );
-    }
-
-    final tag1 = tags[0];
-    final tag2 = tags[1];
+    final hasTags = tags.isNotEmpty;
+    final color =
+        hasTags ? TagHelper.getColorForTag(tags.first) : AppColors.inkMuted;
+    final icon = hasTags
+        ? TagHelper.getIconForTag(tags.first)
+        : Icons.label_outline;
+    final overflow = tags.length - 1;
 
     return SizedBox(
       width: size,
       height: size,
-      child: ClipOval(
-        child: Stack(
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: ClipRect(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: 0.5,
-                  child: Container(
-                    width: size,
-                    height: size,
-                    color: TagHelper.getColorForTag(tag1).withAlpha(85),
-                    child: Icon(TagHelper.getIconForTag(tag1), size: size * 0.5, color: TagHelper.getColorForTag(tag1)),
-                  ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: AppRadius.mdAll,
+            ),
+            child: Icon(icon, size: size * 0.5, color: color),
+          ),
+          if (overflow > 0)
+            Positioned(
+              right: -4,
+              bottom: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs,
+                  vertical: 1,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: AppRadius.pillAll,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: MonoText(
+                  '+$overflow',
+                  style: AppTypography.monoSmall.copyWith(fontSize: 9.5),
+                  color: AppColors.inkSecondary,
                 ),
               ),
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ClipRect(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  widthFactor: 0.5,
-                  child: Container(
-                    width: size,
-                    height: size,
-                    color: TagHelper.getColorForTag(tag2).withAlpha(85),
-                    child: Icon(TagHelper.getIconForTag(tag2), size: size * 0.5, color: TagHelper.getColorForTag(tag2)),
-                  ),
-                ),
-              ),
-            ),
-            if (tags.length > 2)
-              Positioned(
-                bottom: 4,
-                right: 4,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(color: Theme.of(context).cardColor, shape: BoxShape.circle, border: Border.all(color: Colors.white24, width: 1)),
-                  child: Text('+${tags.length - 2}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }

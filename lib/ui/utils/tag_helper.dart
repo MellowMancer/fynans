@@ -1,43 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:fynans/ui/theme/app_colors.dart';
 
-class TagHelper {
-  static final Map<String, IconData> _tagIcons = {
-    'food': Icons.fastfood,
-    'entertainment': Icons.movie,
-    'transport': Icons.directions_car,
-    'shopping': Icons.shopping_bag,
-    'bills': Icons.receipt_long,
-    'health': Icons.healing,
-    'travel': Icons.flight,
-    'groceries': Icons.local_grocery_store,
-    'work': Icons.work,
-    'pokemon': Icons.catching_pokemon,
-    'others': Icons.more_horiz,
+/// Icon + colour for each known tag.
+///
+/// Icon and colour are defined together so the two can never drift apart, and
+/// the hues come from [AppColors.categorical] so tags sit inside the app's
+/// warm palette instead of using saturated stock Material colours.
+class _TagStyle {
+  const _TagStyle(this.icon, this.color);
+
+  final IconData icon;
+  final Color color;
+}
+
+abstract final class TagHelper {
+  static final Map<String, _TagStyle> _styles = <String, _TagStyle>{
+    'food': _TagStyle(Icons.restaurant, AppColors.categorical[0]),
+    'groceries': _TagStyle(Icons.local_grocery_store, AppColors.categorical[1]),
+    'transport': _TagStyle(Icons.directions_bus_filled, AppColors.categorical[2]),
+    'shopping': _TagStyle(Icons.shopping_bag, AppColors.categorical[3]),
+    'bills': _TagStyle(Icons.receipt_long, AppColors.categorical[4]),
+    'health': _TagStyle(Icons.favorite_border, AppColors.danger),
+    'travel': _TagStyle(Icons.flight_takeoff, AppColors.categorical[5]),
+    'entertainment': _TagStyle(Icons.local_activity, AppColors.categorical[6]),
+    'work': _TagStyle(Icons.work_outline, AppColors.categorical[7]),
+    'others': _TagStyle(Icons.more_horiz, AppColors.inkMuted),
   };
 
-  static final Map<String, Color> _tagColors = {
-    'food': Colors.orange,
-    'entertainment': Colors.purple,
-    'transport': Colors.blue,
-    'shopping': Colors.pink,
-    'bills': Colors.red,
-    'health': Colors.green,
-    'travel': Colors.teal,
-    'groceries': Colors.lightGreen,
-    'work': Colors.indigo,
-    'pokemon': Colors.yellow,
-    'others': Colors.blueGrey,
-  };
+  static const IconData _fallbackIcon = Icons.label_outline;
 
-  static List<String> getAllTags() {
-    return _tagIcons.keys.toList()..sort();
-  }
+  /// Every tag the picker offers, alphabetically.
+  static List<String> getAllTags() => _styles.keys.toList()..sort();
 
-  static IconData getIconForTag(String tag) {
-    return _tagIcons[tag.toLowerCase().trim()] ?? Icons.label_outline;
-  }
+  static IconData getIconForTag(String tag) =>
+      _styles[_normalize(tag)]?.icon ?? _fallbackIcon;
 
-  static Color getColorForTag(String tag) {
-    return _tagColors[tag.toLowerCase().trim()] ?? Colors.grey;
+  static Color getColorForTag(String tag) =>
+      _styles[_normalize(tag)]?.color ?? _fallbackColor(tag);
+
+  static String _normalize(String tag) => tag.toLowerCase().trim();
+
+  /// Unknown tags still get a stable colour from the palette rather than a
+  /// flat grey, so user-created tags remain distinguishable.
+  static Color _fallbackColor(String tag) {
+    final key = _normalize(tag);
+    if (key.isEmpty) return AppColors.inkMuted;
+    final index = key.codeUnits.fold<int>(0, (sum, c) => sum + c) %
+        AppColors.categorical.length;
+    return AppColors.categorical[index];
   }
 }

@@ -1,9 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:fynans/ui/theme/app_colors.dart';
+import 'package:fynans/ui/theme/app_spacing.dart';
+import 'package:fynans/ui/theme/app_typography.dart';
+import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:intl/intl.dart';
 import 'package:wheel_picker/wheel_picker.dart';
 
+/// Wheel sizing. Named so the geometry isn't a scatter of magic numbers.
+const double _kItemFontSize = 20;
+const double _kItemHeight = 1.6;
+const double _kWheelHeight = 190;
+const double _kSelectionBarHeight = 36;
+
+/// Month + year wheel, shown as a bottom sheet via [show].
 class MonthYearWheelPicker extends StatefulWidget {
-  const MonthYearWheelPicker({super.key, required this.initialDate, required this.firstDate, required this.lastDate, required this.onChanged});
+  const MonthYearWheelPicker({
+    super.key,
+    required this.initialDate,
+    required this.firstDate,
+    required this.lastDate,
+    required this.onChanged,
+  });
 
   final DateTime initialDate;
   final DateTime firstDate;
@@ -13,160 +30,170 @@ class MonthYearWheelPicker extends StatefulWidget {
   @override
   State<MonthYearWheelPicker> createState() => MonthYearWheelPickerState();
 
-  /// Shows a modal bottom sheet with the MonthYearWheelPicker.
+  /// Opens the picker and resolves to the chosen month, or null if dismissed.
   static Future<DateTime?> show({
     required BuildContext context,
     required DateTime initialDate,
     required DateTime firstDate,
     required DateTime lastDate,
   }) {
-    // This variable will be updated by the picker's onChanged callback.
-    DateTime selectedDate = initialDate;
+    var selectedDate = initialDate;
 
     return showModalBottomSheet<DateTime>(
       context: context,
-      builder: (BuildContext context) {
-        return SizedBox(
-          height: 300,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            0,
+            AppSpacing.xl,
+            AppSpacing.xl,
+          ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context, selectedDate),
-                  child: const Text('Done'),
-                ),
-              ),
-              Expanded(
+              const AppSectionLabel('Jump to'),
+              AppSpacing.gapXs,
+              Text('Pick a month', style: AppTypography.h2),
+              AppSpacing.gapLg,
+              SizedBox(
+                height: _kWheelHeight,
                 child: MonthYearWheelPicker(
                   initialDate: initialDate,
                   firstDate: firstDate,
                   lastDate: lastDate,
-                  onChanged: (newDate) => selectedDate = newDate,
+                  onChanged: (date) => selectedDate = date,
                 ),
+              ),
+              AppSpacing.gapLg,
+              AppButton(
+                label: 'Done',
+                variant: AppButtonVariant.dark,
+                expand: true,
+                onPressed: () => Navigator.pop(context, selectedDate),
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-class MonthYearWheelPickerState extends State<MonthYearWheelPicker>{
+class MonthYearWheelPickerState extends State<MonthYearWheelPicker> {
+  static const TextStyle _itemStyle = TextStyle(
+    fontFamily: AppTypography.mono,
+    fontSize: _kItemFontSize,
+    height: _kItemHeight,
+    color: AppColors.ink,
+  );
+
+  static final WheelPickerStyle _wheelStyle = WheelPickerStyle(
+    itemExtent: _kItemFontSize * _kItemHeight,
+    squeeze: 1.15,
+    diameterRatio: 1.1,
+    surroundingOpacity: .3,
+    magnification: 1.15,
+  );
+
+  /// SHORTMONTHS, not MONTHS — three-letter labels (JAN, FEB) keep the wheel
+  /// legible; the full names overflowed the column.
+  static final List<String> _monthNames =
+      DateFormat().dateSymbols.SHORTMONTHS;
+
   late final _monthsWheel = WheelPickerController(
     itemCount: 12,
-    initialIndex: widget.initialDate.month - 1, 
+    initialIndex: widget.initialDate.month - 1,
   );
   late final _yearsWheel = WheelPickerController(
     itemCount: widget.lastDate.year - widget.firstDate.year + 1,
     initialIndex: widget.initialDate.year - widget.firstDate.year,
   );
 
-
-  late int _selectedMonthIndex;
-  late int _selectedYearIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedMonthIndex = widget.initialDate.month - 1;
-    _selectedYearIndex = widget.initialDate.year - widget.firstDate.year;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const textStyle = TextStyle(fontSize: 26.0, height: 1.5);
-    final wheelStyle = WheelPickerStyle(
-      itemExtent: textStyle.fontSize! * textStyle.height!, // Text height
-      squeeze: 1.25,
-      diameterRatio: .8,
-      surroundingOpacity: .25,
-      magnification: 1.2,
-    );
-
-    Widget monthItemBuilder(BuildContext context, int index) {
-      final monthNames = DateFormat.MMM().dateSymbols.MONTHS;
-      return Text(monthNames[index], style: textStyle);
-    }
-
-    Widget yearItemBuilder(BuildContext context, int index) {
-      final year = widget.firstDate.year + index;
-      return Text('$year', style: textStyle);
-    }
-
-    return Center(
-      child: SizedBox(
-        width: 200.0,
-        height: 200.0,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            _centerBar(context),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: WheelPicker(
-                      builder: monthItemBuilder,
-                      controller: _monthsWheel,
-                      looping: false,
-                      style: wheelStyle,
-                      selectedIndexColor: Theme.of(context).colorScheme.primary,
-                      onIndexChanged: (index, _) {
-                        _selectedMonthIndex = index;
-                        _onDateChanged();
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: WheelPicker(
-                      builder: yearItemBuilder,
-                      controller: _yearsWheel,
-                      looping: false,
-                      style: wheelStyle,
-                      selectedIndexColor: Theme.of(context).colorScheme.primary,
-                      onIndexChanged: (index, _) {
-                        _selectedYearIndex = index;
-                        _onDateChanged();
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-    )
-    );
-  }
-
-  void _onDateChanged() {
-    final selectedMonth = _selectedMonthIndex + 1; // Convert 0-indexed to 1-indexed month
-    final selectedYear = widget.firstDate.year + _selectedYearIndex;
-    final newDate = DateTime(selectedYear, selectedMonth, 1);
-    widget.onChanged(newDate);
-  }
+  late int _monthIndex = widget.initialDate.month - 1;
+  late int _yearIndex = widget.initialDate.year - widget.firstDate.year;
 
   @override
   void dispose() {
-    // Don't forget to dispose the controllers at the end.
     _monthsWheel.dispose();
     _yearsWheel.dispose();
     super.dispose();
   }
 
-  Widget _centerBar(BuildContext context) {
-    return Center(
-      child: Container(
-        height: 38.0,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-      ),
-    );
-}
+  void _emitChange() => widget.onChanged(_clamped());
 
+  /// Test hook: drive the wheels without simulating a fling, so the clamping
+  /// contract can be asserted directly.
+  @visibleForTesting
+  void debugSelect({int? monthIndex, int? yearIndex}) {
+    if (monthIndex != null) _monthIndex = monthIndex;
+    if (yearIndex != null) _yearIndex = yearIndex;
+    _emitChange();
+  }
+
+  /// The wheels offer all 12 months for every year, so a selection can fall
+  /// outside the caller's declared bounds (e.g. a future month). Clamp it so
+  /// callers only ever receive a month they said they accept.
+  DateTime _clamped() {
+    final picked = DateTime(widget.firstDate.year + _yearIndex, _monthIndex + 1, 1);
+    final first = DateTime(widget.firstDate.year, widget.firstDate.month, 1);
+    final last = DateTime(widget.lastDate.year, widget.lastDate.month, 1);
+    if (picked.isBefore(first)) return first;
+    if (picked.isAfter(last)) return last;
+    return picked;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Center(
+          child: Container(
+            height: _kSelectionBarHeight,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAccent,
+              borderRadius: AppRadius.mdAll,
+            ),
+          ),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: WheelPicker(
+                controller: _monthsWheel,
+                looping: false,
+                style: _wheelStyle,
+                selectedIndexColor: AppColors.accent,
+                onIndexChanged: (index, _) {
+                  _monthIndex = index;
+                  _emitChange();
+                },
+                builder: (context, index) =>
+                    MonoText(_monthNames[index], style: _itemStyle),
+              ),
+            ),
+            Expanded(
+              child: WheelPicker(
+                controller: _yearsWheel,
+                looping: false,
+                style: _wheelStyle,
+                selectedIndexColor: AppColors.accent,
+                onIndexChanged: (index, _) {
+                  _yearIndex = index;
+                  _emitChange();
+                },
+                builder: (context, index) => MonoText(
+                  '${widget.firstDate.year + index}',
+                  style: _itemStyle,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
