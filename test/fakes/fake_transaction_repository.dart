@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
+import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ports/transaction_repository.dart';
@@ -6,20 +9,31 @@ import 'package:fynans/ports/transaction_repository.dart';
 class FakeTransactionRepository implements TransactionRepository {
   final List<Transaction> _transactions = [];
 
+  /// Fires whenever the stored set changes, so `listenToTransactionsInRange`
+  /// behaves like the real repository: a live stream, not a one-shot yield.
+  final StreamController<void> _changes = StreamController<void>.broadcast();
+
+  /// Call from tests that need the controller torn down.
+  Future<void> dispose() => _changes.close();
+
   /// Replaces all stored transactions with the given list.
   void seed(List<Transaction> transactions) {
-    _transactions.clear();
-    _transactions.addAll(transactions);
+    _transactions
+      ..clear()
+      ..addAll(transactions);
+    _notify();
   }
 
   @override
   Future<void> saveTransaction(Transaction transaction) async {
     _transactions.add(transaction);
+    _notify();
   }
 
   @override
   Future<void> deleteTransaction(Transaction transaction) async {
     _transactions.remove(transaction);
+    _notify();
   }
 
   @override
@@ -28,45 +42,69 @@ class FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
-  Stream<List<Transaction>> listenToTransactionsForMonth({
-    required DateTime month,
+  Stream<List<Transaction>> listenToTransactionsInRange({
+    required DateRange range,
     TransactionFilter? filter,
-  }) async* {
-    yield await fetchTransactionsForMonth(month: month, filter: filter);
+  }) {
+    late final StreamController<List<Transaction>> controller;
+    StreamSubscription<void>? watcher;
+
+    Future<void> emit() async => controller.add(
+          await fetchTransactionsInRange(range: range, filter: filter),
+        );
+
+    controller = StreamController<List<Transaction>>(
+      onListen: () {
+        emit();
+        watcher = _changes.stream.listen((_) => emit());
+      },
+      onCancel: () async {
+        await watcher?.cancel();
+        watcher = null;
+      },
+    );
+    return controller.stream;
   }
 
   @override
-  Future<List<Transaction>> fetchTransactionsForMonth({
-    required DateTime month,
+  Future<List<Transaction>> fetchTransactionsInRange({
+    required DateRange range,
     TransactionFilter? filter,
   }) async {
-    final start = DateTime(month.year, month.month, 1);
-    final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59, 999, 999);
     return _transactions
-        .where((t) => !t.date.isBefore(start) && !t.date.isAfter(end))
+        .where((t) => range.contains(t.date))
         .where((t) => filter == null || filter.matches(t))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
   @override
-  Future<List<String>> getAllGroups() async => _transactions
-      .expand((t) => t.group)
-      .where((g) => g.trim().isNotEmpty)
-      .toSet()
-      .toList();
+  Future<int> purgeLegacySmsRecords() async {
+    final stale = _transactions
+        .where((t) => t.smsId != null && !isCurrentSmsIdFormat(t.smsId!))
+        .toList();
+    _transactions.removeWhere(stale.contains);
+    return stale.length;
+  }
 
   @override
-  Future<List<String>> getAllUniqueTags() async => _transactions
-      .expand((t) => t.tags)
-      .where((t) => t.trim().isNotEmpty)
-      .toSet()
-      .toList();
+  Future<List<String>> getAllGroups() async => _distinct((t) => t.group);
 
   @override
-  Future<List<String>> getAllParties() async => _transactions
-      .map((t) => t.party.trim())
-      .where((p) => p.isNotEmpty)
-      .toSet()
-      .toList();
+  Future<List<String>> getAllUniqueTags() async => _distinct((t) => t.tags);
+
+  @override
+  Future<List<String>> getAllParties() async => _distinct((t) => [t.party]);
+
+  List<String> _distinct(Iterable<String> Function(Transaction) select) =>
+      _transactions
+          .expand(select)
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toSet()
+          .toList();
+
+  void _notify() {
+    if (!_changes.isClosed) _changes.add(null);
+  }
 }

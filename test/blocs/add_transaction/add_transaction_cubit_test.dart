@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_state.dart';
 import 'package:fynans/entities/transaction.dart';
@@ -47,7 +48,7 @@ void main() {
       await expectation;
 
       final saved =
-          await repo.fetchTransactionsForMonth(month: DateTime(2026, 7));
+          await repo.fetchTransactionsInRange(range: DateRange.month(DateTime(2026, 7)));
       expect(saved, hasLength(1));
       final t = saved.single;
       expect(t.amount, 120.50);
@@ -100,7 +101,7 @@ void main() {
       await expectation;
 
       final saved =
-          await repo.fetchTransactionsForMonth(month: DateTime(2026, 7));
+          await repo.fetchTransactionsInRange(range: DateRange.month(DateTime(2026, 7)));
       expect(saved, isEmpty);
     });
 
@@ -119,7 +120,7 @@ void main() {
       );
 
       final saved =
-          await repo.fetchTransactionsForMonth(month: DateTime(2026, 7));
+          await repo.fetchTransactionsInRange(range: DateRange.month(DateTime(2026, 7)));
       expect(saved.single.party, 'Me');
       expect(saved.single.isCredit, isTrue);
     });
