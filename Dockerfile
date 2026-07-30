@@ -4,7 +4,7 @@ FROM ubuntu:focal
 ENV ANDROID_SDK_ROOT=/usr/lib/android-sdk
 
 ENV FLUTTER_SDK_ROOT=/usr/lib/flutter
-ENV FLUTTER_SDK_VERSION=3.32.7-stable
+ENV FLUTTER_SDK_VERSION=3.44.0-stable
 
 # Include flutter and android tools in path
 ENV PATH="${PATH}:${FLUTTER_SDK_ROOT}/bin:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools"
@@ -20,9 +20,8 @@ RUN apt-get update && apt-get upgrade -y && \
     gnupg \
     software-properties-common \
     wget \
-    android-sdk \
     curl \
-    git-all \
+    git \
     lib32z1 \
     libbz2-1.0:amd64 \
     libc6:amd64 \
@@ -34,7 +33,8 @@ RUN apt-get update && apt-get upgrade -y && \
     xz-utils \
     zip
 
-RUN apt-get update && apt-get install -y ca-certificates gpg wget gnupg software-properties-common && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates gpg wget gnupg \
+software-properties-common && rm -rf /var/lib/apt/lists/*
 
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor > /usr/share/keyrings/kitware-archive-keyring.gpg
 
@@ -44,22 +44,19 @@ RUN apt-get update && apt-get install -y cmake clang ninja-build pkg-config && r
 
 
 # Add flutter to safe directory in git
-RUN git config --global --add safe.directory /usr/lib/flutter
+RUN git config --system --add safe.directory /usr/lib/flutter
 
-# Configure git user name and email
-RUN git config --global user.name "MellowMancer" \
-    && git config --global user.email "wyatharth@gmail.com"
 
 # Download and install Android Command Line Tools
 RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
-    wget -O commandlinetools.zip "https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip" && \
+    wget -O commandlinetools.zip "https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip" && \
     unzip commandlinetools.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools && \
     mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
     rm commandlinetools.zip
 
 # Accept Android SDK licenses and install necessary components
 RUN yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses && \
-    ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;33.0.0"
+    ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
 # Insall Flutter SDK
 RUN mkdir -p ${FLUTTER_SDK_ROOT} && \
