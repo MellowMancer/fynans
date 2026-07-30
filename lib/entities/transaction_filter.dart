@@ -1,65 +1,136 @@
 import 'package:meta/meta.dart';
 import 'package:fynans/entities/transaction.dart';
 
+/// Which direction of money movement to keep.
+enum DirectionFilter {
+  any('All'),
+  inflow('Inflow'),
+  outflow('Outflow');
+
+  const DirectionFilter(this.label);
+
+  final String label;
+
+  bool get isAny => this == DirectionFilter.any;
+}
+
 /// Immutable value object encapsulating all predicate logic for filtering
-/// a [Transaction]. Pass null to any service method for "match all".
+/// a [Transaction]. Pass null to any repository method for "match all".
 @immutable
 class TransactionFilter {
-  final String? group;
-  final String? tag;
-  final String? party;
+  /// Selected values per dimension. Within a dimension the match is OR (any
+  /// selected value), across dimensions it is AND. Empty means "no constraint".
+  final Set<String> groups;
+  final Set<String> tags;
+  final Set<String> parties;
+
+  /// Inflow only, outflow only, or both.
+  final DirectionFilter direction;
+
+  /// Inclusive bounds on the (always positive) transaction amount.
+  final double? minAmount;
+  final double? maxAmount;
 
   const TransactionFilter({
-    this.group,
-    this.tag,
-    this.party,
+    this.groups = const {},
+    this.tags = const {},
+    this.parties = const {},
+    this.direction = DirectionFilter.any,
+    this.minAmount,
+    this.maxAmount,
   });
 
-  const TransactionFilter.empty()
-      : group = null,
-        tag = null,
-        party = null;
+  const TransactionFilter.empty() : this();
 
-  bool get isEmpty => group == null && tag == null && party == null;
+  bool get isEmpty =>
+      groups.isEmpty &&
+      tags.isEmpty &&
+      parties.isEmpty &&
+      direction.isAny &&
+      minAmount == null &&
+      maxAmount == null;
+
+  /// How many criteria are active — drives the badge on the filter button.
+  int get activeCount =>
+      groups.length +
+      tags.length +
+      parties.length +
+      (direction.isAny ? 0 : 1) +
+      (minAmount != null || maxAmount != null ? 1 : 0);
 
   /// Single source of truth: does [t] satisfy every active criterion?
   bool matches(Transaction t) {
-    if (group != null &&
-        !t.group.any((g) => g.trim().toLowerCase() == group!.toLowerCase())) {
-      return false;
+    if (!_matchesAny(groups, t.group)) return false;
+    if (!_matchesAny(tags, t.tags)) return false;
+    if (!_matchesAny(parties, [t.party])) return false;
+    switch (direction) {
+      case DirectionFilter.inflow:
+        if (!t.isCredit) return false;
+      case DirectionFilter.outflow:
+        if (t.isCredit) return false;
+      case DirectionFilter.any:
+        break;
     }
-    if (tag != null &&
-        !t.tags.any((tg) => tg.trim().toLowerCase() == tag!.toLowerCase())) {
-      return false;
-    }
-    if (party != null &&
-        t.party.trim().toLowerCase() != party!.toLowerCase()) {
-      return false;
-    }
+    if (minAmount != null && t.amount < minAmount!) return false;
+    if (maxAmount != null && t.amount > maxAmount!) return false;
     return true;
   }
 
+  /// Pass an empty set to clear a dimension; omit it to leave it unchanged.
   TransactionFilter copyWith({
-    Object? group = _sentinel,
-    Object? tag = _sentinel,
-    Object? party = _sentinel,
+    Set<String>? groups,
+    Set<String>? tags,
+    Set<String>? parties,
+    DirectionFilter? direction,
+    Object? minAmount = _sentinel,
+    Object? maxAmount = _sentinel,
   }) {
     return TransactionFilter(
-      group: group == _sentinel ? this.group : group as String?,
-      tag: tag == _sentinel ? this.tag : tag as String?,
-      party: party == _sentinel ? this.party : party as String?,
+      groups: groups ?? this.groups,
+      tags: tags ?? this.tags,
+      parties: parties ?? this.parties,
+      direction: direction ?? this.direction,
+      minAmount:
+          minAmount == _sentinel ? this.minAmount : minAmount as double?,
+      maxAmount:
+          maxAmount == _sentinel ? this.maxAmount : maxAmount as double?,
     );
   }
+
+  /// True when [selected] is unconstrained, or any of [values] is in it
+  /// (case-insensitively).
+  static bool _matchesAny(Set<String> selected, Iterable<String> values) {
+    if (selected.isEmpty) return true;
+    final lowered = values.map((v) => v.trim().toLowerCase()).toSet();
+    return selected.any((s) => lowered.contains(s.trim().toLowerCase()));
+  }
+
+  static bool _sameSet(Set<String> a, Set<String> b) =>
+      a.length == b.length && a.containsAll(b);
+
+  /// Order-independent hash for a set of values.
+  static int _setHash(Set<String> values) =>
+      Object.hashAllUnordered(values);
 
   @override
   bool operator ==(Object other) =>
       other is TransactionFilter &&
-      other.group == group &&
-      other.tag == tag &&
-      other.party == party;
+      _sameSet(other.groups, groups) &&
+      _sameSet(other.tags, tags) &&
+      _sameSet(other.parties, parties) &&
+      other.direction == direction &&
+      other.minAmount == minAmount &&
+      other.maxAmount == maxAmount;
 
   @override
-  int get hashCode => Object.hash(group, tag, party);
+  int get hashCode => Object.hash(
+        _setHash(groups),
+        _setHash(tags),
+        _setHash(parties),
+        direction,
+        minAmount,
+        maxAmount,
+      );
 }
 
 const _sentinel = Object();

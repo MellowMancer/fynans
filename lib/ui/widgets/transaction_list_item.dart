@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/ui/theme/app_colors.dart';
+import 'package:fynans/ui/theme/app_spacing.dart';
+import 'package:fynans/ui/theme/app_typography.dart';
+import 'package:fynans/ui/utils/formatters.dart';
+import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/ui/widgets/tag_icon_widget.dart';
-import 'package:intl/intl.dart';
 
+/// A single transaction row. Tapping expands the metadata, which is rendered
+/// with the shared [AppKeyValue] so it matches every other labelled field in
+/// the app.
 class TransactionListItem extends StatefulWidget {
-  const TransactionListItem({super.key, required this.transaction});
+  const TransactionListItem({
+    super.key,
+    required this.transaction,
+    this.margin,
+  });
 
   final Transaction transaction;
+  final EdgeInsetsGeometry? margin;
 
   @override
   State<TransactionListItem> createState() => _TransactionListItemState();
@@ -15,164 +27,195 @@ class TransactionListItem extends StatefulWidget {
 class _TransactionListItemState extends State<TransactionListItem> {
   bool _isExpanded = false;
 
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _isExpanded = !_isExpanded;
-          });
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  TagIconWidget(tags: widget.transaction.tags),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.transaction.tags.map((e) => e[0].toUpperCase() + e.substring(1)).join(', '),
-                          style: Theme.of(context).textTheme.titleMedium,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '₹${widget.transaction.amount.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    DateFormat.yMd().format(widget.transaction.date),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  AnimatedRotation(
-                    turns: _isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.fastOutSlowIn,
-                child: _isExpanded ? _buildExpandedDetails(context) : const SizedBox.shrink(),
-              )
-            ],
-          ),
-        ),
-      ),
-    );
+  Transaction get _txn => widget.transaction;
+
+  String get _title {
+    if (_txn.party.trim().isNotEmpty) return _txn.party;
+    if (_txn.tags.isNotEmpty) return Fmt.capitalizeAll(_txn.tags);
+    return 'Untagged';
   }
 
-  Widget _buildExpandedDetails(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final note = widget.transaction.note;
-    final group = widget.transaction.group;
-    final party = widget.transaction.party;
+  /// Secondary line: when the transaction happened, plus its tags.
+  String get _meta {
+    final parts = <String>[
+      Fmt.dayMonthTime(_txn.date),
+      if (_txn.tags.isNotEmpty) Fmt.capitalizeAll(_txn.tags),
+    ];
+    return parts.join('  ·  ');
+  }
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 16.0),
-      child: Column(
-        children: [
-          Divider(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+  @override
+  Widget build(BuildContext context) {
+    final tone = _txn.isCredit ? MoneyTone.positive : MoneyTone.negative;
+
+    return AppCard(
+      margin: widget.margin ??
+          const EdgeInsets.symmetric(
+            horizontal: AppSpacing.gutter,
+            vertical: AppSpacing.xs + 2,
           ),
-          const SizedBox(height: 8),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: () => setState(() => _isExpanded = !_isExpanded),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              TagIconWidget(tags: _txn.tags),
+              AppSpacing.hGapMd,
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (note != null && note.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.note_outlined,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                note,
-                                style: textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (group.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.group_work_outlined,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                group.join(', '),
-                                style: textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.person_outline,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              party,
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    Text(
+                      _title,
+                      style: AppTypography.bodyStrong,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    AppSpacing.gapXxs,
+                    // One ellipsized line rather than a Row of fixed-width
+                    // pieces — the date+time string is long enough to overflow
+                    // a Row on narrow screens.
+                    MonoText.small(
+                      _meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              AppSpacing.hGapSm,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  MoneyText(
+                    _txn.isCredit ? _txn.amount : -_txn.amount,
+                    tone: tone,
+                    style: AppTypography.amountSmall,
+                    signed: _txn.isCredit,
+                  ),
+                  AppSpacing.gapXxs,
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: AppDuration.fast,
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: AppColors.inkFaint,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
+          AnimatedSize(
+            duration: AppDuration.normal,
+            curve: Curves.fastOutSlowIn,
+            alignment: Alignment.topCenter,
+            child: _isExpanded
+                ? _ExpandedDetails(transaction: _txn)
+                : const SizedBox(width: double.infinity),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpandedDetails extends StatelessWidget {
+  const _ExpandedDetails({required this.transaction});
+
+  final Transaction transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final note = transaction.note;
+    final fields = <Widget>[
+      AppKeyValue(
+        label: 'Date',
+        value: Fmt.fullDateTime(transaction.date),
+        icon: Icons.event_outlined,
+        mono: true,
+      ),
+      AppKeyValue(
+        label: 'Direction',
+        valueWidget: AppPill(
+          transaction.isCredit ? 'Inflow' : 'Outflow',
+          tone: transaction.isCredit ? AppPillTone.success : AppPillTone.danger,
+          dense: true,
+        ),
+        icon: Icons.swap_vert_rounded,
+      ),
+      if (transaction.party.trim().isNotEmpty)
+        AppKeyValue(
+          // "Sender" for inflows, "Recipient" for outflows.
+          label: Fmt.partyLabel(isCredit: transaction.isCredit),
+          value: transaction.party,
+          icon: transaction.isCredit
+              ? Icons.call_received_rounded
+              : Icons.person_outline,
+        ),
+      if (transaction.group.isNotEmpty)
+        AppKeyValue(
+          label: 'Group',
+          valueWidget: Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: [
+              for (final g in transaction.group)
+                AppPill(Fmt.capitalize(g), tone: AppPillTone.muted, dense: true),
+            ],
+          ),
+          icon: Icons.folder_outlined,
+        ),
+      AppKeyValue(
+        label: 'Source',
+        valueWidget: AppPill(
+          transaction.isAutoImported ? 'From SMS' : 'Added manually',
+          icon: transaction.isAutoImported
+              ? Icons.sms_outlined
+              : Icons.edit_outlined,
+          tone: AppPillTone.muted,
+          dense: true,
+        ),
+        icon: Icons.input_rounded,
+      ),
+    ];
+
+    final smsBody = transaction.smsBody;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Divider(),
+          AppSpacing.gapMd,
+          AppKeyValueGrid(children: fields),
+          if (note != null && note.trim().isNotEmpty) ...[
+            AppSpacing.gapMd,
+            AppKeyValue(
+              label: 'Note',
+              value: note,
+              icon: Icons.sticky_note_2_outlined,
+            ),
+          ],
+          // Only auto-imported records carry the SMS they were parsed from.
+          // Records imported before this field existed have a null body, so
+          // the block is skipped rather than rendered empty.
+          if (transaction.isAutoImported &&
+              smsBody != null &&
+              smsBody.trim().isNotEmpty) ...[
+            AppSpacing.gapMd,
+            AppQuoteBlock(
+              smsBody,
+              label: 'Original SMS',
+              icon: Icons.subject_rounded,
+            ),
+          ],
         ],
       ),
     );
