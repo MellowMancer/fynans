@@ -1,10 +1,12 @@
-import 'package:another_telephony/telephony.dart';
+import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import 'package:fynans/adapters/sms/inbox_sms.dart';
 
 /// Reads the SMS inbox (catch-up / dev TestSMS). Real-time monitoring lives in
 /// [SmsIntakeService]; this is the on-demand inbox query.
 class ReadSmsService {
-  final Telephony _telephony = Telephony.instance;
+  final SmsQuery _smsQuery = SmsQuery();
 
   /// Read the inbox and return every message, newest first. Does NOT advance
   /// any cursor, so it is safe to call repeatedly — used by the TestSMS
@@ -13,24 +15,30 @@ class ReadSmsService {
   ///
   /// [maxMessages] caps how many recent inbox rows are scanned as a perf guard.
   Future<List<InboxSms>> getAllSms({int maxMessages = 1000}) async {
-    final granted = await _telephony.requestSmsPermissions ?? false;
-    if (!granted) return [];
+    var permission = await Permission.sms.status;
+    if (!permission.isGranted) {
+      permission = await Permission.sms.request();
+      if (!permission.isGranted) return [];
+    }
 
-    final messages = await _telephony.getInboxSms(
-      columns: [SmsColumn.ADDRESS, SmsColumn.BODY, SmsColumn.DATE],
-      sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
+    // flutter_sms_inbox sorts inbox messages newest-first by default and has no
+    // date filter, so we fetch the most recent [maxMessages] and map them onto
+    // the package-neutral InboxSms record the rest of the app consumes.
+    final messages = await _smsQuery.querySms(
+      kinds: [SmsQueryKind.inbox],
+      count: maxMessages,
     );
 
     final result = <InboxSms>[];
     for (final m in messages) {
-      if (result.length >= maxMessages) break;
       final body = m.body;
       final address = m.address;
       if (body == null || address == null) continue;
-      final date = m.date != null
-          ? DateTime.fromMillisecondsSinceEpoch(m.date!)
-          : DateTime.now();
-      result.add(InboxSms(sender: address, body: body, date: date));
+      result.add(InboxSms(
+        sender: address,
+        body: body,
+        date: m.date ?? DateTime.now(),
+      ));
     }
     return result;
   }
