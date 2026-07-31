@@ -1,74 +1,90 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:fynans/entities/theme_preference.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ui/main_screen.dart';
+import 'package:fynans/ports/settings_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
+import 'package:fynans/adapters/blocs/theme/theme_cubit.dart';
 import 'package:fynans/adapters/data/hive_transaction_repository.dart';
+import 'package:fynans/adapters/data/shared_prefs_settings_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
+import 'package:fynans/ui/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(TransactionAdapter());
   await Hive.openBox<Transaction>('transactions');
-  runApp(const MyApp());
-  // After the UI is up, sweep the inbox for bank-transaction SMS. Importing
-  // them is the app's core purpose, so we always sweep on launch (de-dupe keeps
-  // it idempotent). On a fresh install this imports the full history so the
-  // dashboard's inflow/outflow is populated from the first run.
+
+  final settings = SharedPrefsSettingsRepository();
+  // Different stores, so these overlap rather than sum. The purge is a one-time
+  // upgrade path dropping rows stamped with the old, non-reproducible smsId
+  // scheme; the appearance choice must be read before the first frame, or it
+  // paints once in the wrong theme.
+  final (_, themePreference) = await (
+    HiveTransactionRepository().purgeLegacySmsRecords(),
+    settings.readThemePreference(),
+  ).wait;
+
+  runApp(MyApp(settings: settings, themePreference: themePreference));
+  // After the UI is up, sweep the inbox for bank-transaction SMS.
   SmsIntakeService.catchUp();
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({
+    super.key,
+    required this.settings,
+    this.themePreference = ThemePreference.system,
+  });
+
+  final SettingsRepository settings;
+  final ThemePreference themePreference;
 
   @override
   Widget build(BuildContext context) {
     // Composition root: build the one repository and expose it above the
     // Navigator so every route (including pushed screens) reads it via context.
-    return RepositoryProvider<TransactionRepository>(
-      create: (_) => HiveTransactionRepository(),
-      child: MaterialApp(
-        title: 'Fynans',
-        debugShowCheckedModeBanner: false,
-        supportedLocales: const [Locale('en')],
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blueGrey,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          cardTheme: CardThemeData(
-            elevation: 2,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            clipBehavior: Clip.antiAlias,
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<TransactionRepository>(
+          create: (_) => HiveTransactionRepository(),
+        ),
+        RepositoryProvider<SettingsRepository>.value(value: settings),
+      ],
+      // Above MaterialApp, so selecting a theme rebuilds the app itself.
+      child: BlocProvider<ThemeCubit>(
+        create: (_) => ThemeCubit(settings, initial: themePreference),
+        child: BlocBuilder<ThemeCubit, ThemePreference>(
+          builder: (context, preference) => MaterialApp(
+            title: 'Fynans',
+            debugShowCheckedModeBanner: false,
+            // en_IN gives the date pickers DD/MM/YYYY input and Indian digit
+            // grouping, matching the ₹ formatting used throughout.
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            supportedLocales: const [Locale('en', 'IN'), Locale('en')],
+            locale: const Locale('en', 'IN'),
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            // Both themes come from the same builder, so neither can drift;
+            // AppColors.lerp animates the crossfade between them.
+            themeMode: preference.themeMode,
+            home: const MainScreen(),
           ),
         ),
-        home: const MainScreen(),
       ),
     );
   }
+}
+
+/// Maps the entity onto Flutter's own enum.
+extension ThemePreferenceMode on ThemePreference {
+  ThemeMode get themeMode => switch (this) {
+        ThemePreference.system => ThemeMode.system,
+        ThemePreference.light => ThemeMode.light,
+        ThemePreference.dark => ThemeMode.dark,
+      };
 }

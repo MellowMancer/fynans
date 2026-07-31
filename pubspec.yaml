@@ -28,6 +28,8 @@ dependencies:
   meta: ^1.16.0
 
 dev_dependencies:
+  # Used by test/ui/font_assets_test.dart to read the declared font assets.
+  yaml: ^3.1.2
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
@@ -37,6 +39,20 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Iosevka (SIL OFL 1.1, see assets/fonts/Iosevka-LICENSE.md). Subset to the
+  # codepoints the app can render; the upstream faces carry ~47k glyphs each.
+  fonts:
+    - family: Iosevka
+      fonts:
+        - asset: assets/fonts/Iosevka-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Iosevka-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Iosevka-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Iosevka-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

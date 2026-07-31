@@ -1,16 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_state.dart';
 import 'package:fynans/entities/transaction.dart';
-import 'package:fynans/ports/transaction_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../fakes/fake_transaction_repository.dart';
-
-class _MockTransactionRepository extends Mock
-    implements TransactionRepository {}
+import '../fakes/mock_transaction_repository.dart';
 
 Transaction _txn({
   required double amount,
@@ -31,8 +29,7 @@ Transaction _txn({
 }
 
 /// Example test proving the testing environment: a real production cubit driven
-/// by the in-memory [FakeTransactionRepository], asserted via the stream. This
-/// is the template for the BLoC/repository tests the project is missing.
+/// by the in-memory [FakeTransactionRepository], asserted via the stream.
 void main() {
   group('TransactionCubit', () {
     late FakeTransactionRepository repo;
@@ -87,16 +84,16 @@ void main() {
   });
 
   group('TransactionCubit subscription lifecycle', () {
-    late _MockTransactionRepository repo;
+    late MockTransactionRepository repo;
 
-    setUpAll(() => registerFallbackValue(DateTime(2026)));
+    setUpAll(() => registerFallbackValue(DateRange.month(DateTime(2026))));
 
-    setUp(() => repo = _MockTransactionRepository());
+    setUp(() => repo = MockTransactionRepository());
 
     test('cancels the previous subscription when re-fetching', () async {
       final controllers = <StreamController<List<Transaction>>>[];
-      when(() => repo.listenToTransactionsForMonth(
-            month: any(named: 'month'),
+      when(() => repo.listenToTransactionsInRange(
+            range: any(named: 'range'),
           )).thenAnswer((_) {
         final controller = StreamController<List<Transaction>>();
         controllers.add(controller);
@@ -121,8 +118,8 @@ void main() {
 
     test('does not emit a success state after close', () async {
       late StreamController<List<Transaction>> controller;
-      when(() => repo.listenToTransactionsForMonth(
-            month: any(named: 'month'),
+      when(() => repo.listenToTransactionsInRange(
+            range: any(named: 'range'),
           )).thenAnswer((_) {
         controller = StreamController<List<Transaction>>();
         addTearDown(controller.close);
@@ -148,8 +145,8 @@ void main() {
     test('forwards stream errors to TransactionLoadFailure', () async {
       final controller = StreamController<List<Transaction>>();
       addTearDown(controller.close);
-      when(() => repo.listenToTransactionsForMonth(
-            month: any(named: 'month'),
+      when(() => repo.listenToTransactionsInRange(
+            range: any(named: 'range'),
           )).thenAnswer((_) => controller.stream);
 
       final cubit = TransactionCubit(repo);

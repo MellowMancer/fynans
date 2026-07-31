@@ -3,17 +3,11 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:fynans/adapters/sms/inbox_sms.dart';
 
-/// Reads the SMS inbox (catch-up / dev TestSMS). Real-time monitoring lives in
-/// [SmsIntakeService]; this is the on-demand inbox query.
+/// Reads the SMS inbox (catch-up / dev TestSMS).
 class ReadSmsService {
   final SmsQuery _smsQuery = SmsQuery();
 
-  /// Read the inbox and return every message, newest first. Does NOT advance
-  /// any cursor, so it is safe to call repeatedly — used by the TestSMS
-  /// diagnostic screen, which must show ALL parsable transactions on every
-  /// refresh (not just messages received since the last read).
-  ///
-  /// [maxMessages] caps how many recent inbox rows are scanned as a perf guard.
+  /// Read the inbox and return every message, newest first.
   Future<List<InboxSms>> getAllSms({int maxMessages = 1000}) async {
     var permission = await Permission.sms.status;
     if (!permission.isGranted) {

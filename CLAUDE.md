@@ -58,6 +58,42 @@ Uses `flutter_bloc`:
 - **`SmsParserService`** — Stateless parser. Checks sender against a whitelist of Indian bank sender IDs (ICICI, HDFC, SBI, etc.), applies inclusion/exclusion keyword rules, then extracts `amount`, `balance`, `accountNumber`, and `merchant` via regex. Returns a `ParsedTransactionDetails`.
 - **`ParsedTransaction`** — Data class with `TransactionType` enum (debit, credit, declined, unknown).
 
+### Theme (`lib/ui/theme/`)
+Two tiers, and the split is what makes light/dark work:
+
+1. **`AppPalette`** — the raw swatches, labelled by role (`primary`, `secondary`,
+   `accent`, `background`, `background2`, `positive`, `negative`, plus derived
+   ramps). Theme-independent and `const`. Widgets never read it directly.
+2. **`AppColors`** — a `ThemeExtension` of *semantic* tokens (`canvas`, `ink`,
+   `danger`…) with `light` and `dark` mappings. Widgets read `context.colors.x`.
+
+Field names describe a **role, never an appearance** — `ink` is "the strongest
+text colour", Gunmetal on light and Seashell on dark. There is deliberately no
+`onDark` (on a dark theme that text is itself dark); it is `onAccent`.
+
+`AppTypography` carries **metrics only** — a `const` TextStyle cannot vary by
+theme, so colour comes from `context.type.h2`, which resolves against the active
+`AppColors`. `AppTheme._build` is one builder called twice, so the two themes
+cannot drift; `AppColors.lerp` animates the crossfade. Anything needing a colour
+outside a widget (e.g. `TagHelper`) stores a *palette slot*, not a `Color`.
+
+`test/ui/palette_contrast_test.dart` runs every rule against **both** themes: AA
+ratios for text on each surface, CIE76 ΔE where a contrast ratio cannot see a
+hue difference, no pure white or black, and the reserved-colour rule — Sage
+Green and Lobster Pink mean credit/debit and success/danger, so `categorical`
+must stay perceptually clear of them. Run it before changing any token.
+
+### Fonts (`assets/fonts/`)
+The app uses **Iosevka** for everything — both the `sans` and `mono` roles in
+`AppTypography` resolve to it, so all text is monospaced. The bundled `.ttf`s are
+not upstream releases: upstream ships `.ttc` collections (which Flutter cannot
+load) at ~10 MB per weight. Each face was extracted from
+`/usr/share/fonts/TTF/Iosevka-<Weight>.ttc` (face index 0 — the upright,
+non-extended `Iosevka`) and subsetted to the codepoints the app can render,
+giving ~420 KB per weight. To add a weight, repeat that extract-then-subset step
+rather than dropping in a stock file. `test/ui/font_assets_test.dart` guards the
+result: it fails if a declared asset goes missing or stops parsing as Iosevka.
+
 ### Models (`lib/models/`)
 - **`Transaction`** (`@HiveType(typeId: 0)`) — Core model. Fields: `amount`, `date`, `tags` (List), `group` (List, comma-separated on input), `party`, `isCredit`, `note`. **Do not change `typeId` without a migration.**
 - `transaction.g.dart` — Code-generated Hive adapter. Regenerate with `build_runner` after any `@HiveField` changes.

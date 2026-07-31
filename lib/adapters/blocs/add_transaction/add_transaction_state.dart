@@ -25,8 +25,7 @@ class AddTransactionState extends Equatable {
     this.message,
   });
 
-  /// Returns a copy with the given fields overridden. [message] is not carried
-  /// over implicitly — it is set only when explicitly provided.
+  /// Returns a copy with the given fields overridden.
   AddTransactionState copyWith({
     List<String>? groups,
     List<String>? parties,

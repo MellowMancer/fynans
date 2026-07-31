@@ -3,469 +3,627 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_state.dart';
-import 'package:fynans/ports/transaction_repository.dart';
-import 'package:fynans/ui/widgets/transaction_list_item.dart';
-import 'package:intl/intl.dart';
+import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/hierarchy_node.dart';
 import 'package:fynans/entities/monthly_summary.dart';
+import 'package:fynans/ports/transaction_repository.dart';
+import 'package:fynans/ui/theme/app_colors.dart';
+import 'package:fynans/ui/theme/app_spacing.dart';
+import 'package:fynans/ui/theme/app_typography.dart';
+import 'package:fynans/ui/utils/filter_chips.dart';
+import 'package:fynans/ui/utils/formatters.dart';
+import 'package:fynans/ui/utils/tag_helper.dart';
+import 'package:fynans/ui/widgets/common/common.dart';
+import 'package:fynans/entities/transaction_filter.dart';
+import 'package:fynans/ui/widgets/date_range_selector.dart';
+import 'package:fynans/ui/widgets/transaction_filter_sheet.dart';
+import 'package:fynans/ui/widgets/transaction_list_item.dart';
+import 'package:fynans/use_cases/date_range_presets.dart';
 
-class SummaryCard extends StatelessWidget {
-  final MonthlySummary summary;
-  final DateTime month;
-  final bool isSimpleMode;
 
-  final VoidCallback onSelectMonth;
-
-  final AdvancedViewLoadSuccess? advancedState;
-  final Function(BuildContext, AdvancedViewLoadSuccess) onEditHierarchy;
-
-  const SummaryCard({
+/// Net position, with the inflow/outflow split revealed on tap.
+class TransactionTotals extends StatefulWidget {
+  const TransactionTotals({
     super.key,
     required this.summary,
-    required this.month,
-    required this.isSimpleMode,
-    required this.onSelectMonth,
-    this.advancedState,
-    required this.onEditHierarchy,
+    this.initiallyExpanded = false,
   });
+
+  final MonthlySummary summary;
+
+  /// Start with the split already showing.
+  final bool initiallyExpanded;
+
+  @override
+  State<TransactionTotals> createState() => _TransactionTotalsState();
+}
+
+class _TransactionTotalsState extends State<TransactionTotals> {
+  late bool _expanded = widget.initiallyExpanded;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isSimpleMode)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(DateFormat.yMMMM().format(month),
-                      style: Theme.of(context).textTheme.headlineSmall),
-                  IconButton(
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: onSelectMonth,
-                    tooltip: 'Select Month',
-                  ),
-                ],
-              ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _FlowIndicator(
-                    title: 'Inflow',
-                    amount: summary.totalIncome,
-                    color: Colors.green.shade300),
-                const SizedBox(width: 8),
-                _FlowIndicator(
-                    title: 'Outflow',
-                    amount: summary.totalExpenses,
-                    color: Colors.red.shade300),
-              ],
-            ),
-            if (isSimpleMode) ...[
-              const Divider(),
-              const SizedBox(height: 12),
+    final net = widget.summary.total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: AppRadius.smAll,
+          child: Row(
+            children: [
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: _TopSpendingList(
-                          title: 'Top Tags', spending: summary.topTags),
-                    ),
-                    const VerticalDivider(width: 24),
-                    Expanded(
-                      child: _TopSpendingList(
-                          title: 'Top Groups', spending: summary.topGroups),
+                    const AppSectionLabel('Net for this period'),
+                    AppSpacing.gapXs,
+                    MoneyText(
+                      net,
+                      tone: net < 0 ? MoneyTone.negative : MoneyTone.positive,
+                      signed: true,
+                      fit: true,
                     ),
                   ],
                 ),
               ),
-            ] else if (advancedState != null) ...[
-              const SizedBox(height: 12),
-              AdvancedFilterControls(
-                state: advancedState!,
-                onEditHierarchy: onEditHierarchy,
+              AppSpacing.hGapSm,
+              AnimatedRotation(
+                turns: _expanded ? 0.5 : 0,
+                duration: AppDuration.fast,
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: context.colors.inkFaint,
+                ),
               ),
-            ]
-          ],
+            ],
+          ),
         ),
+        AnimatedSize(
+          duration: AppDuration.normal,
+          curve: Curves.fastOutSlowIn,
+          alignment: Alignment.topCenter,
+          child: _expanded
+              ? Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.md),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: AppMetricTile(
+                          label: 'Inflow',
+                          amount: widget.summary.totalIncome,
+                          tone: MoneyTone.positive,
+                          icon: Icons.south_west_rounded,
+                        ),
+                      ),
+                      AppSpacing.hGapSm,
+                      Expanded(
+                        child: AppMetricTile(
+                          label: 'Outflow',
+                          amount: widget.summary.totalExpenses,
+                          tone: MoneyTone.negative,
+                          icon: Icons.north_east_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+      ],
+    );
+  }
+}
+
+/// Advanced header: pick a span with preset chips, then group and filter it.
+class AdvancedSummaryCard extends StatelessWidget {
+  const AdvancedSummaryCard({
+    super.key,
+    required this.state,
+    required this.onRangeChanged,
+    required this.onEditHierarchy,
+  });
+
+  final AdvancedViewLoadSuccess state;
+  final void Function(DateRange range, DateRangePreset preset) onRangeChanged;
+  final void Function(BuildContext, AdvancedViewLoadSuccess) onEditHierarchy;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppScreenHeader(
+      label: 'Statement Period',
+      title: Fmt.range(state.range),
+      // The quick spans live behind this button, on the same row as the range
+      // they set, instead of taking a whole chip row in the card.
+      trailing: AppIconButton(
+        icon: Icons.calendar_today_outlined,
+        tooltip: 'Change date range',
+        selected: state.preset.isCustom,
+        onPressed: () => showDateRangeSheet(
+          context: context,
+          selected: state.preset,
+          currentRange: state.range,
+          onChanged: onRangeChanged,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TransactionTotals(summary: state.summary),
+          AppSpacing.gapMd,
+          const Divider(),
+          AppSpacing.gapMd,
+          AdvancedFilterControls(
+            state: state,
+            onEditHierarchy: onEditHierarchy,
+          ),
+        ],
       ),
     );
   }
 }
 
-class AdvancedFilterControls extends StatelessWidget {
-  final AdvancedViewLoadSuccess state;
-  final Function(BuildContext, AdvancedViewLoadSuccess) onEditHierarchy;
+/// The statement-period row: the month and its picker.
+class StatementPeriodRow extends StatelessWidget {
+  const StatementPeriodRow({
+    super.key,
+    required this.month,
+    required this.onSelectMonth,
+  });
 
+  final DateTime month;
+  final VoidCallback onSelectMonth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppSectionLabel('Statement period'),
+              AppSpacing.gapXxs,
+              Text(Fmt.monthYear(month), style: context.type.h2),
+            ],
+          ),
+        ),
+        AppSpacing.hGapSm,
+        AppIconButton(
+          icon: Icons.calendar_today_outlined,
+          tooltip: 'Change month',
+          onPressed: onSelectMonth,
+        ),
+      ],
+    );
+  }
+}
+
+/// The selected month's figures: net (with the tap-revealed split) and top
+/// spending.
+class SummaryBody extends StatelessWidget {
+  const SummaryBody({super.key, required this.summary});
+
+  /// Null while the month's figures are still loading.
+  final MonthlySummary? summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = this.summary;
+    if (summary == null) {
+      return const SizedBox(height: 120, child: AppLoading());
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TransactionTotals(summary: summary),
+        AppSpacing.gapMd,
+        const Divider(),
+        AppSpacing.gapMd,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TopSpendingList(
+                label: 'Top tags',
+                spending: summary.topTags,
+              ),
+            ),
+            AppSpacing.hGapLg,
+            Expanded(
+              child: TopSpendingList(
+                label: 'Top groups',
+                spending: summary.topGroups,
+                showSwatch: false,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Grouping control plus a single filter entry point, with whatever is
+/// currently applied shown as removable chips.
+class AdvancedFilterControls extends StatelessWidget {
   const AdvancedFilterControls({
     super.key,
     required this.state,
     required this.onEditHierarchy,
   });
 
+  final AdvancedViewLoadSuccess state;
+  final void Function(BuildContext, AdvancedViewLoadSuccess) onEditHierarchy;
+
   @override
   Widget build(BuildContext context) {
-    final repository = context.read<TransactionRepository>();
+    final filter = state.filter;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        ActionChip(
-          avatar: const Icon(Icons.sort, size: 16),
-          label: Text(
-            state.groupingHierarchy.map((e) => e.displayName).join(' > '),
-            overflow: TextOverflow.ellipsis,
-          ),
+        const AppSectionLabel('Grouped by'),
+        AppSpacing.gapSm,
+        AppButton(
+          label: state.groupingHierarchy.map((e) => e.displayName).join('  ›  '),
+          icon: Icons.account_tree_outlined,
+          variant: AppButtonVariant.secondary,
+          size: AppButtonSize.sm,
           onPressed: () => onEditHierarchy(context, state),
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8.0,
-          runSpacing: 8.0,
+        AppSpacing.gapMd,
+        Row(
           children: [
-            FilterChipWithDialog(
-              label: 'Group',
-              value: state.filter.group,
-              itemsFuture: repository.getAllGroups(),
-              onSelected: (value) => context
-                  .read<AdvancedViewBloc>()
-                  .add(AdvancedViewGroupFilterChanged(value)),
+            Expanded(
+              child: AppSectionLabel(
+                filter.isEmpty
+                    ? 'Filters'
+                    : 'Filters · ${filter.activeCount} active',
+              ),
             ),
-            FilterChipWithDialog(
-              label: 'Tag',
-              value: state.filter.tag,
-              itemsFuture: repository.getAllUniqueTags(),
-              onSelected: (value) => context
-                  .read<AdvancedViewBloc>()
-                  .add(AdvancedViewTagFilterChanged(value)),
-            ),
-            FilterChipWithDialog(
-              label: 'Party',
-              value: state.filter.party,
-              itemsFuture: repository.getAllParties(),
-              onSelected: (value) => context
-                  .read<AdvancedViewBloc>()
-                  .add(AdvancedViewPartyFilterChanged(value)),
+            AppButton(
+              label: 'Filter',
+              icon: Icons.tune_rounded,
+              variant: filter.isEmpty
+                  ? AppButtonVariant.secondary
+                  : AppButtonVariant.accent,
+              size: AppButtonSize.sm,
+              onPressed: () => _openFilterSheet(context),
             ),
           ],
-        )
+        ),
+        AppSpacing.gapSm,
+        if (filter.isEmpty)
+          MonoText.small('No filters applied')
+        else
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (final chip in describeFilter(filter))
+                AppPill(
+                  chip.label,
+                  icon: chip.icon,
+                  tone: AppPillTone.accent,
+                  onRemove: () => _apply(context, chip.clear(filter)),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  void _apply(BuildContext context, TransactionFilter filter) =>
+      context.read<AdvancedViewBloc>().add(AdvancedViewFilterChanged(filter));
+
+  Future<void> _openFilterSheet(BuildContext context) async {
+    final repository = context.read<TransactionRepository>();
+    final bloc = context.read<AdvancedViewBloc>();
+
+    // Three independent scans of the box; run them together rather than
+    // paying for each in turn before the sheet can open.
+    final (groups, tags, parties) = await (
+      repository.getAllGroups(),
+      repository.getAllUniqueTags(),
+      repository.getAllParties(),
+    ).wait;
+
+    final options = FilterOptions(
+      groups: groups..sort(),
+      tags: tags..sort(),
+      parties: parties..sort(),
+    );
+    if (!context.mounted) return;
+
+    final updated = await TransactionFilterSheet.show(
+      context: context,
+      filter: state.filter,
+      options: options,
+    );
+    if (updated == null) return;
+    bloc.add(AdvancedViewFilterChanged(updated));
+  }
+}
+
+/// "Top tags" / "Top groups" breakdown.
+class TopSpendingList extends StatelessWidget {
+  const TopSpendingList({
+    super.key,
+    required this.label,
+    required this.spending,
+    this.showSwatch = true,
+  });
+
+  final String label;
+  final Map<String, double> spending;
+
+  /// Draw a per-tag colour dot before each row.
+  final bool showSwatch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppSectionLabel(label),
+        AppSpacing.gapXs,
+        if (spending.isEmpty)
+          const MonoText.small('Nothing yet')
+        else
+          for (final entry in spending.entries)
+            AppAmountRow(
+              label: Fmt.capitalize(entry.key),
+              amount: entry.value,
+              leading: showSwatch
+                  ? Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: context.tagColor(entry.key),
+                        borderRadius: AppRadius.pillAll,
+                      ),
+                    )
+                  : null,
+            ),
       ],
     );
   }
 }
 
-class FilterChipWithDialog extends StatelessWidget {
-  final String label;
-  final String? value;
-  final Future<List<String>> itemsFuture;
-  final Function(String?) onSelected;
-
-  const FilterChipWithDialog({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.itemsFuture,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      label: Text(
-        value != null ? '$label: ${value!}' : label,
-        textScaler: TextScaler.linear(0.8),
-        overflow: TextOverflow.ellipsis,
-      ),
-      labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      selected: value != null,
-      onSelected: (_) => _showDialog(context),
-      onDeleted: value != null ? () => onSelected(null) : null,
-    );
-  }
-
-  void _showDialog(BuildContext context) async {
-    final items = await itemsFuture;
-    if (!context.mounted) return;
-
-    items.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-
-    final selectedValue = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text('Filter by $label'),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, null),
-            child: Text(
-              'Clear Filter',
-              style: TextStyle(
-                fontStyle: FontStyle.italic,
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-          ),
-          ...items.map((item) => SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, item),
-                child: Text(item),
-              )),
-        ],
-      ),
-    );
-    onSelected(selectedValue);
-  }
-}
-
-class _FlowIndicator extends StatelessWidget {
-  const _FlowIndicator({
-    required this.title,
-    required this.amount,
-    required this.color,
-  });
-
-  final String title;
-  final double amount;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 4),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text('₹${amount.toStringAsFixed(2)}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(color: color, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TopSpendingList extends StatelessWidget {
-  const _TopSpendingList({
-    required this.title,
-    required this.spending,
-  });
-
-  final String title;
-  final Map<String, double> spending;
-
-  String _capitalize(String s) =>
-      s.isEmpty ? '' : s[0].toUpperCase() + s.substring(1);
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          if (spending.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'None',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontStyle: FontStyle.italic,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView(
-                children: spending.entries
-                    .map((entry) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  _capitalize(entry.key),
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ),
-                              Text(
-                                '₹${entry.value.toStringAsFixed(0)}',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ),
-        ],
-      );
-  }
-}
-
+/// Flat, date-ordered list for the simple view.
 class SimpleTransactionListView extends StatelessWidget {
-  final DateTime currentMonth;
-
   const SimpleTransactionListView({
     super.key,
     required this.currentMonth,
+    this.header,
   });
+
+  final DateTime currentMonth;
+
+  /// Scrolls away with the content rather than staying pinned.
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
     final repository = context.read<TransactionRepository>();
+
     return BlocBuilder<TransactionCubit, TransactionState>(
       builder: (context, state) {
-        if (state is TransactionLoadSuccess) {
-          if (state.transactions.isEmpty) {
-            return const Center(child: Text('No transactions for this month.'));
-          }
-          return ListView.builder(
-            itemCount: state.transactions.length,
-            itemBuilder: (context, index) {
-              final transaction = state.transactions[index];
-              return Dismissible(
-                key: ValueKey(transaction.key),
-                direction: DismissDirection.endToStart,
-                onDismissed: (_) {
-                  repository.deleteTransaction(transaction).then((_) {
-                    if (!context.mounted) return;
-                    context
-                        .read<TransactionCubit>()
-                        .fetchTransactionsForMonth(currentMonth);
-                  });
-                },
-                background: Container(
-                  color: Colors.red.shade800,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20.0),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                child: TransactionListItem(transaction: transaction),
+        final transactions =
+            state is TransactionLoadSuccess ? state.transactions : null;
+        final failure = state is TransactionLoadFailure ? state.error : null;
+        final leading = header == null ? 0 : 1;
+
+        // One body slot is used for the loading/empty placeholder so the header
+        // stays on screen while the month reloads.
+        final bodyCount =
+            transactions == null || transactions.isEmpty ? 1 : transactions.length;
+
+        return ListView.builder(
+          padding: AppSpacing.pageInsets,
+          itemCount: leading + bodyCount,
+          itemBuilder: (context, index) {
+            if (header != null && index == 0) {
+              return Padding(
+                padding: AppSpacing.headerGapInsets,
+                child: header,
               );
-            },
-          );
-        }
-        return const Center(child: CircularProgressIndicator());
+            }
+
+            if (failure != null) {
+              // Rendered as a body row, not in place of the whole list, so the
+              // month pager above stays mounted and can retrigger a fetch.
+              return Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xxl),
+                child: AppErrorView(
+                  title: 'Could not load transactions',
+                  message: failure,
+                  onRetry: () => context
+                      .read<TransactionCubit>()
+                      .fetchTransactionsForMonth(currentMonth),
+                ),
+              );
+            }
+            if (transactions == null) {
+              return const Padding(
+                padding: EdgeInsets.only(top: AppSpacing.xxxl),
+                child: AppLoading(),
+              );
+            }
+            if (transactions.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.only(top: AppSpacing.xxl),
+                child: AppEmptyState(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'No transactions this month',
+                  message:
+                      'Imported bank SMS and anything you add will appear here.',
+                ),
+              );
+            }
+
+            final transaction = transactions[index - leading];
+            return Dismissible(
+              key: ValueKey(transaction.key),
+              direction: DismissDirection.endToStart,
+              // The live subscription re-emits on the delete; no manual
+              // refetch.
+              onDismissed: (_) => repository.deleteTransaction(transaction),
+              background: Container(
+                margin: AppSpacing.rowGapInsets,
+                padding: const EdgeInsets.only(right: AppSpacing.xl),
+                alignment: Alignment.centerRight,
+                decoration: BoxDecoration(
+                  color: context.colors.dangerSoft,
+                  borderRadius: AppRadius.lgAll,
+                  border: Border.all(color: context.colors.dangerBorder),
+                ),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  color: context.colors.danger,
+                  size: 20,
+                ),
+              ),
+              child: TransactionListItem(transaction: transaction),
+            );
+          },
+        );
       },
     );
   }
 }
 
+/// Grouped tree for the advanced view.
 class HierarchicalTransactionList extends StatelessWidget {
-  final List<HierarchyNode> nodes;
-  final MonthlySummary summary;
-
   const HierarchicalTransactionList({
     super.key,
     required this.nodes,
     required this.summary,
+    this.header,
   });
+
+  final List<HierarchyNode> nodes;
+  final MonthlySummary summary;
+
+  /// Scrolls away with the content rather than staying pinned.
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
-    if (nodes.isEmpty) {
-      return const Center(
-          child: Text('No transactions found for this selection.'));
-    }
+    final leading = header == null ? 0 : 1;
 
     return ListView.builder(
-      itemCount: nodes.length + 1, // +1 for the total card
+      padding: AppSpacing.pageInsets,
+      itemCount: leading + (nodes.isEmpty ? 1 : nodes.length),
       itemBuilder: (context, index) {
-        if (index == 0) {
-          // The "Total" card
-          return Card(
-            child: ListTile(
-              leading: Icon(
-                Icons.account_balance_wallet,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              title: const Text('Total (Inflow + Outflow)'),
-              trailing: Text(
-                '₹${summary.total.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+        if (header != null && index == 0) {
+          return Padding(
+            padding: AppSpacing.headerGapInsets,
+            child: header,
+          );
+        }
+        if (nodes.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.xxxl),
+            child: AppEmptyState(
+              icon: Icons.filter_alt_outlined,
+              title: 'Nothing matches these filters',
+              message: 'Try clearing a filter or picking another range.',
             ),
           );
         }
-        return HierarchyNodeTile(node: nodes[index - 1], level: 0);
+        return HierarchyNodeTile(node: nodes[index - leading]);
       },
     );
   }
 }
 
+/// One node of the grouping tree; recurses for its children.
 class HierarchyNodeTile extends StatelessWidget {
+  const HierarchyNodeTile({super.key, required this.node, this.level = 0});
+
   final HierarchyNode node;
   final int level;
 
-  const HierarchyNodeTile({
-    super.key,
-    required this.node,
-    required this.level,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final isLeafNode = node.children.isEmpty;
+    final isLeaf = node.children.isEmpty;
+    final total = node.summary.total;
 
-    return Padding(
-      padding: EdgeInsets.only(left: 16.0 * level),
+    final tile = Theme(
+      // Strip the default expansion divider lines.
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
+        initiallyExpanded: node.children.length == 1,
+        tilePadding: EdgeInsets.only(
+          left: AppSpacing.md + (AppSpacing.md * level),
+          right: AppSpacing.md,
+        ),
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text(
-                _capitalize(node.name),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    Fmt.capitalize(node.name),
+                    style: context.type.bodyStrong,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  AppSpacing.gapXxs,
+                  MonoText.small(
+                    '${node.transactionCount} '
+                    '${node.transactionCount == 1 ? "entry" : "entries"}',
+                  ),
+                ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: Text('₹${node.summary.total.toStringAsFixed(2)}'),
+            AppSpacing.hGapSm,
+            MoneyText(
+              total,
+              tone: total < 0 ? MoneyTone.negative : MoneyTone.positive,
+              style: context.type.amountSmall,
+              signed: true,
             ),
           ],
         ),
-        initiallyExpanded: node.children.length == 1,
-        children: isLeafNode
-            // If it's a leaf, show the transactions
-            ? node.transactions
-                .map((e) => TransactionListItem(transaction: e))
-                .toList()
-            // Otherwise, recursively build more node tiles
-            : node.children
-                .map(
-                    (child) => HierarchyNodeTile(node: child, level: level + 1))
-                .toList(),
+        children: isLeaf
+            ? [
+                for (final t in node.transactions)
+                  TransactionListItem(
+                    transaction: t,
+                    margin: EdgeInsets.only(
+                      left: AppSpacing.md + (AppSpacing.md * level),
+                      right: AppSpacing.md,
+                      bottom: AppSpacing.rowGap,
+                    ),
+                  ),
+              ]
+            : [
+                for (final child in node.children)
+                  HierarchyNodeTile(node: child, level: level + 1),
+              ],
       ),
     );
-  }
 
-  String _capitalize(String s) =>
-      s.isEmpty ? '' : s[0].toUpperCase() + s.substring(1);
+    // Only the outermost node gets a card shell, so nesting stays legible.
+    if (level > 0) return tile;
+    return AppCard(
+      margin: AppSpacing.cardGapInsets,
+      padding: EdgeInsets.zero,
+      child: tile,
+    );
+  }
 }

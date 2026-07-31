@@ -1,5 +1,3 @@
-// lib/services/sms_parser_service.dart
-
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
 
 class SmsParserService {
@@ -36,10 +34,7 @@ class SmsParserService {
   ];
   static const List<String> _declinedKeywords = ['declined', 'failed'];
 
-  // Payment-rail keywords. These appear in NEFT/IMPS/RTGS/UPI/ATM transfer SMS
-  // that sometimes describe the movement (e.g. "Rs.500 transferred", "NEFT of
-  // Rs.5000") without the literal words debited/credited. Used both to anchor
-  // the amount and to infer direction when no debit/credit keyword is present.
+  // Payment-rail keywords.
   static const List<String> _transferModeKeywords = [
     'neft',
     'imps',
@@ -81,7 +76,6 @@ class SmsParserService {
   static final _upiIdRegex = RegExp(r'[\w.-]+@[\w.-]+');
   static final _dateRegex = RegExp(r'\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?');
 
-  // --- EXISTING FILTERING CODE ---
   static const List<String> _transactionKeywords = [
     'debited',
     'credited',
@@ -114,8 +108,7 @@ class SmsParserService {
     'due',
   ];
   // Substring-matched against the SMS sender ID (case-insensitive), so DLT
-  // prefixes/suffixes like "AX-CANBNK-S" or "JD-SBIINB" still match. Keep tokens
-  // specific enough to avoid matching unrelated promo senders.
+  // prefixes/suffixes like "AX-CANBNK-S" or "JD-SBIINB" still match.
   static const List<String> _whiteListedSenders = [
     // ICICI
     'ICICI',
@@ -123,9 +116,7 @@ class SmsParserService {
     // HDFC
     'HDFCBK',
     'HDFC',
-    // SBI (UPI, internet banking, generic). NOTE: SBI Card (credit card) senders
-    // like "SBICRD" are intentionally excluded via _creditCardSenders below —
-    // they would otherwise be re-admitted by the catch-all "SBI" token.
+    // SBI (UPI, internet banking, generic).
     'SBIUPI',
     'SBIINB',
     'SBIPSG',
@@ -143,11 +134,7 @@ class SmsParserService {
     'BOIIND',
   ];
 
-  // Credit-card senders. Checked BEFORE the whitelist so they're rejected even
-  // though the broad bank tokens (e.g. "SBI", "ICICI") would otherwise re-admit
-  // them by substring. Credit-card transactions are deliberately out of scope:
-  // a card purchase and the later bill payment cancel out and just add noise.
-  // Card spends are handled by a dedicated feature later, not the SMS pipeline.
+  // Credit-card senders.
   static const List<String> _creditCardSenders = [
     'SBICRD', // SBI Card
     'SBICARD',
@@ -160,9 +147,8 @@ class SmsParserService {
   ];
 
   // Content markers that identify a credit-card SMS even when it arrives from a
-  // bank's generic header (many issuers send card alerts from the same sender as
-  // account alerts). "credit card" is a distinct phrase and won't match the word
-  // "credited", so debit-card / UPI / account messages are unaffected.
+  // bank's generic header (many issuers send card alerts from the same sender
+  // as account alerts).
   static const List<String> _creditCardBodyKeywords = [
     'credit card',
     'creditcard',
@@ -176,8 +162,7 @@ class SmsParserService {
     final lowerCaseSender = sender.toLowerCase();
     final lowerCaseBody = messageBody.toLowerCase();
 
-    // Rule 0: Credit-card check. Reject card senders and card-spend/bill messages
-    // up front (debit card, UPI and bank-account transactions still pass).
+    // Rule 0: Credit-card check.
     if (_creditCardSenders
         .any((token) => lowerCaseSender.contains(token.toLowerCase()))) {
       return false;
@@ -186,22 +171,19 @@ class SmsParserService {
       return false;
     }
 
-    // Rule 1: Exclusion Check. If it contains a blocked word, REJECT immediately.
+    // Rule 1: Exclusion Check.
     if (_exclusionKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       // This log helps you see what's being actively blocked.
-      // debugPrint("Excluding message due to keyword: $lowerCaseBody");
       return false;
     }
 
     if (!(_whiteListedSenders
         .any((keyword) => lowerCaseSender.contains(keyword.toLowerCase())))) {
       // This log is crucial for debugging your sender list.
-      // debugPrint("Filtering out sender: $sender");
       return false;
     }
 
-    // Rule 3: Inclusion Check. If it passed the first two checks, it MUST
-    // contain at least one transactional keyword to be considered.
+    // Rule 3: Inclusion Check.
     return _transactionKeywords
         .any((keyword) => lowerCaseBody.contains(keyword));
   }
@@ -219,19 +201,19 @@ class SmsParserService {
       return null;
     }
 
-    // 1. Determine Transaction Type
+    // 1.
     final transactionType = _getTransactionType(lowerCaseBody);
     if (transactionType == TransactionType.unknown) {
       return null;
     }
 
-    // 2. Extract Amount
+    // 2.
     final amount = _getAmount(lowerCaseBody);
     if (amount == null) {
       return null; // A transaction must have an amount
     }
 
-    // 3. Extract other details
+    // 3.
     final balance = _getBalance(lowerCaseBody);
     final accountNumber = _getAccountNumber(lowerCaseBody);
     final merchant = _getMerchant(lowerCaseBody, transactionType);
@@ -249,9 +231,8 @@ class SmsParserService {
   // --- PRIVATE HELPER METHODS ---
 
   TransactionType _getTransactionType(String lowerCaseBody) {
-    // Bug #3 fix: a declined/failed SMS usually still contains a debit-ish
-    // keyword ("spent"/"debited"), so the decline check MUST run first —
-    // otherwise the money movement is recorded as a real outflow.
+    // Declines still contain debit keywords ("spent"), so this must run first
+    // or a failed payment is recorded as real outflow.
     if (_declinedKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.declined;
     }
@@ -261,19 +242,14 @@ class SmsParserService {
     if (_creditKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.credit;
     }
-    // Fallback for NEFT/IMPS/RTGS/ATM transfer notices that state the rail and an
-    // amount but omit "debited"/"credited" (e.g. "Rs.500 transferred from A/c
-    // X1234 to ABC"). Only reached when no explicit keyword matched, so this can
-    // only ADD detections — never override an explicit debit/credit. Direction is
-    // taken from the counterparty preposition, which is reliable for transfers.
+    // Fallback for NEFT/IMPS/RTGS/ATM transfer notices that state the rail and
+    // an amount but omit "debited"/"credited" (e.g.
     if (_transferModeKeywords.any((k) => lowerCaseBody.contains(k))) {
       final hasOutgoing = RegExp(r'\b(?:to|sent)\b').hasMatch(lowerCaseBody);
       final hasIncoming = RegExp(r'\b(?:from|received)\b').hasMatch(lowerCaseBody);
       if (hasOutgoing && !hasIncoming) return TransactionType.debit;
       if (hasIncoming && !hasOutgoing) return TransactionType.credit;
-      // "from ... to ..." mentions both sides. Decide by which side the user's
-      // own (masked) account sits on: "from a/c x1234" => money left it (debit);
-      // "to a/c x1234" => money arrived in it (credit).
+      // "from ...
       if (hasOutgoing && hasIncoming) {
         if (RegExp(r'from\s+(?:your\s+)?(?:a/c|ac|account)')
             .hasMatch(lowerCaseBody)) {
@@ -309,31 +285,23 @@ class SmsParserService {
 
   double? _getAmount(String lowerCaseBody) {
     const amountValue = r'([\d,]+\.?\d*)';
-    // The trailing unit (crore/lakh) must be a standalone word. The \b stops
-    // us from reading the "cr" in "credited" (or an "l" word) as a multiplier,
-    // which previously inflated amounts by 1e7 / 1e5.
+    // The trailing unit (crore/lakh) must be a standalone word.
     const amountUnit = r'(?:\s*(crore|lakh|lac|cr|l)\b)?';
     final allTransactionKeywords = [
       ..._debitKeywords,
       ..._creditKeywords,
       ..._transferModeKeywords,
     ];
-    // Connector words (incl. a currency prefix) that can sit between the action
-    // keyword and the amount, e.g. "debited by 500.0", "debit of Rs.250.00",
-    // "credited with Rs.2000.00". Repeatable so a word + symbol ("of Rs.") both
-    // get consumed before the digits.
+    // Connector words (incl.
     const connector = r'(?:(?:by|for|of|with|to|inr|rs\.?)\s*)*';
 
-    // Bug #4 guard: a Rs/INR figure directly announced as a balance ("Avl Bal
-    // Rs.9,999") must never be read as the transaction amount. Excludes the
-    // common balance phrasings that sit immediately before the currency token.
+    // Guard: a Rs/INR figure directly announced as a balance ("Avl Bal
+    // Rs.9,999") must never be read as the transaction amount.
     const balanceGuard =
         r'(?<!(?:avl bal|available balance|a/c bal|ac bal|balance|bal|available|avl)\s*)';
 
-    // Bug #4 fix: try the action-anchored pattern FIRST so the amount is tied to
-    // the debit/credit/transfer verb rather than to whichever Rs/INR figure
-    // appears first (which is often the available balance). The Rs/INR patterns
-    // remain as fallbacks but skip any figure attached to a balance clause.
+    // Action-anchored first, so the amount ties to the verb rather than to the
+    // first Rs figure — which is often the balance.
     final patterns = [
       RegExp(
           '(?:${allTransactionKeywords.join('|')})\\s+$connector$amountValue$amountUnit',
@@ -376,11 +344,10 @@ class SmsParserService {
       'new bal',
     ];
 
-    // Define multiple patterns to try. We start with the simplest and most common.
+    // Define multiple patterns to try.
     final patterns = [
-      // --- PATTERN 1: The most common format ---
-      // Looks for [Keyword] [Currency Symbol] [Amount] [Optional Unit]
-      // Examples: "Bal Rs. 100", "Available Balance: 5,000.50 CR"
+      // --- PATTERN 1: The most common format --- Looks for [Keyword] [Currency
+      // Symbol] [Amount] [Optional Unit] Examples: "Bal Rs.
       RegExp(
         // Non-capturing group for all possible keywords
         '(?:${balanceKeywords.join('|')})'
@@ -390,16 +357,13 @@ class SmsParserService {
         '\\s*(?:rs\\.?|inr)?'
         // The amount we want to capture (Group 1)
         '\\s*([\\d,]+\\.?\\d*)'
-        // Optional trailing characters and an optional unit (Group 2). The \\b
-        // keeps a following word like "credited"/"later" from being misread as
-        // a cr/lakh unit and inflating the balance.
+        // Optional trailing characters and an optional unit (Group 2).
         '\\/?-?\\s*(crore|lakh|lac|cr|dr|l)?\\b',
         caseSensitive: false,
       ),
 
-      // --- PATTERN 2: A less common reversed format ---
-      // Looks for [Amount] is the [Keyword]
-      // Example: "Rs. 5,000 is your new balance"
+      // --- PATTERN 2: A less common reversed format --- Looks for [Amount] is
+      // the [Keyword] Example: "Rs.
       RegExp(
         // Optional currency symbol
         '(?:rs\\.?|inr)?'
@@ -459,8 +423,7 @@ class SmsParserService {
     final upiMatch = _upiIdRegex.firstMatch(lowerCaseBody);
     if (upiMatch != null) return upiMatch.group(0);
 
-    // Define character set and terminators for regex
-    // NEW FIXED CODE
+    // Define character set and terminators for regex NEW FIXED CODE
     const merchantCharSet = r"([a-z0-9\.\-&@\/_\'\s]+?)";
     const terminatorKeywords = [
       'avl',
@@ -481,8 +444,7 @@ class SmsParserService {
       'info'
     ];
 
-    // --- FIX #1: Corrected the regular expression for terminators ---
-    // This now correctly looks for terminator keywords OR symbols like '(', ';', ',', or the end of the string.
+    // Terminates on a keyword, on '(' ';' ',', or at end of string.
     final terminators =
         "(?=(\\s+(${terminatorKeywords.join('|')}))|\\s*\\(|\$|;|\\,)";
     

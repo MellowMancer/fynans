@@ -1,3 +1,4 @@
+import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/monthly_analytics.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
@@ -17,11 +18,21 @@ class GetMonthlyAnalytics {
 
   /// Loads [month]'s transactions and computes its [MonthlyAnalytics].
   Future<MonthlyAnalytics> call(DateTime month, {int topN = kAnalyticsTopN}) async {
-    final transactions = await _repository.fetchTransactionsForMonth(month: month);
-    return _aggregate(transactions, topN);
+    final transactions = await _repository.fetchTransactionsInRange(range: DateRange.month(month));
+    return aggregate(transactions, topN);
   }
 
-  MonthlyAnalytics _aggregate(List<Transaction> transactions, int topN) {
+  /// Live analytics for [month], recomputed whenever the stored transactions
+  /// change — so an SMS import or a new manual entry shows up without the user
+  /// having to re-pick the month.
+  Stream<MonthlyAnalytics> watch(DateTime month, {int topN = kAnalyticsTopN}) {
+    return _repository
+        .listenToTransactionsInRange(range: DateRange.month(month))
+        .map((transactions) => aggregate(transactions, topN));
+  }
+
+  /// Pure fold of [transactions] into chart-ready analytics.
+  MonthlyAnalytics aggregate(List<Transaction> transactions, int topN) {
     double totalOutflow = 0;
     double totalInflow = 0;
     final Map<int, double> dailySpending = {};

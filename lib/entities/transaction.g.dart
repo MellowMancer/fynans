@@ -24,13 +24,14 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..party = fields[4] as String
       ..isCredit = fields[5] as bool
       ..note = fields[6] as String?
-      ..smsId = fields[7] as String?;
+      ..smsId = fields[7] as String?
+      ..smsBody = fields[8] as String?;
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.amount)
       ..writeByte(1)
@@ -46,7 +47,9 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(6)
       ..write(obj.note)
       ..writeByte(7)
-      ..write(obj.smsId);
+      ..write(obj.smsId)
+      ..writeByte(8)
+      ..write(obj.smsBody);
   }
 
   @override

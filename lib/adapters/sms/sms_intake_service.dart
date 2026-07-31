@@ -3,17 +3,11 @@ import 'package:fynans/adapters/sms/read_sms_service.dart';
 import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 
 /// SMS intake for the transaction pipeline: reads the inbox and turns bank
-/// transaction SMS into saved [Transaction]s. Importing bank SMS is the app's
-/// core purpose, so this runs on every launch.
+/// transaction SMS into saved [Transaction]s.
 class SmsIntakeService {
   static final TransactionSmsIngestor _ingestor = TransactionSmsIngestor();
 
-  /// One-shot inbox sweep run on every launch. Scans the FULL inbox (not just
-  /// messages since a cursor) so the dashboard always reflects every parsable
-  /// bank transaction — exactly what the TestSMS diagnostic shows. The ingestor
-  /// de-dupes against Hive, so re-scanning every launch never creates
-  /// duplicates and a cleared database correctly re-imports.
-  /// Returns the number of new transactions imported.
+  /// One-shot inbox sweep run on every launch.
   static Future<int> catchUp() async {
     final List<InboxSms> messages = await ReadSmsService().getAllSms();
     var imported = 0;

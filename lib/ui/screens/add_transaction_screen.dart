@@ -4,9 +4,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_state.dart';
 import 'package:fynans/ports/transaction_repository.dart';
-import 'package:intl/intl.dart';
-import 'package:fynans/use_cases/amount_parser.dart';
+import 'package:fynans/ui/theme/app_colors.dart';
+import 'package:fynans/ui/theme/app_spacing.dart';
+import 'package:fynans/ui/theme/app_typography.dart';
+import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/utils/tag_helper.dart';
+import 'package:fynans/ui/widgets/common/common.dart';
+import 'package:fynans/use_cases/amount_parser.dart';
+
+/// How far back a transaction may be dated.
+const int _kBackdateYears = 1;
 
 /// Provides the [AddTransactionCubit] (built from the repository in context)
 /// and renders the transaction entry form.
@@ -38,16 +45,11 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   final _noteController = TextEditingController();
   final _groupController = TextEditingController();
   final _partyController = TextEditingController();
+
   DateTime _selectedDate = DateTime.now();
   final List<String> _selectedTags = [];
-  List<String> _allTags = [];
+  late final List<String> _allTags = TagHelper.getAllTags();
   bool _creditFlag = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _allTags = TagHelper.getAllTags();
-  }
 
   @override
   void dispose() {
@@ -58,32 +60,28 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
     super.dispose();
   }
 
-  void _presentDatePicker() async {
+  Future<void> _presentDatePicker() async {
     final now = DateTime.now();
-    final firstDate = DateTime(now.year - 1, now.month, now.day);
-    final pickedDate = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
-      initialDate: now,
-      firstDate: firstDate,
+      initialDate: _selectedDate,
+      firstDate: DateTime(now.year - _kBackdateYears, now.month, now.day),
       lastDate: now,
     );
-    setState(() {
-      _selectedDate = pickedDate ?? _selectedDate;
-    });
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      context.read<AddTransactionCubit>().save(
-            amount: _amountController.text,
-            party: _partyController.text,
-            group: _groupController.text,
-            tags: List.of(_selectedTags),
-            isCredit: _creditFlag,
-            note: _noteController.text,
-            date: _selectedDate,
-          );
-    }
+    if (!_formKey.currentState!.validate()) return;
+    context.read<AddTransactionCubit>().save(
+          amount: _amountController.text,
+          party: _partyController.text,
+          group: _groupController.text,
+          tags: List.of(_selectedTags),
+          isCredit: _creditFlag,
+          note: _noteController.text,
+          date: _selectedDate,
+        );
   }
 
   void _onStatusChanged(AddTransactionState state) {
@@ -100,17 +98,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   }
 
   void _handleSaveSuccess() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Transaction Saved!'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
-
+    _showMessage('Transaction saved');
     _formKey.currentState!.reset();
     setState(() {
       _selectedTags.clear();
@@ -124,63 +112,83 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _showMultiSelectTagsDialog() async {
-    final List<String>? results = await showDialog(
+  Future<void> _pickTags() async {
+    final results = await showModalBottomSheet<List<String>>(
       context: context,
-      builder: (BuildContext context) {
-        return MultiSelectDialog(
-          items: _allTags,
-          initialSelectedItems: _selectedTags,
-        );
-      },
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _TagPickerSheet(
+        items: _allTags,
+        initialSelection: _selectedTags,
+      ),
     );
+    if (results == null) return;
 
-    if (results != null) {
-      // Using FormField's didChange to trigger validation
-      _tagFormFieldKey.currentState?.didChange(results);
-      setState(() {
-        _selectedTags.clear();
-        _selectedTags.addAll(results);
-      });
-    }
+    _tagFormFieldKey.currentState?.didChange(results);
+    setState(() {
+      _selectedTags
+        ..clear()
+        ..addAll(results);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Add Transaction')),
+      appBar: AppBar(
+        toolbarHeight: 68,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppSectionLabel('New entry', color: context.colors.accent),
+            AppSpacing.gapXxs,
+            Text('Add transaction', style: context.type.h1),
+          ],
+        ),
+      ),
       body: BlocConsumer<AddTransactionCubit, AddTransactionState>(
-        listenWhen: (previous, current) => previous.status != current.status,
+        listenWhen: (p, c) => p.status != c.status,
         listener: (context, state) => _onStatusChanged(state),
-        buildWhen: (previous, current) =>
-            previous.groups != current.groups ||
-            previous.parties != current.parties,
-        builder: (context, state) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
+        buildWhen: (p, c) => p.groups != c.groups || p.parties != c.parties,
+        builder: (context, state) => Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              AppSpacing.lg,
+              AppSpacing.gutter,
+              AppSpacing.xxxl,
+            ),
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
+              _Section(
+                label: 'Amount',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
                       controller: _amountController,
-                      decoration: const InputDecoration(
-                        labelText: 'Amount',
-                        prefixIcon: Icon(Icons.currency_rupee),
+                      style: context.type.amount,
+                      decoration: InputDecoration(
+                        // `prefixText` is only painted while the field is
+                        // focused or non-empty, so the symbol vanished at rest.
+                        prefixIcon: Padding(
+                          padding: EdgeInsets.only(
+                            left: AppSpacing.md,
+                            right: AppSpacing.sm,
+                          ),
+                          child: Text(
+                            Fmt.currencySymbol,
+                            style: context.type.amount,
+                          ),
+                        ),
+                        prefixIconConstraints: BoxConstraints(minWidth: 0),
+                        hintText: '0.00',
                       ),
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
@@ -192,202 +200,269 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                       ],
                       validator: (value) => parseAmount(value).error,
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    children: [
-                      Text(
-                        'Credit',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Switch(
-                        value: _creditFlag,
-                        onChanged: (value) => setState(() {
-                          _creditFlag = value;
-                          _partyController.text = value ? 'Me' : '';
-                        }),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: _presentDatePicker,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                    AppSpacing.gapMd,
+                    Row(
+                      children: [
+                        AppPill(
+                          'Outflow',
+                          icon: Icons.north_east_rounded,
+                          tone: _creditFlag
+                              ? AppPillTone.outline
+                              : AppPillTone.danger,
+                          onTap: () => _setCredit(false),
+                        ),
+                        AppSpacing.hGapSm,
+                        AppPill(
+                          'Inflow',
+                          icon: Icons.south_west_rounded,
+                          tone: _creditFlag
+                              ? AppPillTone.success
+                              : AppPillTone.outline,
+                          onTap: () => _setCredit(true),
+                        ),
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(8),
+                  ],
+                ),
+              ),
+              _Section(
+                label: 'Date',
+                child: AppCard(
+                  onTap: _presentDatePicker,
+                  borderRadius: AppRadius.mdAll,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        Icons.calendar_month,
-                        color: Theme.of(context).colorScheme.primary,
+                        Icons.calendar_today_outlined,
+                        size: 16,
+                        color: context.colors.inkMuted,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          DateFormat.yMMMMd().format(_selectedDate),
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
+                      AppSpacing.hGapMd,
+                      Expanded(child: MonoText(Fmt.fullDate(_selectedDate))),
                       Icon(
-                        Icons.arrow_drop_down,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        Icons.expand_more_rounded,
+                        size: 18,
+                        color: context.colors.inkFaint,
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              FormField<List<String>>(
-                key: _tagFormFieldKey,
-                initialValue: _selectedTags,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select at least one tag.';
-                  }
-                  return null;
-                },
-                builder: (formFieldState) {
-                  return Column(
+              _Section(
+                label: 'Tags',
+                child: FormField<List<String>>(
+                  key: _tagFormFieldKey,
+                  initialValue: _selectedTags,
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'Pick at least one tag'
+                      : null,
+                  builder: (field) => Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       InkWell(
-                        onTap: _showMultiSelectTagsDialog,
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: 'Tags',
-                            prefixIcon: const Icon(Icons.label),
-                            errorText: formFieldState.errorText,
+                        onTap: _pickTags,
+                        borderRadius: AppRadius.mdAll,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: field.hasError
+                                  ? context.colors.danger
+                                  : context.colors.border,
+                            ),
+                            borderRadius: AppRadius.mdAll,
+                            color: context.colors.surface,
                           ),
                           child: _selectedTags.isEmpty
-                              ? const Text('Select one or more tags')
-                              : Wrap(
-                                  spacing: 6.0,
-                                  runSpacing: 0.0,
-                                  children: _selectedTags.map((tag) {
-                                    return Chip(
-                                      label: Text(
-                                        tag[0].toUpperCase() + tag.substring(1),
+                              ? Row(
+                                  children: [
+                                    Icon(
+                                      Icons.add_rounded,
+                                      size: 16,
+                                      color: context.colors.inkMuted,
+                                    ),
+                                    AppSpacing.hGapSm,
+                                    Text(
+                                      'Choose one or more tags',
+                                      style: context.type.body.copyWith(
+                                        color: context.colors.inkFaint,
                                       ),
-                                      onDeleted: () {
-                                        setState(() {
-                                          _selectedTags.remove(tag);
-                                          formFieldState.didChange(
-                                            _selectedTags,
+                                    ),
+                                  ],
+                                )
+                              : Wrap(
+                                  spacing: AppSpacing.sm,
+                                  runSpacing: AppSpacing.sm,
+                                  children: [
+                                    for (final tag in _selectedTags)
+                                      AppPill(
+                                        Fmt.capitalize(tag),
+                                        icon: TagHelper.getIconForTag(tag),
+                                        color: context.tagColor(tag),
+                                        dense: true,
+                                        onRemove: () {
+                                          setState(
+                                            () => _selectedTags.remove(tag),
                                           );
-                                        });
-                                      },
-                                    );
-                                  }).toList(),
+                                          field.didChange(_selectedTags);
+                                        },
+                                      ),
+                                  ],
                                 ),
                         ),
                       ),
+                      if (field.hasError) ...[
+                        AppSpacing.gapXs,
+                        Text(
+                          field.errorText!,
+                          style: context.type.small.copyWith(
+                            color: context.colors.danger,
+                          ),
+                        ),
+                      ],
                     ],
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _noteController,
-                decoration: const InputDecoration(
-                  labelText: 'Note (Optional)',
-                  prefixIcon: Icon(Icons.note),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Autocomplete<String>(
-                fieldViewBuilder:
-                    (
-                      context,
-                      textEditingController,
-                      focusNode,
-                      onFieldSubmitted,
-                    ) {
-                      return TextFormField(
-                        controller: _groupController,
-                        focusNode: focusNode,
-                        onFieldSubmitted: (String value) {
-                          onFieldSubmitted();
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Group (Optional)',
-                          prefixIcon: Icon(Icons.group_work),
-                        ),
-                      );
-                    },
-                optionsBuilder: (TextEditingValue textEditingValue) {
-                  if (textEditingValue.text == '') {
-                    return const Iterable<String>.empty();
-                  }
-                  return state.groups.where((String option) {
-                    return option.toLowerCase().contains(
-                      textEditingValue.text.toLowerCase(),
-                    );
-                  });
-                },
-                onSelected: (String selection) {
-                  _groupController.text = selection;
-                },
+              _Section(
+                // "Sender" for inflows, "Recipient" for outflows.
+                label: Fmt.partyLabel(isCredit: _creditFlag),
+                child: _SuggestingField(
+                  controller: _partyController,
+                  suggestions: state.parties,
+                  hintText: _creditFlag ? 'Who paid you?' : 'Who did you pay?',
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'Enter a ${Fmt.partyLabel(isCredit: _creditFlag).toLowerCase()}'
+                      : null,
+                ),
               ),
-              const SizedBox(height: 16),
-              Autocomplete<String>(
-                fieldViewBuilder:
-                    (
-                      context,
-                      textEditingController,
-                      focusNode,
-                      onFieldSubmitted,
-                    ) {
-                      return TextFormField(
-                        controller: _partyController,
-                        readOnly: _creditFlag,
-                        focusNode: focusNode,
-                        onFieldSubmitted: (String value) {
-                          onFieldSubmitted();
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Party',
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        validator: (value) =>
-                            (value == null || value.trim().isEmpty)
-                            ? 'Please enter a party'
-                            : null,
-                      );
-                    },
-                optionsBuilder: (TextEditingValue textEditingValue) {
-                  if (textEditingValue.text == '') {
-                    return const Iterable<String>.empty();
-                  }
-                  return state.parties.where((String option) {
-                    return option.toLowerCase().contains(
-                      textEditingValue.text.toLowerCase(),
-                    );
-                  });
-                },
-                onSelected: (String selection) {
-                  _partyController.text = selection;
-                },
+              _Section(
+                label: 'Group (optional)',
+                child: _SuggestingField(
+                  controller: _groupController,
+                  suggestions: state.groups,
+                  hintText: 'e.g. Trip to Goa',
+                ),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
+              _Section(
+                label: 'Note (optional)',
+                child: TextFormField(
+                  controller: _noteController,
+                  style: context.type.body,
+                  maxLines: 3,
+                  minLines: 1,
+                  decoration: const InputDecoration(
+                    hintText: 'Anything worth remembering',
+                  ),
+                ),
+              ),
+              AppSpacing.gapSm,
+              AppButton(
+                label: 'Save transaction',
+                icon: Icons.check_rounded,
+                variant: AppButtonVariant.dark,
+                expand: true,
+                loading: state.status == SaveStatus.inProgress,
                 onPressed: _submitForm,
-                icon: const Icon(Icons.save),
-                label: const Text('Save Transaction'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Switching direction only relabels the counterparty field (Sender vs
+  /// Recipient) — it deliberately does not prefill or clear what was typed.
+  void _setCredit(bool isCredit) => setState(() => _creditFlag = isCredit);
+}
+
+/// A labelled block in the form — keeps every field's spacing identical.
+class _Section extends StatelessWidget {
+  const _Section({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppSectionLabel(label),
+          AppSpacing.gapSm,
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// Text field backed by autocomplete suggestions.
+class _SuggestingField extends StatelessWidget {
+  const _SuggestingField({
+    required this.controller,
+    required this.suggestions,
+    this.hintText,
+    this.validator,
+  });
+
+  final TextEditingController controller;
+  final List<String> suggestions;
+  final String? hintText;
+  final FormFieldValidator<String>? validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return Autocomplete<String>(
+      optionsBuilder: (value) => value.text.isEmpty
+          ? const Iterable<String>.empty()
+          : suggestions.where(
+              (o) => o.toLowerCase().contains(value.text.toLowerCase()),
+            ),
+      onSelected: (selection) => controller.text = selection,
+      fieldViewBuilder: (context, _, focusNode, onFieldSubmitted) {
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          style: context.type.body.copyWith(color: context.colors.ink),
+          decoration: InputDecoration(hintText: hintText),
+          validator: validator,
+          onFieldSubmitted: (_) => onFieldSubmitted(),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) => Align(
+        alignment: Alignment.topLeft,
+        child: Material(
+          elevation: 0,
+          borderRadius: AppRadius.mdAll,
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 200),
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: AppRadius.mdAll,
+              border: Border.all(color: context.colors.border),
+            ),
+            child: ListView(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              children: [
+                for (final option in options)
+                  ListTile(
+                    dense: true,
+                    title: Text(option, style: context.type.body),
+                    onTap: () => onSelected(option),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -395,67 +470,71 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   }
 }
 
-class MultiSelectDialog extends StatefulWidget {
-  final List<String> items;
-  final List<String> initialSelectedItems;
+/// Bottom sheet for choosing tags — pills instead of a checkbox list, so the
+/// picker matches how tags render everywhere else.
+class _TagPickerSheet extends StatefulWidget {
+  const _TagPickerSheet({required this.items, required this.initialSelection});
 
-  const MultiSelectDialog({
-    super.key,
-    required this.items,
-    required this.initialSelectedItems,
-  });
+  final List<String> items;
+  final List<String> initialSelection;
 
   @override
-  State<MultiSelectDialog> createState() => _MultiSelectDialogState();
+  State<_TagPickerSheet> createState() => _TagPickerSheetState();
 }
 
-class _MultiSelectDialogState extends State<MultiSelectDialog> {
-  final List<String> _selectedItems = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedItems.addAll(widget.initialSelectedItems);
-  }
-
-  void _onItemCheckedChange(String itemValue, bool checked) {
-    setState(() {
-      if (checked) {
-        _selectedItems.add(itemValue);
-      } else {
-        _selectedItems.remove(itemValue);
-      }
-    });
-  }
+class _TagPickerSheetState extends State<_TagPickerSheet> {
+  late final List<String> _selected = List.of(widget.initialSelection);
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Select Tags'),
-      content: SingleChildScrollView(
-        child: ListBody(
-          children: widget.items.map((item) {
-            return CheckboxListTile(
-              value: _selectedItems.contains(item),
-              title: Text(item[0].toUpperCase() + item.substring(1)),
-              controlAffinity: ListTileControlAffinity.leading,
-              onChanged: (checked) => _onItemCheckedChange(item, checked!),
-            );
-          }).toList(),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          0,
+          AppSpacing.xl,
+          AppSpacing.xl,
         ),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Select tags', style: context.type.h2),
+            AppSpacing.gapXs,
+            Text(
+              'Tap to toggle. Tags drive your analytics breakdown.',
+              style: context.type.small,
+            ),
+            AppSpacing.gapLg,
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final tag in widget.items)
+                  AppPill(
+                    Fmt.capitalize(tag),
+                    icon: TagHelper.getIconForTag(tag),
+                    color: _selected.contains(tag)
+                        ? context.tagColor(tag)
+                        : null,
+                    tone: AppPillTone.outline,
+                    onTap: () => setState(
+                      () => _selected.contains(tag)
+                          ? _selected.remove(tag)
+                          : _selected.add(tag),
+                    ),
+                  ),
+              ],
+            ),
+            AppSpacing.gapXl,
+            AppButton(
+              label: 'Done',
+              variant: AppButtonVariant.dark,
+              expand: true,
+              onPressed: () => Navigator.pop(context, _selected),
+            ),
+          ],
         ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, _selectedItems),
-          child: const Text('OK'),
-        ),
-      ],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
       ),
     );
   }

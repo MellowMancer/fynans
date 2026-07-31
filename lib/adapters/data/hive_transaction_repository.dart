@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
+import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ports/transaction_repository.dart';
@@ -23,78 +26,72 @@ class HiveTransactionRepository implements TransactionRepository {
   }
 
   @override
-  Stream<List<Transaction>> listenToTransactionsForMonth({
-    required DateTime month,
+  Stream<List<Transaction>> listenToTransactionsInRange({
+    required DateRange range,
     TransactionFilter? filter,
-  }) async* {
-    final (start, end) = _getMonthBounds(month);
+  }) {
+    // Deliberately NOT an `async*` generator.
+    late final StreamController<List<Transaction>> controller;
+    StreamSubscription<BoxEvent>? watcher;
 
-    List<Transaction> getFilteredAndSortedList() {
-      return _box.values
-          .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
-          .where((e) => filter == null || filter.matches(e))
-          .toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
-    }
+    controller = StreamController<List<Transaction>>(
+      onListen: () {
+        controller.add(_query(range, filter));
+        watcher = _box.watch().listen(
+          (_) => controller.add(_query(range, filter)),
+          onError: controller.addError,
+        );
+      },
+      onCancel: () async {
+        await watcher?.cancel();
+        watcher = null;
+      },
+    );
 
-    yield getFilteredAndSortedList();
-
-    await for (final _ in _box.watch()) {
-      yield getFilteredAndSortedList();
-    }
+    return controller.stream;
   }
 
   @override
-  Future<List<Transaction>> fetchTransactionsForMonth({
-    required DateTime month,
+  Future<List<Transaction>> fetchTransactionsInRange({
+    required DateRange range,
     TransactionFilter? filter,
-  }) async {
-    final (start, end) = _getMonthBounds(month);
+  }) async => _query(range, filter);
 
+  /// The one place transactions are range-filtered and ordered.
+  List<Transaction> _query(DateRange range, TransactionFilter? filter) {
     return _box.values
-        .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
+        .where((e) => range.contains(e.date))
         .where((e) => filter == null || filter.matches(e))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
   @override
-  Future<List<String>> getAllGroups() async {
-    return _box.values
-        .expand((t) => t.group)
-        .where((g) => g.trim().isNotEmpty)
-        .map((g) => g.trim())
-        .toSet()
+  Future<int> purgeLegacySmsRecords() async {
+    final stale = _box.values
+        .where((t) => t.smsId != null && !isCurrentSmsIdFormat(t.smsId!))
         .toList();
+    await _box.deleteAll(stale.map((t) => t.key));
+    return stale.length;
   }
 
   @override
-  Future<List<String>> getAllUniqueTags() async {
-    return _box.values
-        .expand((t) => t.tags)
-        .where((t) => t.trim().isNotEmpty)
-        .map((t) => t.trim())
-        .toSet()
-        .toList();
-  }
+  Future<List<String>> getAllGroups() async => _distinct((t) => t.group);
 
   @override
-  Future<List<String>> getAllParties() async {
-    return _box.values
-        .map((e) => e.party.trim())
-        .where((p) => p.isNotEmpty)
-        .toSet()
-        .toList();
-  }
+  Future<List<String>> getAllUniqueTags() async => _distinct((t) => t.tags);
 
-  /// Dev-only utility. Not on the [TransactionRepository] interface.
-  Future<void> clearDatabase() async {
-    await _box.clear();
-  }
+  @override
+  Future<List<String>> getAllParties() async => _distinct((t) => [t.party]);
 
-  (DateTime, DateTime) _getMonthBounds(DateTime month) {
-    final start = DateTime(month.year, month.month, 1);
-    final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59, 999, 999);
-    return (start, end);
-  }
+  /// Trim-drop-empty-dedupe over one field, shared by the three above.
+  List<String> _distinct(Iterable<String> Function(Transaction) select) =>
+      _box.values
+          .expand(select)
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toSet()
+          .toList();
+
+
 }
