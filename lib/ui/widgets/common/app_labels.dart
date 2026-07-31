@@ -59,7 +59,6 @@ class AppSectionLabel extends StatelessWidget {
     this.color,
     this.icon,
     this.trailing,
-    this.padding,
   });
 
   final String text;
@@ -71,7 +70,6 @@ class AppSectionLabel extends StatelessWidget {
   /// Widget pinned after the text (e.g.
   final Widget? trailing;
 
-  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +92,7 @@ class AppSectionLabel extends StatelessWidget {
       ],
     );
 
-    return padding == null ? row : Padding(padding: padding!, child: row);
+    return row;
   }
 }
 

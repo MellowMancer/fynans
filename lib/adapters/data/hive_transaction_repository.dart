@@ -71,9 +71,7 @@ class HiveTransactionRepository implements TransactionRepository {
     final stale = _box.values
         .where((t) => t.smsId != null && !isCurrentSmsIdFormat(t.smsId!))
         .toList();
-    for (final transaction in stale) {
-      await transaction.delete();
-    }
+    await _box.deleteAll(stale.map((t) => t.key));
     return stale.length;
   }
 

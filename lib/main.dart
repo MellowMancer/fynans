@@ -19,14 +19,15 @@ Future<void> main() async {
   Hive.registerAdapter(TransactionAdapter());
   await Hive.openBox<Transaction>('transactions');
 
-  // One-time upgrade path: drop auto-imported rows stamped with the old,
-  // non-reproducible smsId scheme.
-  await HiveTransactionRepository().purgeLegacySmsRecords();
-
-  // Read the appearance choice before the first frame — loading it after would
-  // paint one frame in the wrong theme and flash.
   final settings = SharedPrefsSettingsRepository();
-  final themePreference = await settings.readThemePreference();
+  // Different stores, so these overlap rather than sum. The purge is a one-time
+  // upgrade path dropping rows stamped with the old, non-reproducible smsId
+  // scheme; the appearance choice must be read before the first frame, or it
+  // paints once in the wrong theme.
+  final (_, themePreference) = await (
+    HiveTransactionRepository().purgeLegacySmsRecords(),
+    settings.readThemePreference(),
+  ).wait;
 
   runApp(MyApp(settings: settings, themePreference: themePreference));
   // After the UI is up, sweep the inbox for bank-transaction SMS.

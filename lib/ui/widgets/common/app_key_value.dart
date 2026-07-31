@@ -76,37 +76,29 @@ class AppKeyValueGrid extends StatelessWidget {
   const AppKeyValueGrid({
     super.key,
     required this.children,
-    this.columns = 2,
-    this.spacing = AppSpacing.lg,
-    this.runSpacing = AppSpacing.lg,
-    this.minItemWidth = 150,
   });
 
   final List<Widget> children;
 
-  /// Preferred column count; reduced automatically when space is tight.
-  final int columns;
-
-  final double spacing;
-  final double runSpacing;
-
-  /// Below this width per item, the grid drops a column.
-  final double minItemWidth;
+  /// Two columns, dropping to one when each would be narrower than this.
+  static const int _columns = 2;
+  static const double _gap = AppSpacing.lg;
+  static const double _minItemWidth = 150;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        var cols = columns;
-        while (cols > 1 && (width - spacing * (cols - 1)) / cols < minItemWidth) {
+        var cols = _columns;
+        while (cols > 1 && (width - _gap * (cols - 1)) / cols < _minItemWidth) {
           cols--;
         }
-        final itemWidth = (width - spacing * (cols - 1)) / cols;
+        final itemWidth = (width - _gap * (cols - 1)) / cols;
 
         return Wrap(
-          spacing: spacing,
-          runSpacing: runSpacing,
+          spacing: _gap,
+          runSpacing: _gap,
           children: [
             for (final child in children)
               SizedBox(width: cols == 1 ? width : itemWidth, child: child),

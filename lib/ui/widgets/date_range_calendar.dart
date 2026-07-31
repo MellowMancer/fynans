@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/use_cases/date_range_presets.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
@@ -244,7 +245,7 @@ class _MonthGrid extends StatelessWidget {
   List<List<DateTime?>> get _weeks {
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
     final leading = (DateTime(month.year, month.month, 1).weekday -
-            DateTime.monday +
+            kWeekStartsOn +
             _kDaysPerWeek) %
         _kDaysPerWeek;
 

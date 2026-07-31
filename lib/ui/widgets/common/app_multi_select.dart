@@ -10,6 +10,10 @@ import 'package:fynans/ui/widgets/common/app_state_views.dart';
 const int _kSearchThreshold = 6;
 
 /// A dropdown-style field for picking several values from a list.
+/// Applies the caller's optional display transform.
+String _display(String value, String Function(String)? format) =>
+    format == null ? value : format(value);
+
 class AppMultiSelectField extends StatelessWidget {
   const AppMultiSelectField({
     super.key,
@@ -28,8 +32,6 @@ class AppMultiSelectField extends StatelessWidget {
   /// Optional display transform (e.g.
   final String Function(String)? formatOption;
 
-  String _display(String value) =>
-      formatOption == null ? value : formatOption!(value);
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +73,7 @@ class AppMultiSelectField extends StatelessWidget {
                             children: [
                               for (final value in selected)
                                 AppPill(
-                                  _display(value),
+                                  _display(value, formatOption),
                                   tone: AppPillTone.accent,
                                   dense: true,
                                   onRemove: () => onChanged(
@@ -150,8 +152,6 @@ class _MultiSelectSheetState extends State<_MultiSelectSheet> {
     super.dispose();
   }
 
-  String _display(String value) =>
-      widget.formatOption == null ? value : widget.formatOption!(value);
 
   List<String> get _visible {
     if (_query.isEmpty) return widget.options;
@@ -231,7 +231,7 @@ class _MultiSelectSheetState extends State<_MultiSelectSheet> {
                         controlAffinity: ListTileControlAffinity.leading,
                         activeColor: context.colors.accent,
                         title: Text(
-                          _display(option),
+                          _display(option, widget.formatOption),
                           style: context.type.bodyStrong,
                         ),
                         onChanged: (_) => setState(

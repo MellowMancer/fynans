@@ -5,13 +5,10 @@ import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_state.dart';
 import 'package:fynans/entities/transaction.dart';
-import 'package:fynans/ports/transaction_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../fakes/fake_transaction_repository.dart';
-
-class _MockTransactionRepository extends Mock
-    implements TransactionRepository {}
+import '../fakes/mock_transaction_repository.dart';
 
 Transaction _txn({
   required double amount,
@@ -87,11 +84,11 @@ void main() {
   });
 
   group('TransactionCubit subscription lifecycle', () {
-    late _MockTransactionRepository repo;
+    late MockTransactionRepository repo;
 
     setUpAll(() => registerFallbackValue(DateRange.month(DateTime(2026))));
 
-    setUp(() => repo = _MockTransactionRepository());
+    setUp(() => repo = MockTransactionRepository());
 
     test('cancels the previous subscription when re-fetching', () async {
       final controllers = <StreamController<List<Transaction>>>[];

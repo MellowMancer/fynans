@@ -13,7 +13,6 @@ class AppPill extends StatelessWidget {
     super.key,
     this.icon,
     this.tone = AppPillTone.neutral,
-    this.mono = false,
     this.dense = false,
     this.onTap,
     this.onRemove,
@@ -27,8 +26,6 @@ class AppPill extends StatelessWidget {
 
   final AppPillTone tone;
 
-  /// Render the label in JetBrains Mono (for codes and IDs).
-  final bool mono;
 
   /// Tighter padding for inline use.
   final bool dense;
@@ -61,9 +58,8 @@ class AppPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = _styleFor(context.colors);
     final fg = color ?? style.foreground;
-    final textStyle = mono
-        ? context.type.monoSmall.copyWith(color: fg, letterSpacing: 0.6)
-        : context.type.small.copyWith(color: fg, fontWeight: FontWeight.w500);
+    final textStyle =
+        context.type.small.copyWith(color: fg, fontWeight: FontWeight.w500);
 
     final content = Row(
       mainAxisSize: MainAxisSize.min,
@@ -74,7 +70,7 @@ class AppPill extends StatelessWidget {
         ],
         Flexible(
           child: Text(
-            mono ? label.toUpperCase() : label,
+            label,
             style: textStyle,
             overflow: TextOverflow.ellipsis,
           ),

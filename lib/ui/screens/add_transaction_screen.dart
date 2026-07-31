@@ -227,35 +227,28 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
               ),
               _Section(
                 label: 'Date',
-                child: InkWell(
+                child: AppCard(
                   onTap: _presentDatePicker,
                   borderRadius: AppRadius.mdAll,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.md,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: context.colors.border),
-                      borderRadius: AppRadius.mdAll,
-                      color: context.colors.surface,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 16,
-                          color: context.colors.inkMuted,
-                        ),
-                        AppSpacing.hGapMd,
-                        Expanded(child: MonoText(Fmt.fullDate(_selectedDate))),
-                        Icon(
-                          Icons.expand_more_rounded,
-                          size: 18,
-                          color: context.colors.inkFaint,
-                        ),
-                      ],
-                    ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.md,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: 16,
+                        color: context.colors.inkMuted,
+                      ),
+                      AppSpacing.hGapMd,
+                      Expanded(child: MonoText(Fmt.fullDate(_selectedDate))),
+                      Icon(
+                        Icons.expand_more_rounded,
+                        size: 18,
+                        color: context.colors.inkFaint,
+                      ),
+                    ],
                   ),
                 ),
               ),

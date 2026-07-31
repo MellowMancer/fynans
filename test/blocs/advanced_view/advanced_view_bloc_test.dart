@@ -5,12 +5,9 @@ import 'package:fynans/adapters/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
-import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/use_cases/date_range_presets.dart';
 import 'package:mocktail/mocktail.dart';
-
-class _MockTransactionRepository extends Mock
-    implements TransactionRepository {}
+import '../../fakes/mock_transaction_repository.dart';
 
 Transaction _txn({
   required double amount,
@@ -35,7 +32,7 @@ void main() {
 
   group('AdvancedViewBloc defaults', () {
     test('starts on This Month covering the current calendar month', () {
-      final repo = _MockTransactionRepository();
+      final repo = MockTransactionRepository();
       final bloc = AdvancedViewBloc(repo);
       addTearDown(bloc.close);
 
@@ -54,7 +51,7 @@ void main() {
     test('a stream failure is not terminal — a range change still refetches',
         () async {
       final controllers = <StreamController<List<Transaction>>>[];
-      final repo = _MockTransactionRepository();
+      final repo = MockTransactionRepository();
       when(() => repo.listenToTransactionsInRange(
             range: any(named: 'range'),
             filter: any(named: 'filter'),
@@ -94,7 +91,7 @@ void main() {
 
     test('a snapshot queued before a range change cannot revert it', () async {
       final controllers = <StreamController<List<Transaction>>>[];
-      final repo = _MockTransactionRepository();
+      final repo = MockTransactionRepository();
       when(() => repo.listenToTransactionsInRange(
             range: any(named: 'range'),
             filter: any(named: 'filter'),
@@ -133,9 +130,9 @@ void main() {
   });
 
   group('AdvancedViewBloc reactivity', () {
-    late _MockTransactionRepository repo;
+    late MockTransactionRepository repo;
 
-    setUp(() => repo = _MockTransactionRepository());
+    setUp(() => repo = MockTransactionRepository());
 
     test('re-emits grouped success state on each stream snapshot', () async {
       final controller = StreamController<List<Transaction>>();

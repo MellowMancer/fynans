@@ -330,10 +330,18 @@ class AdvancedFilterControls extends StatelessWidget {
     final repository = context.read<TransactionRepository>();
     final bloc = context.read<AdvancedViewBloc>();
 
+    // Three independent scans of the box; run them together rather than
+    // paying for each in turn before the sheet can open.
+    final (groups, tags, parties) = await (
+      repository.getAllGroups(),
+      repository.getAllUniqueTags(),
+      repository.getAllParties(),
+    ).wait;
+
     final options = FilterOptions(
-      groups: await repository.getAllGroups()..sort(),
-      tags: await repository.getAllUniqueTags()..sort(),
-      parties: await repository.getAllParties()..sort(),
+      groups: groups..sort(),
+      tags: tags..sort(),
+      parties: parties..sort(),
     );
     if (!context.mounted) return;
 
