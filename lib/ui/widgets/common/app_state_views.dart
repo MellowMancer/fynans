@@ -26,7 +26,7 @@ class AppEmptyState extends StatelessWidget {
   /// Optional call to action (usually an [AppButton]).
   final Widget? action;
 
-  /// Overrides the glyph colour — pass [AppColors.danger] for failures.
+  /// Overrides the glyph colour — pass [context.colors.danger] for failures.
   final Color? tone;
 
   @override
@@ -41,23 +41,23 @@ class AppEmptyState extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: (tone ?? AppColors.accent).withValues(alpha: 0.08),
+                  color: (tone ?? context.colors.accent).withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 22, color: tone ?? AppColors.accent),
+                child: Icon(icon, size: 22, color: tone ?? context.colors.accent),
               ),
               AppSpacing.gapLg,
             ],
             Text(
               title,
-              style: AppTypography.h3,
+              style: context.type.h3,
               textAlign: TextAlign.center,
             ),
             if (message != null) ...[
               AppSpacing.gapXs,
               Text(
                 message!,
-                style: AppTypography.small,
+                style: context.type.small,
                 textAlign: TextAlign.center,
               ),
             ],
@@ -81,9 +81,9 @@ class AppLoading extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: const CircularProgressIndicator(
+        child: CircularProgressIndicator(
           strokeWidth: 2,
-          color: AppColors.accent,
+          color: context.colors.accent,
         ),
       ),
     );
@@ -110,7 +110,7 @@ class AppErrorView extends StatelessWidget {
       icon: Icons.error_outline_rounded,
       title: title,
       message: message,
-      tone: AppColors.danger,
+      tone: context.colors.danger,
       action: onRetry == null
           ? null
           : AppButton(

@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 
-/// Type tokens. Two families, each with a job:
-/// * **Inter** — headings and prose.
-/// * **JetBrains Mono** — eyebrow labels, metadata and every number, so
-///   amounts align in columns and read as data.
+/// Type tokens — metrics only. One family, **Iosevka**, in two roles:
+/// * **[sans]** — headings and prose.
+/// * **[mono]** — eyebrow labels, metadata and every number.
+///
+/// Iosevka is monospaced, so the two roles resolve to the same family and
+/// figures align in columns everywhere. The roles are kept apart anyway: they
+/// carry different weights and tracking, and splitting `sans` off again
+/// (Iosevka Aile is the proportional sibling) stays a one-line change.
+///
+/// **These styles carry no colour.** Colour is a theme concern, and a `const`
+/// style cannot vary between light and dark. Read the coloured styles from
+/// `context.type`, which resolves them against the active [AppColors].
 ///
 /// **Rule: mono is always UPPER-CASE.** Don't pair these mono styles with a
 /// bare `Text`; use `MonoText` (or `AppSectionLabel` / `AppPill(mono: true)` /
 /// `MoneyText`), which apply the casing for you.
 abstract final class AppTypography {
-  static const String sans = 'Inter';
-  static const String mono = 'JetBrainsMono';
+  static const String sans = 'Iosevka';
+  static const String mono = 'Iosevka';
 
-  // --- Headings (Inter) ---
+  // --- Headings ---
   static const TextStyle display = TextStyle(
     fontFamily: sans,
     fontSize: 28,
     fontWeight: FontWeight.w700,
     height: 1.2,
     letterSpacing: -0.4,
-    color: AppColors.ink,
   );
 
   static const TextStyle h1 = TextStyle(
@@ -29,7 +36,6 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w700,
     height: 1.25,
     letterSpacing: -0.3,
-    color: AppColors.ink,
   );
 
   static const TextStyle h2 = TextStyle(
@@ -38,7 +44,6 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w600,
     height: 1.3,
     letterSpacing: -0.2,
-    color: AppColors.ink,
   );
 
   static const TextStyle h3 = TextStyle(
@@ -46,16 +51,14 @@ abstract final class AppTypography {
     fontSize: 15,
     fontWeight: FontWeight.w600,
     height: 1.35,
-    color: AppColors.ink,
   );
 
-  // --- Prose (Inter) ---
+  // --- Prose ---
   static const TextStyle body = TextStyle(
     fontFamily: sans,
     fontSize: 14,
     fontWeight: FontWeight.w400,
     height: 1.5,
-    color: AppColors.inkSecondary,
   );
 
   static const TextStyle bodyStrong = TextStyle(
@@ -63,7 +66,6 @@ abstract final class AppTypography {
     fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.45,
-    color: AppColors.ink,
   );
 
   static const TextStyle small = TextStyle(
@@ -71,7 +73,6 @@ abstract final class AppTypography {
     fontSize: 12.5,
     fontWeight: FontWeight.w400,
     height: 1.4,
-    color: AppColors.inkSecondary,
   );
 
   /// Button text.
@@ -91,7 +92,6 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w500,
     height: 1.3,
     letterSpacing: 1.1,
-    color: AppColors.inkMuted,
   );
 
   /// Metadata / code-ish values.
@@ -100,7 +100,6 @@ abstract final class AppTypography {
     fontSize: 13,
     fontWeight: FontWeight.w400,
     height: 1.4,
-    color: AppColors.ink,
   );
 
   static const TextStyle monoSmall = TextStyle(
@@ -108,7 +107,6 @@ abstract final class AppTypography {
     fontSize: 11.5,
     fontWeight: FontWeight.w400,
     height: 1.35,
-    color: AppColors.inkMuted,
   );
 
   /// Money and other headline figures.
@@ -118,7 +116,6 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w700,
     height: 1.2,
     letterSpacing: -0.4,
-    color: AppColors.ink,
   );
 
   static const TextStyle amountSmall = TextStyle(
@@ -126,22 +123,61 @@ abstract final class AppTypography {
     fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.25,
-    color: AppColors.ink,
   );
 
-  /// Full Material text theme, so stock widgets inherit the right fonts.
-  static const TextTheme textTheme = TextTheme(
-    displaySmall: display,
-    headlineMedium: h1,
-    headlineSmall: h1,
-    titleLarge: h2,
-    titleMedium: h3,
-    titleSmall: bodyStrong,
-    bodyLarge: body,
-    bodyMedium: body,
-    bodySmall: small,
-    labelLarge: button,
-    labelMedium: label,
-    labelSmall: label,
-  );
+  /// Material text theme for [colors], so stock widgets inherit the right
+  /// fonts *and* the right inks for the active theme.
+  static TextTheme textThemeFor(AppColors colors) {
+    final styles = AppTextStyles(colors);
+    return TextTheme(
+      displaySmall: styles.display,
+      headlineMedium: styles.h1,
+      headlineSmall: styles.h1,
+      titleLarge: styles.h2,
+      titleMedium: styles.h3,
+      titleSmall: styles.bodyStrong,
+      bodyLarge: styles.body,
+      bodyMedium: styles.body,
+      bodySmall: styles.small,
+      labelLarge: styles.button,
+      labelMedium: styles.label,
+      labelSmall: styles.label,
+    );
+  }
+}
+
+/// The type scale with this theme's inks applied. Reached via `context.type`.
+@immutable
+class AppTextStyles {
+  const AppTextStyles(this._colors);
+
+  final AppColors _colors;
+
+  TextStyle get display => AppTypography.display.copyWith(color: _colors.ink);
+  TextStyle get h1 => AppTypography.h1.copyWith(color: _colors.ink);
+  TextStyle get h2 => AppTypography.h2.copyWith(color: _colors.ink);
+  TextStyle get h3 => AppTypography.h3.copyWith(color: _colors.ink);
+
+  TextStyle get body => AppTypography.body.copyWith(color: _colors.inkSecondary);
+  TextStyle get bodyStrong =>
+      AppTypography.bodyStrong.copyWith(color: _colors.ink);
+  TextStyle get small =>
+      AppTypography.small.copyWith(color: _colors.inkSecondary);
+
+  /// Left uncoloured: buttons set their own foreground per variant.
+  TextStyle get button => AppTypography.button;
+
+  TextStyle get label => AppTypography.label.copyWith(color: _colors.inkMuted);
+  TextStyle get monoBody =>
+      AppTypography.monoBody.copyWith(color: _colors.ink);
+  TextStyle get monoSmall =>
+      AppTypography.monoSmall.copyWith(color: _colors.inkMuted);
+  TextStyle get amount => AppTypography.amount.copyWith(color: _colors.ink);
+  TextStyle get amountSmall =>
+      AppTypography.amountSmall.copyWith(color: _colors.ink);
+}
+
+/// `context.type.h2` — the type scale, resolved for the active theme.
+extension AppTypographyX on BuildContext {
+  AppTextStyles get type => AppTextStyles(colors);
 }

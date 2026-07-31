@@ -11,4 +11,5 @@ export 'app_metric.dart';
 export 'app_multi_select.dart';
 export 'app_pill.dart';
 export 'app_quote_block.dart';
+export 'app_segmented.dart';
 export 'app_state_views.dart';

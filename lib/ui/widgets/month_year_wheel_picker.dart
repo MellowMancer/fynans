@@ -56,7 +56,7 @@ class MonthYearWheelPicker extends StatefulWidget {
             children: [
               const AppSectionLabel('Jump to'),
               AppSpacing.gapXs,
-              Text('Pick a month', style: AppTypography.h2),
+              Text('Pick a month', style: context.type.h2),
               AppSpacing.gapLg,
               SizedBox(
                 height: _kWheelHeight,
@@ -83,12 +83,13 @@ class MonthYearWheelPicker extends StatefulWidget {
 }
 
 class MonthYearWheelPickerState extends State<MonthYearWheelPicker> {
-  static const TextStyle _itemStyle = TextStyle(
-    fontFamily: AppTypography.mono,
-    fontSize: _kItemFontSize,
-    height: _kItemHeight,
-    color: AppColors.ink,
-  );
+  /// Not a constant: the wheel's ink follows the active theme.
+  TextStyle _itemStyle(BuildContext context) => TextStyle(
+        fontFamily: AppTypography.mono,
+        fontSize: _kItemFontSize,
+        height: _kItemHeight,
+        color: context.colors.ink,
+      );
 
   static final WheelPickerStyle _wheelStyle = WheelPickerStyle(
     itemExtent: _kItemFontSize * _kItemHeight,
@@ -154,7 +155,7 @@ class MonthYearWheelPickerState extends State<MonthYearWheelPicker> {
           child: Container(
             height: _kSelectionBarHeight,
             decoration: BoxDecoration(
-              color: AppColors.surfaceAccent,
+              color: context.colors.surfaceAccent,
               borderRadius: AppRadius.mdAll,
             ),
           ),
@@ -166,13 +167,13 @@ class MonthYearWheelPickerState extends State<MonthYearWheelPicker> {
                 controller: _monthsWheel,
                 looping: false,
                 style: _wheelStyle,
-                selectedIndexColor: AppColors.accent,
+                selectedIndexColor: context.colors.accent,
                 onIndexChanged: (index, _) {
                   _monthIndex = index;
                   _emitChange();
                 },
                 builder: (context, index) =>
-                    MonoText(_monthNames[index], style: _itemStyle),
+                    MonoText(_monthNames[index], style: _itemStyle(context)),
               ),
             ),
             Expanded(
@@ -180,14 +181,14 @@ class MonthYearWheelPickerState extends State<MonthYearWheelPicker> {
                 controller: _yearsWheel,
                 looping: false,
                 style: _wheelStyle,
-                selectedIndexColor: AppColors.accent,
+                selectedIndexColor: context.colors.accent,
                 onIndexChanged: (index, _) {
                   _yearIndex = index;
                   _emitChange();
                 },
                 builder: (context, index) => MonoText(
                   '${widget.firstDate.year + index}',
-                  style: _itemStyle,
+                  style: _itemStyle(context),
                 ),
               ),
             ),

@@ -9,10 +9,18 @@ import 'package:fynans/ui/widgets/common/app_labels.dart';
 enum MoneyTone { neutral, positive, negative }
 
 extension _MoneyToneColor on MoneyTone {
-  Color get color => switch (this) {
-        MoneyTone.neutral => AppColors.ink,
-        MoneyTone.positive => AppColors.success,
-        MoneyTone.negative => AppColors.danger,
+  /// The figure's own colour in the active theme.
+  Color colorIn(AppColors c) => switch (this) {
+        MoneyTone.neutral => c.ink,
+        MoneyTone.positive => c.success,
+        MoneyTone.negative => c.danger,
+      };
+
+  /// The tile fill behind it.
+  Color fillIn(AppColors c) => switch (this) {
+        MoneyTone.neutral => c.surfaceMuted,
+        MoneyTone.positive => c.successSoft,
+        MoneyTone.negative => c.dangerSoft,
       };
 }
 
@@ -32,7 +40,7 @@ class MoneyText extends StatelessWidget {
   final double amount;
   final MoneyTone tone;
 
-  /// Defaults to [AppTypography.amount].
+  /// Defaults to [context.type.amount].
   final TextStyle? style;
 
   final int decimals;
@@ -49,8 +57,8 @@ class MoneyText extends StatelessWidget {
     // the rule holds even when a currency code carries letters.
     final text = MonoText(
       Fmt.money(amount, decimals: decimals, signed: signed),
-      style: style ?? AppTypography.amount,
-      color: tone.color,
+      style: style ?? context.type.amount,
+      color: tone.colorIn(context.colors),
       maxLines: 1,
     );
     return fit ? FittedBox(fit: BoxFit.scaleDown, child: text) : text;
@@ -72,12 +80,6 @@ class AppMetricTile extends StatelessWidget {
   final MoneyTone tone;
   final IconData? icon;
 
-  Color get _fill => switch (tone) {
-        MoneyTone.neutral => AppColors.surfaceMuted,
-        MoneyTone.positive => AppColors.successSoft,
-        MoneyTone.negative => AppColors.dangerSoft,
-      };
-
   @override
   Widget build(BuildContext context) {
     final tile = Container(
@@ -86,14 +88,14 @@ class AppMetricTile extends StatelessWidget {
         vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color: _fill,
+        color: tone.fillIn(context.colors),
         borderRadius: AppRadius.mdAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppSectionLabel(label, icon: icon, color: tone.color),
+          AppSectionLabel(label, icon: icon, color: tone.colorIn(context.colors)),
           AppSpacing.gapXs,
           MoneyText(amount, tone: tone, fit: true),
         ],
@@ -134,7 +136,7 @@ class AppAmountRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: AppTypography.body,
+              style: context.type.body,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -143,7 +145,7 @@ class AppAmountRow extends StatelessWidget {
             amount,
             tone: tone,
             decimals: decimals,
-            style: AppTypography.amountSmall,
+            style: context.type.amountSmall,
           ),
         ],
       ),

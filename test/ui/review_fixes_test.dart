@@ -140,21 +140,17 @@ void main() {
               width: 400,
               // The height the month pager actually gives it.
               height: 360,
-              child: SummaryCard(
-                summary: summary,
-                month: DateTime(2026, 7),
-                onSelectMonth: () {},
-              ),
+              child: SummaryBody(summary: summary),
             ),
           ),
         ),
       );
 
       expect(tester.takeException(), isNull,
-          reason: 'a full 3-tag + 3-group card must fit the pager height');
+          reason: 'the body sizes to its content, so it must never overflow');
     });
 
-    testWidgets('shows a placeholder when its month is not the loaded one',
+    testWidgets('shows its own month while the figures are still loading',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -163,19 +159,75 @@ void main() {
             body: SizedBox(
               width: 400,
               height: 360,
-              child: SummaryCard(
-                summary: null,
-                month: DateTime(2026, 6),
-                onSelectMonth: () {},
+              child: Column(
+                children: [
+                  StatementPeriodRow(
+                    month: DateTime(2026, 6),
+                    onSelectMonth: () {},
+                  ),
+                  const SummaryBody(summary: null),
+                ],
               ),
             ),
           ),
         ),
       );
 
-      // Its own month, and no stale figures from another month.
+      // The row always shows its own month; the body loads separately.
       expect(find.text('Jun 2026'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+  });
+
+  group('TransactionTotals disclosure', () {
+    const summary = MonthlySummary(
+      total: -1500,
+      totalIncome: 5000,
+      totalExpenses: 6500,
+      topTags: {'food': 4000, 'travel': 2500, 'groceries': 1200},
+      topGroups: {'goa trip': 2500, 'office': 900, 'home': 400},
+    );
+
+    Widget host(Widget child) => MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: SizedBox(width: 400, height: 360, child: child),
+          ),
+        );
+
+    testWidgets('the split is hidden until the net figure is tapped',
+        (tester) async {
+      await tester.pumpWidget(host(
+        const SummaryBody(summary: summary),
+      ));
+
+      expect(find.text('INFLOW'), findsNothing);
+      expect(find.text('OUTFLOW'), findsNothing);
+      expect(find.text('NET FOR THIS PERIOD'), findsOneWidget);
+
+      await tester.tap(find.text('NET FOR THIS PERIOD'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('INFLOW'), findsOneWidget);
+      expect(find.text('OUTFLOW'), findsOneWidget);
+      // Expanding must still fit the fixed-height month pager.
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('NET FOR THIS PERIOD'));
+      await tester.pumpAndSettle();
+      expect(find.text('INFLOW'), findsNothing);
+    });
+
+    testWidgets('can start expanded', (tester) async {
+      await tester.pumpWidget(
+        host(const TransactionTotals(
+          summary: summary,
+          initiallyExpanded: true,
+        )),
+      );
+
+      expect(find.text('INFLOW'), findsOneWidget);
+      expect(find.text('OUTFLOW'), findsOneWidget);
     });
   });
 }

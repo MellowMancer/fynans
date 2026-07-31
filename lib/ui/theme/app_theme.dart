@@ -3,171 +3,185 @@ import 'package:fynans/ui/theme/app_colors.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
 import 'package:fynans/ui/theme/app_typography.dart';
 
-/// Builds the single [ThemeData] for the app so stock Material widgets pick up
-/// the warm palette and the Inter/JetBrains Mono pairing without per-widget
-/// overrides.
+/// Builds the app's [ThemeData] so stock Material widgets pick up the palette
+/// and the Iosevka type scale without per-widget overrides.
+///
+/// [light] and [dark] are the same builder with a different [AppColors], so the
+/// two themes cannot drift: adding a widget theme covers both at once.
 abstract final class AppTheme {
-  static ThemeData light() {
-    const colorScheme = ColorScheme(
-      brightness: Brightness.light,
-      primary: AppColors.primary,
-      onPrimary: AppColors.onDark,
-      primaryContainer: AppColors.primarySoft,
-      onPrimaryContainer: AppColors.primary,
-      secondary: AppColors.accent,
-      onSecondary: AppColors.onDark,
-      secondaryContainer: AppColors.accentSoft,
-      onSecondaryContainer: AppColors.accentStrong,
-      tertiary: AppColors.success,
-      onTertiary: AppColors.onDark,
-      error: AppColors.danger,
-      onError: AppColors.onDark,
-      errorContainer: AppColors.dangerSoft,
-      onErrorContainer: AppColors.danger,
-      surface: AppColors.surface,
-      onSurface: AppColors.ink,
-      surfaceContainerLowest: AppColors.surface,
-      surfaceContainerLow: AppColors.canvas,
-      surfaceContainer: AppColors.surfaceMuted,
-      surfaceContainerHigh: AppColors.surfaceMuted,
-      surfaceContainerHighest: AppColors.surfaceAccent,
-      onSurfaceVariant: AppColors.inkSecondary,
-      outline: AppColors.border,
-      outlineVariant: AppColors.borderStrong,
+  static ThemeData light() => _build(AppColors.light, Brightness.light);
+
+  static ThemeData dark() => _build(AppColors.dark, Brightness.dark);
+
+  static ThemeData _build(AppColors colors, Brightness brightness) {
+    final colorScheme = ColorScheme(
+      brightness: brightness,
+      primary: colors.primary,
+      onPrimary: colors.onAccent,
+      primaryContainer: colors.primarySoft,
+      onPrimaryContainer: colors.primary,
+      secondary: colors.accent,
+      onSecondary: colors.onAccent,
+      secondaryContainer: colors.accentSoft,
+      onSecondaryContainer: colors.accentStrong,
+      tertiary: colors.success,
+      onTertiary: colors.onAccent,
+      error: colors.danger,
+      onError: colors.onAccent,
+      errorContainer: colors.dangerSoft,
+      onErrorContainer: colors.danger,
+      surface: colors.surface,
+      onSurface: colors.ink,
+      surfaceContainerLowest: colors.surface,
+      surfaceContainerLow: colors.canvas,
+      surfaceContainer: colors.surfaceMuted,
+      surfaceContainerHigh: colors.surfaceMuted,
+      surfaceContainerHighest: colors.surfaceAccent,
+      onSurfaceVariant: colors.inkSecondary,
+      outline: colors.border,
+      outlineVariant: colors.borderStrong,
     );
+
+    final text = AppTypography.textThemeFor(colors);
+    final styles = AppTextStyles(colors);
 
     return ThemeData(
       useMaterial3: true,
+      brightness: brightness,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.canvas,
-      canvasColor: AppColors.canvas,
+      // The tokens ride along on the ThemeData so `context.colors` can find
+      // them, and so a theme switch animates through AppColors.lerp.
+      extensions: <ThemeExtension<dynamic>>[colors],
+      scaffoldBackgroundColor: colors.canvas,
+      canvasColor: colors.canvas,
       fontFamily: AppTypography.sans,
-      textTheme: AppTypography.textTheme,
+      textTheme: text,
       splashFactory: InkSparkle.splashFactory,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.canvas,
-        foregroundColor: AppColors.ink,
+      appBarTheme: AppBarTheme(
+        backgroundColor: colors.canvas,
+        foregroundColor: colors.ink,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypography.h1,
+        titleTextStyle: styles.h1,
       ),
-      cardTheme: const CardThemeData(
-        color: AppColors.surface,
+      cardTheme: CardThemeData(
+        color: colors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.lgAll,
-          side: BorderSide(color: AppColors.border),
+          side: BorderSide(color: colors.border),
         ),
         clipBehavior: Clip.antiAlias,
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.border,
+      dividerTheme: DividerThemeData(
+        color: colors.border,
         thickness: 1,
         space: 1,
       ),
-      listTileTheme: const ListTileThemeData(
-        iconColor: AppColors.inkMuted,
-        titleTextStyle: AppTypography.bodyStrong,
-        subtitleTextStyle: AppTypography.small,
+      listTileTheme: ListTileThemeData(
+        iconColor: colors.inkMuted,
+        titleTextStyle: styles.bodyStrong,
+        subtitleTextStyle: styles.small,
       ),
-      expansionTileTheme: const ExpansionTileThemeData(
-        iconColor: AppColors.inkMuted,
-        collapsedIconColor: AppColors.inkMuted,
-        textColor: AppColors.ink,
-        collapsedTextColor: AppColors.ink,
-        shape: Border(),
-        collapsedShape: Border(),
-        tilePadding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        childrenPadding: EdgeInsets.only(bottom: AppSpacing.sm),
+      expansionTileTheme: ExpansionTileThemeData(
+        iconColor: colors.inkMuted,
+        collapsedIconColor: colors.inkMuted,
+        textColor: colors.ink,
+        collapsedTextColor: colors.ink,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        childrenPadding: const EdgeInsets.only(bottom: AppSpacing.sm),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
-        hintStyle: AppTypography.body.copyWith(color: AppColors.inkFaint),
-        labelStyle: AppTypography.small,
-        floatingLabelStyle: AppTypography.small.copyWith(
-          color: AppColors.accent,
-        ),
+        fillColor: colors.surface,
+        hintStyle: styles.body.copyWith(color: colors.inkFaint),
+        labelStyle: styles.small,
+        floatingLabelStyle: styles.small.copyWith(color: colors.accent),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.md,
         ),
-        border: const OutlineInputBorder(
+        border: OutlineInputBorder(
           borderRadius: AppRadius.mdAll,
-          borderSide: BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: colors.border),
         ),
-        enabledBorder: const OutlineInputBorder(
+        enabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.mdAll,
-          borderSide: BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: colors.border),
         ),
-        focusedBorder: const OutlineInputBorder(
+        focusedBorder: OutlineInputBorder(
           borderRadius: AppRadius.mdAll,
-          borderSide: BorderSide(color: AppColors.accent, width: 1.5),
+          borderSide: BorderSide(color: colors.accent, width: 1.5),
         ),
-        errorBorder: const OutlineInputBorder(
+        errorBorder: OutlineInputBorder(
           borderRadius: AppRadius.mdAll,
-          borderSide: BorderSide(color: AppColors.danger),
+          borderSide: BorderSide(color: colors.danger),
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.ink,
-        unselectedItemColor: AppColors.inkMuted,
-        selectedLabelStyle: AppTypography.label,
-        unselectedLabelStyle: AppTypography.label,
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: colors.surface,
+        // Primary, not ink: the active tab and the add button are the app's
+        // interactive anchors, so they carry the primary hue. Accent (the rose)
+        // stays editorial — eyebrow labels, rules, the selected segment.
+        selectedItemColor: colors.primary,
+        unselectedItemColor: colors.inkMuted,
+        selectedLabelStyle: styles.label,
+        unselectedLabelStyle: styles.label,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         showUnselectedLabels: true,
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.ink,
-        foregroundColor: AppColors.onDark,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: colors.primary,
+        foregroundColor: colors.onAccent,
         elevation: 0,
         focusElevation: 0,
         hoverElevation: 0,
         highlightElevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
       ),
-      dialogTheme: const DialogThemeData(
-        backgroundColor: AppColors.surface,
+      dialogTheme: DialogThemeData(
+        backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        titleTextStyle: AppTypography.h2,
-        contentTextStyle: AppTypography.body,
+        titleTextStyle: styles.h2,
+        contentTextStyle: styles.body,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.lgAll,
-          side: BorderSide(color: AppColors.border),
+          side: BorderSide(color: colors.border),
         ),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AppColors.surface,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppRadius.lg),
           ),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.ink,
-        contentTextStyle: AppTypography.body.copyWith(color: AppColors.onDark),
+        backgroundColor: colors.ink,
+        contentTextStyle: styles.body.copyWith(color: colors.canvas),
         behavior: SnackBarBehavior.floating,
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
       ),
-      drawerTheme: const DrawerThemeData(
-        backgroundColor: AppColors.surface,
+      drawerTheme: DrawerThemeData(
+        backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.accent,
-          textStyle: AppTypography.button,
+          foregroundColor: colors.accent,
+          textStyle: styles.button,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
@@ -175,14 +189,14 @@ abstract final class AppTheme {
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
         ),
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.accent,
-        linearTrackColor: AppColors.surfaceMuted,
-        circularTrackColor: AppColors.surfaceMuted,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: colors.accent,
+        linearTrackColor: colors.surfaceMuted,
+        circularTrackColor: colors.surfaceMuted,
       ),
-      iconTheme: const IconThemeData(color: AppColors.inkMuted, size: 18),
-      splashColor: AppColors.accentSoft.withValues(alpha: 0.4),
-      highlightColor: AppColors.surfaceMuted,
+      iconTheme: IconThemeData(color: colors.inkMuted, size: 18),
+      splashColor: colors.accentSoft.withValues(alpha: 0.4),
+      highlightColor: colors.surfaceMuted,
     );
   }
 }

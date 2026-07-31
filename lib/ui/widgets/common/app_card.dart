@@ -28,7 +28,7 @@ class AppCard extends StatelessWidget {
   /// Mono uppercase eyebrow, e.g. `STATEMENT PERIOD`.
   final String? label;
 
-  /// Inter heading.
+  /// Heading.
   final String? title;
 
   /// Widget pinned to the right of the header row.
@@ -67,9 +67,9 @@ class AppCard extends StatelessWidget {
     return Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: background ?? AppColors.surface,
+        color: background ?? context.colors.surface,
         borderRadius: radius,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: onTap == null
@@ -91,7 +91,7 @@ class _Header extends StatelessWidget {
     final texts = <Widget>[
       if (label != null) AppSectionLabel(label!),
       if (label != null && title != null) AppSpacing.gapXs,
-      if (title != null) Text(title!, style: AppTypography.h2),
+      if (title != null) Text(title!, style: context.type.h2),
     ];
 
     if (trailing == null) {

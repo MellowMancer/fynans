@@ -146,9 +146,9 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const AppSectionLabel('New entry', color: AppColors.accent),
+            AppSectionLabel('New entry', color: context.colors.accent),
             AppSpacing.gapXxs,
-            Text('Add transaction', style: AppTypography.h1),
+            Text('Add transaction', style: context.type.h1),
           ],
         ),
       ),
@@ -173,8 +173,8 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                   children: [
                     TextFormField(
                       controller: _amountController,
-                      style: AppTypography.amount,
-                      decoration: const InputDecoration(
+                      style: context.type.amount,
+                      decoration: InputDecoration(
                         // `prefixText` is only painted while the field is
                         // focused or non-empty, so the symbol vanished at rest.
                         // A prefixIcon is always painted.
@@ -185,7 +185,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                           ),
                           child: Text(
                             Fmt.currencySymbol,
-                            style: AppTypography.amount,
+                            style: context.type.amount,
                           ),
                         ),
                         prefixIconConstraints: BoxConstraints(minWidth: 0),
@@ -237,23 +237,23 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                       vertical: AppSpacing.md,
                     ),
                     decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(color: context.colors.border),
                       borderRadius: AppRadius.mdAll,
-                      color: AppColors.surface,
+                      color: context.colors.surface,
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.calendar_today_outlined,
                           size: 16,
-                          color: AppColors.inkMuted,
+                          color: context.colors.inkMuted,
                         ),
                         AppSpacing.hGapMd,
                         Expanded(child: MonoText(Fmt.fullDate(_selectedDate))),
-                        const Icon(
+                        Icon(
                           Icons.expand_more_rounded,
                           size: 18,
-                          color: AppColors.inkFaint,
+                          color: context.colors.inkFaint,
                         ),
                       ],
                     ),
@@ -280,25 +280,25 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                           decoration: BoxDecoration(
                             border: Border.all(
                               color: field.hasError
-                                  ? AppColors.danger
-                                  : AppColors.border,
+                                  ? context.colors.danger
+                                  : context.colors.border,
                             ),
                             borderRadius: AppRadius.mdAll,
-                            color: AppColors.surface,
+                            color: context.colors.surface,
                           ),
                           child: _selectedTags.isEmpty
                               ? Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.add_rounded,
                                       size: 16,
-                                      color: AppColors.inkMuted,
+                                      color: context.colors.inkMuted,
                                     ),
                                     AppSpacing.hGapSm,
                                     Text(
                                       'Choose one or more tags',
-                                      style: AppTypography.body.copyWith(
-                                        color: AppColors.inkFaint,
+                                      style: context.type.body.copyWith(
+                                        color: context.colors.inkFaint,
                                       ),
                                     ),
                                   ],
@@ -311,7 +311,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                                       AppPill(
                                         Fmt.capitalize(tag),
                                         icon: TagHelper.getIconForTag(tag),
-                                        color: TagHelper.getColorForTag(tag),
+                                        color: context.tagColor(tag),
                                         dense: true,
                                         onRemove: () {
                                           setState(
@@ -328,8 +328,8 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                         AppSpacing.gapXs,
                         Text(
                           field.errorText!,
-                          style: AppTypography.small.copyWith(
-                            color: AppColors.danger,
+                          style: context.type.small.copyWith(
+                            color: context.colors.danger,
                           ),
                         ),
                       ],
@@ -361,7 +361,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                 label: 'Note (optional)',
                 child: TextFormField(
                   controller: _noteController,
-                  style: AppTypography.body,
+                  style: context.type.body,
                   maxLines: 3,
                   minLines: 1,
                   decoration: const InputDecoration(
@@ -441,7 +441,7 @@ class _SuggestingField extends StatelessWidget {
         return TextFormField(
           controller: controller,
           focusNode: focusNode,
-          style: AppTypography.body.copyWith(color: AppColors.ink),
+          style: context.type.body.copyWith(color: context.colors.ink),
           decoration: InputDecoration(hintText: hintText),
           validator: validator,
           onFieldSubmitted: (_) => onFieldSubmitted(),
@@ -455,9 +455,9 @@ class _SuggestingField extends StatelessWidget {
           child: Container(
             constraints: const BoxConstraints(maxHeight: 200),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: context.colors.surface,
               borderRadius: AppRadius.mdAll,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colors.border),
             ),
             child: ListView(
               padding: EdgeInsets.zero,
@@ -466,7 +466,7 @@ class _SuggestingField extends StatelessWidget {
                 for (final option in options)
                   ListTile(
                     dense: true,
-                    title: Text(option, style: AppTypography.body),
+                    title: Text(option, style: context.type.body),
                     onTap: () => onSelected(option),
                   ),
               ],
@@ -507,11 +507,11 @@ class _TagPickerSheetState extends State<_TagPickerSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Select tags', style: AppTypography.h2),
+            Text('Select tags', style: context.type.h2),
             AppSpacing.gapXs,
             Text(
               'Tap to toggle. Tags drive your analytics breakdown.',
-              style: AppTypography.small,
+              style: context.type.small,
             ),
             AppSpacing.gapLg,
             Wrap(
@@ -523,7 +523,7 @@ class _TagPickerSheetState extends State<_TagPickerSheet> {
                     Fmt.capitalize(tag),
                     icon: TagHelper.getIconForTag(tag),
                     color: _selected.contains(tag)
-                        ? TagHelper.getColorForTag(tag)
+                        ? context.tagColor(tag)
                         : null,
                     tone: AppPillTone.outline,
                     onTap: () => setState(

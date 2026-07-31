@@ -15,7 +15,7 @@ class MonoText extends StatelessWidget {
     this.color,
     this.maxLines,
     this.overflow,
-  });
+  }) : _small = false;
 
   /// Convenience for the smaller metadata size.
   const MonoText.small(
@@ -24,12 +24,18 @@ class MonoText extends StatelessWidget {
     this.color,
     this.maxLines,
     this.overflow,
-  }) : style = AppTypography.monoSmall;
+  })  : style = null,
+        _small = true;
 
   final String text;
 
-  /// Defaults to [AppTypography.monoBody].
+  /// Defaults to `context.type.monoBody`, or the smaller size for
+  /// [MonoText.small].
   final TextStyle? style;
+
+  /// Set by [MonoText.small]; the style itself can only be resolved in build,
+  /// because it carries a theme-dependent colour.
+  final bool _small;
 
   final Color? color;
   final int? maxLines;
@@ -39,7 +45,8 @@ class MonoText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text.toUpperCase(),
-      style: (style ?? AppTypography.monoBody).copyWith(color: color),
+      style: (style ?? (_small ? context.type.monoSmall : context.type.monoBody))
+          .copyWith(color: color),
       maxLines: maxLines,
       overflow: overflow,
     );
@@ -72,12 +79,12 @@ class AppSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = AppTypography.label.copyWith(color: color);
+    final style = context.type.label.copyWith(color: color);
     final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 12, color: color ?? AppColors.inkMuted),
+          Icon(icon, size: 12, color: color ?? context.colors.inkMuted),
           AppSpacing.hGapXs,
         ],
         Flexible(
@@ -92,5 +99,66 @@ class AppSectionLabel extends StatelessWidget {
     );
 
     return padding == null ? row : Padding(padding: padding!, child: row);
+  }
+}
+
+/// Flat page header — mono eyebrow over a title, an optional trailing
+/// action, optional body, closed by a rule. The treatment used by the Parsed
+/// SMS screen, offered as an alternative to wrapping a header in [AppCard].
+class AppScreenHeader extends StatelessWidget {
+  const AppScreenHeader({
+    super.key,
+    required this.label,
+    required this.title,
+    this.trailing,
+    this.child,
+    this.showDivider = true,
+  });
+
+  final String label;
+  final String title;
+
+  /// Action pinned to the right of the title row.
+  final Widget? trailing;
+
+  /// Body rendered under the title row.
+  final Widget? child;
+
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppSectionLabel(label),
+                  AppSpacing.gapXxs,
+                  Text(title, style: context.type.h2),
+                ],
+              ),
+            ),
+            if (trailing != null) ...[AppSpacing.hGapSm, trailing!],
+          ],
+        ),
+        // Rule under the title row, separating it from the body.
+        if (child != null) ...[
+          AppSpacing.gapMd,
+          const Divider(),
+          AppSpacing.gapMd,
+          // Flexible so a body containing its own Flexible still lays out when
+          // the header sits in a fixed-height pager.
+          Flexible(child: child!),
+        ],
+        if (showDivider) ...[AppSpacing.gapMd, const Divider()],
+      ],
+    );
   }
 }

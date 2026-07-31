@@ -75,40 +75,6 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.gutter,
-            AppSpacing.sm,
-            AppSpacing.gutter,
-            AppSpacing.md,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const AppSectionLabel('Reporting on'),
-                    AppSpacing.gapXxs,
-                    Text(
-                      Fmt.monthYear(_selectedMonth),
-                      style: AppTypography.h2,
-                    ),
-                  ],
-                ),
-              ),
-              AppButton(
-                label: 'Change',
-                icon: Icons.calendar_today_outlined,
-                variant: AppButtonVariant.secondary,
-                size: AppButtonSize.sm,
-                onPressed: _selectMonth,
-              ),
-            ],
-          ),
-        ),
-        const Divider(),
         Expanded(
           child: BlocBuilder<AnalyticsCubit, AnalyticsState>(
             builder: (context, state) {
@@ -131,20 +97,19 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
               }
 
               return ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.gutter,
-                  AppSpacing.lg,
-                  AppSpacing.gutter,
-                  AppSpacing.xxxl,
-                ),
+                padding: AppSpacing.pageInsets,
                 children: [
-                  _FlowSummary(analytics: analytics),
-                  AppSpacing.gapLg,
+                  _FlowSummary(
+                    analytics: analytics,
+                    month: _selectedMonth,
+                    onSelectMonth: _selectMonth,
+                  ),
+                  AppSpacing.gapCard,
                   _DailySpendingCard(
                     analytics: analytics,
                     month: _selectedMonth,
                   ),
-                  AppSpacing.gapLg,
+                  AppSpacing.gapCard,
                   _SpendingByTagCard(analytics: analytics),
                 ],
               );
@@ -157,17 +122,28 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
 }
 
 class _FlowSummary extends StatelessWidget {
-  const _FlowSummary({required this.analytics});
+  const _FlowSummary({
+    required this.analytics,
+    required this.month,
+    required this.onSelectMonth,
+  });
 
   final MonthlyAnalytics analytics;
+  final DateTime month;
+  final VoidCallback onSelectMonth;
 
   @override
   Widget build(BuildContext context) {
     final net = analytics.totalInflow - analytics.totalOutflow;
 
     return AppCard(
-      label: 'This month',
-      title: 'Cash flow',
+      label: 'Statement Period',
+      title: Fmt.monthYear(month),
+      trailing: AppIconButton(
+        icon: Icons.calendar_today_outlined,
+        tooltip: 'Change month',
+        onPressed: onSelectMonth,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -200,7 +176,7 @@ class _FlowSummary extends StatelessWidget {
             valueWidget: MoneyText(
               net,
               tone: net < 0 ? MoneyTone.negative : MoneyTone.positive,
-              style: AppTypography.amountSmall,
+              style: context.type.amountSmall,
               signed: true,
             ),
           ),
@@ -235,7 +211,7 @@ class _DailySpendingCard extends StatelessWidget {
                   barRods: [
                     BarChartRodData(
                       toY: analytics.dailySpending[day] ?? 0,
-                      color: AppColors.accent,
+                      color: context.colors.accent,
                       width: 5,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(3),
@@ -270,17 +246,17 @@ class _DailySpendingCard extends StatelessWidget {
             gridData: const FlGridData(show: true, drawVerticalLine: false),
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
-                getTooltipColor: (_) => AppColors.ink,
+                getTooltipColor: (_) => context.colors.ink,
                 // TextSpan can't go through MonoText, so the mono-is-upper-case
                 // rule is applied to the string here.
                 getTooltipItem: (group, _, rod, __) => BarTooltipItem(
                   '${Fmt.dayMonth(DateTime(month.year, month.month, group.x.toInt())).toUpperCase()}\n',
-                  AppTypography.monoSmall.copyWith(color: AppColors.onDark),
+                  context.type.monoSmall.copyWith(color: context.colors.onAccent),
                   children: [
                     TextSpan(
                       text: Fmt.money(rod.toY),
-                      style: AppTypography.amountSmall.copyWith(
-                        color: AppColors.onDark,
+                      style: context.type.amountSmall.copyWith(
+                        color: context.colors.onAccent,
                       ),
                     ),
                   ],
@@ -299,15 +275,32 @@ class _SpendingByTagCard extends StatelessWidget {
 
   final MonthlyAnalytics analytics;
 
+  /// One pie section. The label colour follows the slice's fill, because the
+  /// categorical scale spans both light tans and deep olives.
+  PieChartSectionData _section(BuildContext context, TagSlice slice) {
+    final fill = context.tagColor(slice.label);
+    return PieChartSectionData(
+      color: fill,
+      value: slice.amount,
+      title: '${slice.percentage.toStringAsFixed(0)}%',
+      radius: 26,
+      titleStyle: context.type.monoSmall.copyWith(
+        color: context.colors.inkOn(fill),
+        fontWeight: FontWeight.w700,
+        fontSize: 10,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final slices = analytics.tagSlices;
 
     if (slices.isEmpty) {
-      return const AppCard(
+      return AppCard(
         label: 'Where it went',
         title: 'Spending by tag',
-        child: Text('No tagged spending yet.', style: AppTypography.small),
+        child: Text('No tagged spending yet.', style: context.type.small),
       );
     }
 
@@ -325,18 +318,7 @@ class _SpendingByTagCard extends StatelessWidget {
                 centerSpaceRadius: 42,
                 sectionsSpace: 2,
                 sections: [
-                  for (final slice in slices)
-                    PieChartSectionData(
-                      color: TagHelper.getColorForTag(slice.label),
-                      value: slice.amount,
-                      title: '${slice.percentage.toStringAsFixed(0)}%',
-                      radius: 26,
-                      titleStyle: AppTypography.monoSmall.copyWith(
-                        color: AppColors.onDark,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                      ),
-                    ),
+                  for (final slice in slices) _section(context, slice),
                 ],
               ),
             ),
@@ -355,7 +337,7 @@ class _SpendingByTagCard extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: TagHelper.getColorForTag(slice.label),
+                        color: context.tagColor(slice.label),
                         borderRadius: AppRadius.pillAll,
                       ),
                     ),

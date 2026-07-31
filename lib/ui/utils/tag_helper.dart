@@ -1,30 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 
-/// Icon + colour for each known tag.
+/// Icon + palette slot for each known tag.
 ///
-/// Icon and colour are defined together so the two can never drift apart, and
-/// the hues come from [AppColors.categorical] so tags sit inside the app's
-/// warm palette instead of using saturated stock Material colours.
+/// The colour is stored as an *index* into [AppColors.categorical], not as a
+/// literal: the scale differs between light and dark, so a tag's colour can
+/// only be resolved once the active theme is known. Icon and slot live together
+/// so the two cannot drift apart.
 class _TagStyle {
-  const _TagStyle(this.icon, this.color);
+  const _TagStyle(this.icon, this.slot);
 
   final IconData icon;
-  final Color color;
+
+  /// Index into [AppColors.categorical], or [TagHelper.mutedSlot].
+  final int slot;
 }
 
 abstract final class TagHelper {
-  static final Map<String, _TagStyle> _styles = <String, _TagStyle>{
-    'food': _TagStyle(Icons.restaurant, AppColors.categorical[0]),
-    'groceries': _TagStyle(Icons.local_grocery_store, AppColors.categorical[1]),
-    'transport': _TagStyle(Icons.directions_bus_filled, AppColors.categorical[2]),
-    'shopping': _TagStyle(Icons.shopping_bag, AppColors.categorical[3]),
-    'bills': _TagStyle(Icons.receipt_long, AppColors.categorical[4]),
-    'health': _TagStyle(Icons.favorite_border, AppColors.danger),
-    'travel': _TagStyle(Icons.flight_takeoff, AppColors.categorical[5]),
-    'entertainment': _TagStyle(Icons.local_activity, AppColors.categorical[6]),
-    'work': _TagStyle(Icons.work_outline, AppColors.categorical[7]),
-    'others': _TagStyle(Icons.more_horiz, AppColors.inkMuted),
+  /// Slot for tags that should read as "no particular category".
+  static const int mutedSlot = -1;
+
+  static const Map<String, _TagStyle> _styles = <String, _TagStyle>{
+    'food': _TagStyle(Icons.restaurant, 0),
+    'groceries': _TagStyle(Icons.local_grocery_store, 1),
+    'transport': _TagStyle(Icons.directions_bus_filled, 2),
+    'shopping': _TagStyle(Icons.shopping_bag, 3),
+    'bills': _TagStyle(Icons.receipt_long, 4),
+    'health': _TagStyle(Icons.favorite_border, 8),
+    'travel': _TagStyle(Icons.flight_takeoff, 5),
+    'entertainment': _TagStyle(Icons.local_activity, 6),
+    'work': _TagStyle(Icons.work_outline, 7),
+    'others': _TagStyle(Icons.more_horiz, mutedSlot),
   };
 
   static const IconData _fallbackIcon = Icons.label_outline;
@@ -35,18 +41,25 @@ abstract final class TagHelper {
   static IconData getIconForTag(String tag) =>
       _styles[_normalize(tag)]?.icon ?? _fallbackIcon;
 
-  static Color getColorForTag(String tag) =>
-      _styles[_normalize(tag)]?.color ?? _fallbackColor(tag);
+  /// The tag's colour in the active theme.
+  static Color colorForTag(AppColors colors, String tag) {
+    final slot = _styles[_normalize(tag)]?.slot ?? _fallbackSlot(tag);
+    if (slot == mutedSlot) return colors.inkMuted;
+    return colors.categorical[slot % colors.categorical.length];
+  }
 
   static String _normalize(String tag) => tag.toLowerCase().trim();
 
-  /// Unknown tags still get a stable colour from the palette rather than a
-  /// flat grey, so user-created tags remain distinguishable.
-  static Color _fallbackColor(String tag) {
+  /// Unknown tags still get a stable slot rather than a flat grey, so
+  /// user-created tags remain distinguishable.
+  static int _fallbackSlot(String tag) {
     final key = _normalize(tag);
-    if (key.isEmpty) return AppColors.inkMuted;
-    final index = key.codeUnits.fold<int>(0, (sum, c) => sum + c) %
-        AppColors.categorical.length;
-    return AppColors.categorical[index];
+    if (key.isEmpty) return mutedSlot;
+    return key.codeUnits.fold<int>(0, (sum, c) => sum + c);
   }
+}
+
+/// `context.tagColor('food')` — the tag's colour in the active theme.
+extension TagColorX on BuildContext {
+  Color tagColor(String tag) => TagHelper.colorForTag(colors, tag);
 }

@@ -17,9 +17,10 @@ enum ViewMode { simple, advanced }
 /// How many years back the month pager reaches.
 const int _kMonthsHistoryYears = 5;
 
-/// Height of the simple-mode month pager. Sized for the tallest SummaryCard —
-/// kDefaultTopN (3) tags AND 3 groups — which overflowed the old 320.
-const double _kSimpleHeaderHeight = 360;
+/// Height of the month pager. It holds only the statement-period row, whose
+/// height never varies, so the figures below it can size to their content —
+/// that is what keeps swipe-to-change-month without leaving dead space.
+const double _kMonthRowHeight = 52;
 
 class TransactionsListScreen extends StatefulWidget {
   const TransactionsListScreen({super.key});
@@ -104,10 +105,10 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     final isSimple = _currentViewMode == ViewMode.simple;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _openAddTransaction,
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: Text('Add', style: AppTypography.button),
+        tooltip: 'Add transaction',
+        child: const Icon(Icons.add_rounded),
       ),
       body: Column(
         children: [
@@ -116,9 +117,19 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             onChanged: (mode) => setState(() => _currentViewMode = mode),
           ),
           Expanded(
-            child: isSimple
-                ? _buildSimpleList()
-                : _buildAdvancedList(),
+            // IndexedStack, not a conditional: swapping the subtree out
+            // destroyed the month pager, and re-attaching rebuilt it from the
+            // controller's initialPage — so returning to Simple snapped the
+            // header back to the latest month while the list still showed the
+            // month you had swiped to. Keeping both mounted also preserves
+            // each view's scroll position.
+            child: IndexedStack(
+              index: isSimple ? 0 : 1,
+              children: [
+                _buildSimpleList(),
+                _buildAdvancedList(),
+              ],
+            ),
           ),
         ],
       ),
@@ -134,46 +145,45 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
         MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
       );
 
-  /// The swipeable month pager, rendered as the simple list's scrolling header.
-  Widget _buildMonthPager() {
-    return SizedBox(
-      height: _kSimpleHeaderHeight,
-      child: PageView.builder(
-        controller: _pageController,
-        physics: const PageScrollPhysics(),
-        itemCount: _months.length,
-        // The pager drives the simple view only; the advanced view picks its
-        // own span with the range chips.
-        onPageChanged: (index) {
-          setState(() => _currentPageIndex = index);
-          context
-              .read<TransactionCubit>()
-              .fetchTransactionsForMonth(_months[index]);
-        },
-        itemBuilder: (context, index) => _buildSummaryCard(index),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(int index) {
-    final month = _months[index];
-
-    return BlocBuilder<TransactionCubit, TransactionState>(
-      builder: (context, state) {
-        // The cubit only holds the settled month, so a page being dragged into
-        // view must show its own month with a placeholder total rather than the
-        // previous month's figures under the wrong heading.
-        final isSettled = index == _currentPageIndex;
-        final summary = isSettled && state is TransactionLoadSuccess
-            ? state.summary
-            : null;
-
-        return SummaryCard(
-          summary: summary,
-          month: month,
-          onSelectMonth: _selectMonth,
-        );
-      },
+  /// The swipeable month row, plus the figures for the settled month. Only the
+  /// row is paged; the figures below size to their content.
+  Widget _buildSimpleHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: _kMonthRowHeight,
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const PageScrollPhysics(),
+            itemCount: _months.length,
+            // The pager drives the simple view only; the advanced view picks
+            // its own span with the range chips.
+            onPageChanged: (index) {
+              setState(() => _currentPageIndex = index);
+              context
+                  .read<TransactionCubit>()
+                  .fetchTransactionsForMonth(_months[index]);
+            },
+            itemBuilder: (context, index) => StatementPeriodRow(
+              month: _months[index],
+              onSelectMonth: _selectMonth,
+            ),
+          ),
+        ),
+        AppSpacing.gapMd,
+        const Divider(),
+        AppSpacing.gapMd,
+        BlocBuilder<TransactionCubit, TransactionState>(
+          builder: (context, state) => SummaryBody(
+            summary:
+                state is TransactionLoadSuccess ? state.summary : null,
+          ),
+        ),
+        AppSpacing.gapMd,
+        const Divider(),
+      ],
     );
   }
 
@@ -204,7 +214,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     // a fetch, and unmounting it left the screen permanently dead.
     return SimpleTransactionListView(
       currentMonth: _months[_currentPageIndex],
-      header: _buildMonthPager(),
+      header: _buildSimpleHeader(),
     );
   }
 
@@ -251,26 +261,24 @@ class _ViewModeSwitcher extends StatelessWidget {
         AppSpacing.gutter,
         AppSpacing.md,
       ),
-      child: Row(
-        children: [
-          AppPill(
-            'Simple',
-            icon: Icons.view_agenda_outlined,
-            tone: mode == ViewMode.simple
-                ? AppPillTone.accent
-                : AppPillTone.outline,
-            onTap: () => onChanged(ViewMode.simple),
-          ),
-          AppSpacing.hGapSm,
-          AppPill(
-            'Advanced',
-            icon: Icons.account_tree_outlined,
-            tone: mode == ViewMode.advanced
-                ? AppPillTone.accent
-                : AppPillTone.outline,
-            onTap: () => onChanged(ViewMode.advanced),
-          ),
-        ],
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: AppSegmented<ViewMode>(
+          value: mode,
+          onChanged: onChanged,
+          segments: const [
+            AppSegment(
+              value: ViewMode.simple,
+              label: 'Simple',
+              icon: Icons.view_agenda_outlined,
+            ),
+            AppSegment(
+              value: ViewMode.advanced,
+              label: 'Advanced',
+              icon: Icons.account_tree_outlined,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -327,10 +335,10 @@ class _HierarchyEditorDialogState extends State<_HierarchyEditorDialog> {
                         children: [
                           ReorderableDragStartListener(
                             index: i,
-                            child: const Icon(
+                            child: Icon(
                               Icons.drag_indicator_rounded,
                               size: 18,
-                              color: AppColors.inkFaint,
+                              color: context.colors.inkFaint,
                             ),
                           ),
                           AppSpacing.hGapSm,
@@ -339,7 +347,7 @@ class _HierarchyEditorDialogState extends State<_HierarchyEditorDialog> {
                           Expanded(
                             child: Text(
                               _hierarchy[i].displayName,
-                              style: AppTypography.bodyStrong,
+                              style: context.type.bodyStrong,
                             ),
                           ),
                           if (_hierarchy.length > 1)

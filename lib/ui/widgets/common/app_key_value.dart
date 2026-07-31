@@ -44,7 +44,7 @@ class AppKeyValue extends StatelessWidget {
     final resolvedValue = valueWidget ??
         (mono
             ? MonoText(value!)
-            : Text(value!, style: AppTypography.bodyStrong));
+            : Text(value!, style: context.type.bodyStrong));
 
     final labelWidget = AppSectionLabel(label, icon: icon);
 

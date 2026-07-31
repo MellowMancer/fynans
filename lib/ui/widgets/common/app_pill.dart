@@ -44,28 +44,29 @@ class AppPill extends StatelessWidget {
   /// Overrides the tone's text/border colour — used for per-tag hues.
   final Color? color;
 
-  _PillStyle get _style => switch (tone) {
-        AppPillTone.neutral => const _PillStyle(
-            AppColors.surfaceMuted, AppColors.ink, AppColors.border),
-        AppPillTone.muted => const _PillStyle(
-            AppColors.surfaceMuted, AppColors.inkMuted, AppColors.border),
-        AppPillTone.accent => const _PillStyle(
-            AppColors.accentSoft, AppColors.accentStrong, AppColors.accentSoft),
-        AppPillTone.success => const _PillStyle(
-            AppColors.successSoft, AppColors.success, AppColors.successBorder),
-        AppPillTone.danger => const _PillStyle(
-            AppColors.dangerSoft, AppColors.danger, AppColors.dangerBorder),
-        AppPillTone.outline => const _PillStyle(
-            AppColors.surface, AppColors.inkSecondary, AppColors.borderStrong),
+  /// Tone -> (fill, foreground, border) for the active theme.
+  _PillStyle _styleFor(AppColors c) => switch (tone) {
+        AppPillTone.neutral =>
+          _PillStyle(c.surfaceMuted, c.ink, c.border),
+        AppPillTone.muted =>
+          _PillStyle(c.surfaceMuted, c.inkMuted, c.border),
+        AppPillTone.accent =>
+          _PillStyle(c.accentSoft, c.accentStrong, c.accentSoft),
+        AppPillTone.success =>
+          _PillStyle(c.successSoft, c.success, c.successBorder),
+        AppPillTone.danger =>
+          _PillStyle(c.dangerSoft, c.danger, c.dangerBorder),
+        AppPillTone.outline =>
+          _PillStyle(c.surface, c.inkSecondary, c.borderStrong),
       };
 
   @override
   Widget build(BuildContext context) {
-    final style = _style;
+    final style = _styleFor(context.colors);
     final fg = color ?? style.foreground;
     final textStyle = mono
-        ? AppTypography.monoSmall.copyWith(color: fg, letterSpacing: 0.6)
-        : AppTypography.small.copyWith(color: fg, fontWeight: FontWeight.w500);
+        ? context.type.monoSmall.copyWith(color: fg, letterSpacing: 0.6)
+        : context.type.small.copyWith(color: fg, fontWeight: FontWeight.w500);
 
     final content = Row(
       mainAxisSize: MainAxisSize.min,

@@ -90,7 +90,7 @@ class DateRangeCalendarSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.colors.surface,
       constraints: const BoxConstraints(maxHeight: 640),
       builder: (_) => DateRangeCalendarSheet(
         firstDate: firstDate,
@@ -172,7 +172,7 @@ class _DateRangeCalendarSheetState extends State<DateRangeCalendarSheet> {
                 AppSpacing.gapXs,
                 Text(
                   range == null ? 'Pick a start date' : Fmt.range(range),
-                  style: AppTypography.h2,
+                  style: context.type.h2,
                 ),
               ],
             ),
@@ -341,8 +341,8 @@ class _WeekRow extends StatelessWidget {
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.accentSoft,
-                      border: Border.all(color: AppColors.accent),
+                      color: context.colors.accentSoft,
+                      border: Border.all(color: context.colors.accent),
                       borderRadius: BorderRadius.circular(_kCellHeight / 2),
                     ),
                   ),
@@ -397,12 +397,12 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = !enabled
-        ? AppColors.inkFaint
+        ? context.colors.inkFaint
         : isEndpoint
-            ? AppColors.onDark
+            ? context.colors.onAccent
             : isSelected
-                ? AppColors.accentStrong
-                : AppColors.ink;
+                ? context.colors.accentStrong
+                : context.colors.ink;
 
     return InkWell(
       onTap: enabled ? onTap : null,
@@ -413,14 +413,14 @@ class _DayCell extends StatelessWidget {
           height: _kCellHeight - 8,
           alignment: Alignment.center,
           decoration: isEndpoint
-              ? const BoxDecoration(
-                  color: AppColors.accent,
+              ? BoxDecoration(
+                  color: context.colors.accent,
                   shape: BoxShape.circle,
                 )
               : null,
           child: MonoText(
             '${day.day}',
-            style: AppTypography.monoSmall,
+            style: context.type.monoSmall,
             color: color,
           ),
         ),

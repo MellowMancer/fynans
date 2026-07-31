@@ -21,49 +21,102 @@ import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/use_cases/date_range_presets.dart';
 
 
-/// Net position plus the in/out split — shared by the simple and advanced
-/// header cards so the figures always look and behave identically.
-class TransactionTotals extends StatelessWidget {
-  const TransactionTotals({super.key, required this.summary});
+/// Net position, with the inflow/outflow split revealed on tap.
+///
+/// Collapsed by default: the net figure answers "how did the period go?", and
+/// the bifurcation is one tap away. Uses the same chevron + animated reveal as
+/// a transaction row rather than a dropdown.
+class TransactionTotals extends StatefulWidget {
+  const TransactionTotals({
+    super.key,
+    required this.summary,
+    this.initiallyExpanded = false,
+  });
 
   final MonthlySummary summary;
 
+  /// Start with the split already showing.
+  final bool initiallyExpanded;
+
+  @override
+  State<TransactionTotals> createState() => _TransactionTotalsState();
+}
+
+class _TransactionTotalsState extends State<TransactionTotals> {
+  late bool _expanded = widget.initiallyExpanded;
+
   @override
   Widget build(BuildContext context) {
-    final net = summary.total;
+    final net = widget.summary.total;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const AppSectionLabel('Net for this period'),
-        AppSpacing.gapXs,
-        MoneyText(
-          net,
-          tone: net < 0 ? MoneyTone.negative : MoneyTone.positive,
-          signed: true,
-          fit: true,
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: AppRadius.smAll,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const AppSectionLabel('Net for this period'),
+                    AppSpacing.gapXs,
+                    MoneyText(
+                      net,
+                      tone: net < 0 ? MoneyTone.negative : MoneyTone.positive,
+                      signed: true,
+                      fit: true,
+                    ),
+                  ],
+                ),
+              ),
+              AppSpacing.hGapSm,
+              AnimatedRotation(
+                turns: _expanded ? 0.5 : 0,
+                duration: AppDuration.fast,
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: context.colors.inkFaint,
+                ),
+              ),
+            ],
+          ),
         ),
-        AppSpacing.gapMd,
-        Row(
-          children: [
-            Expanded(
-              child: AppMetricTile(
-                label: 'Inflow',
-                amount: summary.totalIncome,
-                tone: MoneyTone.positive,
-                icon: Icons.south_west_rounded,
-              ),
-            ),
-            AppSpacing.hGapSm,
-            Expanded(
-              child: AppMetricTile(
-                label: 'Outflow',
-                amount: summary.totalExpenses,
-                tone: MoneyTone.negative,
-                icon: Icons.north_east_rounded,
-              ),
-            ),
-          ],
+        AnimatedSize(
+          duration: AppDuration.normal,
+          curve: Curves.fastOutSlowIn,
+          alignment: Alignment.topCenter,
+          child: _expanded
+              ? Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.md),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: AppMetricTile(
+                          label: 'Inflow',
+                          amount: widget.summary.totalIncome,
+                          tone: MoneyTone.positive,
+                          icon: Icons.south_west_rounded,
+                        ),
+                      ),
+                      AppSpacing.hGapSm,
+                      Expanded(
+                        child: AppMetricTile(
+                          label: 'Outflow',
+                          amount: widget.summary.totalExpenses,
+                          tone: MoneyTone.negative,
+                          icon: Icons.north_east_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox(width: double.infinity),
         ),
       ],
     );
@@ -85,14 +138,13 @@ class AdvancedSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-      label: 'Reporting on',
+    return AppScreenHeader(
+      label: 'Statement Period',
       title: Fmt.range(state.range),
       // The quick spans live behind this button, on the same row as the range
       // they set, instead of taking a whole chip row in the card.
       trailing: AppIconButton(
-        icon: Icons.calendar_month_outlined,
+        icon: Icons.calendar_today_outlined,
         tooltip: 'Change date range',
         selected: state.preset.isCustom,
         onPressed: () => showDateRangeSheet(
@@ -120,71 +172,91 @@ class AdvancedSummaryCard extends StatelessWidget {
   }
 }
 
-/// Simple-mode month header: the period, its totals and top spending.
-class SummaryCard extends StatelessWidget {
-  const SummaryCard({
+/// The statement-period row: the month and its picker.
+///
+/// Deliberately the ONLY thing inside the month pager — it is constant height,
+/// so the pager can be a small fixed box while the figures below it size to
+/// their content. Each page renders its own month, so the label tracks the
+/// drag instead of lagging until the page settles.
+class StatementPeriodRow extends StatelessWidget {
+  const StatementPeriodRow({
     super.key,
-    required this.summary,
     required this.month,
     required this.onSelectMonth,
   });
 
-  /// Null while this month's figures are not the ones currently loaded — the
-  /// card then shows its own month with a placeholder instead of another
-  /// month's totals under the wrong heading.
-  final MonthlySummary? summary;
   final DateTime month;
   final VoidCallback onSelectMonth;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-      label: 'Statement period',
-      title: Fmt.monthYear(month),
-      trailing: AppButton(
-        label: 'Change',
-        icon: Icons.calendar_today_outlined,
-        variant: AppButtonVariant.secondary,
-        size: AppButtonSize.sm,
-        onPressed: onSelectMonth,
-      ),
-      child: summary == null
-          ? const SizedBox(
-              height: 180,
-              child: AppLoading(),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TransactionTotals(summary: summary!),
-                AppSpacing.gapMd,
-                const Divider(),
-                AppSpacing.gapMd,
-                Flexible(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: TopSpendingList(
-                          label: 'Top tags',
-                          spending: summary!.topTags,
-                        ),
-                      ),
-                      AppSpacing.hGapLg,
-                      Expanded(
-                        child: TopSpendingList(
-                          label: 'Top groups',
-                          spending: summary!.topGroups,
-                          showSwatch: false,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppSectionLabel('Statement period'),
+              AppSpacing.gapXxs,
+              Text(Fmt.monthYear(month), style: context.type.h2),
+            ],
+          ),
+        ),
+        AppSpacing.hGapSm,
+        AppIconButton(
+          icon: Icons.calendar_today_outlined,
+          tooltip: 'Change month',
+          onPressed: onSelectMonth,
+        ),
+      ],
+    );
+  }
+}
+
+/// The selected month's figures: net (with the tap-revealed split) and top
+/// spending. Sizes to its content — it lives outside the pager.
+class SummaryBody extends StatelessWidget {
+  const SummaryBody({super.key, required this.summary});
+
+  /// Null while the month's figures are still loading.
+  final MonthlySummary? summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = this.summary;
+    if (summary == null) {
+      return const SizedBox(height: 120, child: AppLoading());
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TransactionTotals(summary: summary),
+        AppSpacing.gapMd,
+        const Divider(),
+        AppSpacing.gapMd,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TopSpendingList(
+                label: 'Top tags',
+                spending: summary.topTags,
+              ),
             ),
+            AppSpacing.hGapLg,
+            Expanded(
+              child: TopSpendingList(
+                label: 'Top groups',
+                spending: summary.topGroups,
+                showSwatch: false,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -319,7 +391,7 @@ class TopSpendingList extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: TagHelper.getColorForTag(entry.key),
+                        color: context.tagColor(entry.key),
                         borderRadius: AppRadius.pillAll,
                       ),
                     )
@@ -360,10 +432,15 @@ class SimpleTransactionListView extends StatelessWidget {
             transactions == null || transactions.isEmpty ? 1 : transactions.length;
 
         return ListView.builder(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
+          padding: AppSpacing.pageInsets,
           itemCount: leading + bodyCount,
           itemBuilder: (context, index) {
-            if (header != null && index == 0) return header!;
+            if (header != null && index == 0) {
+              return Padding(
+                padding: AppSpacing.headerGapInsets,
+                child: header,
+              );
+            }
 
             if (failure != null) {
               // Rendered as a body row, not in place of the whole list, so the
@@ -404,20 +481,17 @@ class SimpleTransactionListView extends StatelessWidget {
               // The live subscription re-emits on the delete; no manual refetch.
               onDismissed: (_) => repository.deleteTransaction(transaction),
               background: Container(
-                margin: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.gutter,
-                  vertical: AppSpacing.xs + 2,
-                ),
+                margin: AppSpacing.rowGapInsets,
                 padding: const EdgeInsets.only(right: AppSpacing.xl),
                 alignment: Alignment.centerRight,
                 decoration: BoxDecoration(
-                  color: AppColors.dangerSoft,
+                  color: context.colors.dangerSoft,
                   borderRadius: AppRadius.lgAll,
-                  border: Border.all(color: AppColors.dangerBorder),
+                  border: Border.all(color: context.colors.dangerBorder),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.delete_outline_rounded,
-                  color: AppColors.danger,
+                  color: context.colors.danger,
                   size: 20,
                 ),
               ),
@@ -450,15 +524,12 @@ class HierarchicalTransactionList extends StatelessWidget {
     final leading = header == null ? 0 : 1;
 
     return ListView.builder(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.sm,
-        bottom: AppSpacing.xxxl * 2,
-      ),
+      padding: AppSpacing.pageInsets,
       itemCount: leading + (nodes.isEmpty ? 1 : nodes.length),
       itemBuilder: (context, index) {
         if (header != null && index == 0) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            padding: AppSpacing.headerGapInsets,
             child: header,
           );
         }
@@ -508,7 +579,7 @@ class HierarchyNodeTile extends StatelessWidget {
                 children: [
                   Text(
                     Fmt.capitalize(node.name),
-                    style: AppTypography.bodyStrong,
+                    style: context.type.bodyStrong,
                     overflow: TextOverflow.ellipsis,
                   ),
                   AppSpacing.gapXxs,
@@ -523,7 +594,7 @@ class HierarchyNodeTile extends StatelessWidget {
             MoneyText(
               total,
               tone: total < 0 ? MoneyTone.negative : MoneyTone.positive,
-              style: AppTypography.amountSmall,
+              style: context.type.amountSmall,
               signed: true,
             ),
           ],
@@ -536,7 +607,7 @@ class HierarchyNodeTile extends StatelessWidget {
                     margin: EdgeInsets.only(
                       left: AppSpacing.md + (AppSpacing.md * level),
                       right: AppSpacing.md,
-                      bottom: AppSpacing.sm,
+                      bottom: AppSpacing.rowGap,
                     ),
                   ),
               ]
@@ -550,10 +621,7 @@ class HierarchyNodeTile extends StatelessWidget {
     // Only the outermost node gets a card shell, so nesting stays legible.
     if (level > 0) return tile;
     return AppCard(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.gutter,
-        vertical: AppSpacing.xs + 2,
-      ),
+      margin: AppSpacing.cardGapInsets,
       padding: EdgeInsets.zero,
       child: tile,
     );

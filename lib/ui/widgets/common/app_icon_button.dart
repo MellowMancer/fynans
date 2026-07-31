@@ -24,13 +24,13 @@ class AppIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
     final foreground = !enabled
-        ? AppColors.inkFaint
+        ? context.colors.inkFaint
         : selected
-            ? AppColors.accentStrong
-            : AppColors.ink;
+            ? context.colors.accentStrong
+            : context.colors.ink;
 
     final button = Material(
-      color: selected ? AppColors.accentSoft : AppColors.surface,
+      color: selected ? context.colors.accentSoft : context.colors.surface,
       borderRadius: AppRadius.mdAll,
       child: InkWell(
         onTap: onPressed,
@@ -40,7 +40,7 @@ class AppIconButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: AppRadius.mdAll,
             border: Border.all(
-              color: selected ? AppColors.accent : AppColors.borderStrong,
+              color: selected ? context.colors.accent : context.colors.borderStrong,
             ),
           ),
           child: Icon(icon, size: 18, color: foreground),

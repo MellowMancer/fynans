@@ -63,7 +63,7 @@ void main() {
       expect(find.text('Software and Applications'), findsNothing);
     });
 
-    testWidgets('mono AppKeyValue is upper-cased, Inter title is not',
+    testWidgets('mono AppKeyValue is upper-cased, the title is not',
         (tester) async {
       await tester.pumpWidget(
         _host(
@@ -78,7 +78,7 @@ void main() {
         ),
       );
 
-      // Inter title keeps its natural casing…
+      // The title keeps its natural casing…
       expect(find.text('Corner Cafe'), findsOneWidget);
       // …while every mono string is upper-cased.
       expect(find.text('ADDENDUM ONE'), findsOneWidget);
@@ -338,7 +338,7 @@ void main() {
   });
 
   group('SummaryCard', () {
-    testWidgets('renders month, net and both flows at screen height',
+    testWidgets('renders month, top spending and the tap-revealed flows',
         (tester) async {
       const summary = MonthlySummary(
         total: -1500,
@@ -350,20 +350,28 @@ void main() {
 
       await tester.pumpWidget(
         _host(
-          SummaryCard(
-            summary: summary,
-            month: DateTime(2026, 7),
-            onSelectMonth: () {},
+          Column(
+            children: [
+              StatementPeriodRow(
+                month: DateTime(2026, 7),
+                onSelectMonth: () {},
+              ),
+              const SummaryBody(summary: summary),
+            ],
           ),
-          // Matches the pager height used by TransactionsListScreen.
-          height: 320,
+          height: 700,
         ),
       );
 
       expect(find.text('Jul 2026'), findsOneWidget);
+      expect(find.text('TOP TAGS'), findsOneWidget);
+
+      // The split is behind a tap on the net figure now.
+      expect(find.text('INFLOW'), findsNothing);
+      await tester.tap(find.text('NET FOR THIS PERIOD'));
+      await tester.pumpAndSettle();
       expect(find.text('INFLOW'), findsOneWidget);
       expect(find.text('OUTFLOW'), findsOneWidget);
-      expect(find.text('TOP TAGS'), findsOneWidget);
       // A RenderFlex overflow would surface here.
       expect(tester.takeException(), isNull);
     });

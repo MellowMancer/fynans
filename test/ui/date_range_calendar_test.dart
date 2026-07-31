@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/ui/theme/app_theme.dart';
 import 'package:fynans/ui/widgets/date_range_calendar.dart';
 
 /// A Monday-first week row for the given days of one month.
@@ -88,6 +89,7 @@ void _calendarOrderTests() {
   testWidgets('latest month renders below earlier months', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: Scaffold(
           body: SizedBox(
             height: 700,

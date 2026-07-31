@@ -17,6 +17,34 @@ abstract final class AppSpacing {
 
   static const EdgeInsets cardInsets = EdgeInsets.all(lg);
 
+  /// Every page's main scroll view uses the same vertical rhythm — symmetric,
+  /// so the list is inset equally at both ends.
+  static const double _scrollTop = sm;
+  static const double _scrollBottom = _scrollTop;
+
+  /// The one padding every page's scroll view uses. Cards sit flush inside it
+  /// and never carry their own horizontal margin, so the gutter is defined in
+  /// exactly one place.
+  static const EdgeInsets pageInsets =
+      EdgeInsets.fromLTRB(gutter, _scrollTop, gutter, _scrollBottom);
+
+  /// Vertical space between stacked cards.
+  static const double cardGap = md;
+
+  /// Applied as a card's bottom margin inside a list.
+  static const EdgeInsets cardGapInsets = EdgeInsets.only(bottom: cardGap);
+
+  /// Space between a page's header card and the content below it — wider than
+  /// [cardGap] so the header reads as its own block.
+  static const EdgeInsets headerGapInsets = EdgeInsets.only(bottom: xl);
+
+  /// Dense list rows (transaction items) sit tighter than standalone cards.
+  static const double rowGap = sm;
+  static const EdgeInsets rowGapInsets = EdgeInsets.only(bottom: rowGap);
+
+  /// Widget form, for cards laid out in a Column/ListView children list.
+  static const Widget gapCard = SizedBox(height: cardGap);
+
   /// Vertical gaps, as widgets, to avoid `SizedBox(height: …)` noise.
   static const Widget gapXxs = SizedBox(height: xxs);
   static const Widget gapXs = SizedBox(height: xs);

@@ -41,25 +41,25 @@ class _MainScreenState extends State<MainScreen> {
 
   static const List<_Destination> _destinations = <_Destination>[
     _Destination(
-      eyebrow: 'Your money',
-      title: 'Overview',
+      eyebrow: 'Your Money',
+      title: 'Expenses',
       icon: Icons.receipt_long_outlined,
       activeIcon: Icons.receipt_long,
-      label: 'Expenses',
+      label: 'EXPENSES',
     ),
     _Destination(
-      eyebrow: 'The numbers',
+      eyebrow: 'Oh, you prefer charts?',
       title: 'Analytics',
       icon: Icons.donut_small_outlined,
       activeIcon: Icons.donut_small,
-      label: 'Analytics',
+      label: 'ANALYTICS',
     ),
     _Destination(
-      eyebrow: 'Diagnostics',
+      eyebrow: 'DEV',
       title: 'Parsed SMS',
       icon: Icons.sms_outlined,
       activeIcon: Icons.sms,
-      label: 'SMS',
+      label: 'SMS (DEV)',
     ),
   ];
 
@@ -102,15 +102,15 @@ class _MainScreenState extends State<MainScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppSectionLabel(destination.eyebrow, color: AppColors.accent),
+            AppSectionLabel(destination.eyebrow, color: context.colors.accent),
             AppSpacing.gapXxs,
-            Text(destination.title, style: AppTypography.h1),
+            Text(destination.title, style: context.type.h1),
           ],
         ),
         actions: [
           Builder(
             builder: (context) => IconButton(
-              icon: const Icon(Icons.menu, color: AppColors.ink),
+              icon: Icon(Icons.menu, color: context.colors.ink),
               onPressed: () => Scaffold.of(context).openEndDrawer(),
               tooltip: 'Menu',
             ),
@@ -121,8 +121,8 @@ class _MainScreenState extends State<MainScreen> {
       endDrawer: const AppDrawer(),
       body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border)),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: context.colors.border)),
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,

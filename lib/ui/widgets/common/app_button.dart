@@ -42,9 +42,9 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spec = _spec;
+    final spec = _specFor(context.colors);
     final isDense = size == AppButtonSize.sm;
-    final fg = _enabled ? spec.foreground : AppColors.inkFaint;
+    final fg = _enabled ? spec.foreground : context.colors.inkFaint;
 
     final child = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
@@ -61,7 +61,7 @@ class AppButton extends StatelessWidget {
         if (loading || icon != null) AppSpacing.hGapSm,
         Text(
           label,
-          style: (isDense ? AppTypography.small : AppTypography.button).copyWith(
+          style: (isDense ? context.type.small : context.type.button).copyWith(
             color: fg,
             fontWeight: FontWeight.w600,
           ),
@@ -70,7 +70,7 @@ class AppButton extends StatelessWidget {
     );
 
     final button = Material(
-      color: _enabled ? spec.background : AppColors.surfaceMuted,
+      color: _enabled ? spec.background : context.colors.surfaceMuted,
       borderRadius: AppRadius.mdAll,
       child: InkWell(
         onTap: _enabled ? onPressed : null,
@@ -85,7 +85,7 @@ class AppButton extends StatelessWidget {
             border: spec.border == null
                 ? null
                 : Border.all(
-                    color: _enabled ? spec.border! : AppColors.border,
+                    color: _enabled ? spec.border! : context.colors.border,
                   ),
           ),
           child: child,
@@ -96,17 +96,14 @@ class AppButton extends StatelessWidget {
     return expand ? SizedBox(width: double.infinity, child: button) : button;
   }
 
-  _ButtonSpec get _spec => switch (variant) {
-        AppButtonVariant.primary =>
-          const _ButtonSpec(AppColors.primary, AppColors.onDark),
-        AppButtonVariant.dark =>
-          const _ButtonSpec(AppColors.ink, AppColors.onDark),
-        AppButtonVariant.accent =>
-          const _ButtonSpec(AppColors.accentStrong, AppColors.onDark),
-        AppButtonVariant.secondary => const _ButtonSpec(
-            AppColors.surface, AppColors.ink, AppColors.borderStrong),
-        AppButtonVariant.ghost =>
-          const _ButtonSpec(Colors.transparent, AppColors.accent),
+  /// Variant -> (background, foreground, [border]) for the active theme.
+  _ButtonSpec _specFor(AppColors c) => switch (variant) {
+        AppButtonVariant.primary => _ButtonSpec(c.primary, c.onAccent),
+        AppButtonVariant.dark => _ButtonSpec(c.ink, c.onAccent),
+        AppButtonVariant.accent => _ButtonSpec(c.accentStrong, c.onAccent),
+        AppButtonVariant.secondary =>
+          _ButtonSpec(c.surface, c.ink, c.borderStrong),
+        AppButtonVariant.ghost => _ButtonSpec(Colors.transparent, c.accent),
       };
 }
 

@@ -41,7 +41,7 @@ class TransactionFilterSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.colors.surface,
       constraints: const BoxConstraints(maxHeight: 640),
       builder: (_) => TransactionFilterSheet(
         initialFilter: filter,
@@ -90,7 +90,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
               AppSpacing.xl,
               AppSpacing.md,
             ),
-            child: Text('Filters', style: AppTypography.h2),
+            child: Text('Filters', style: context.type.h2),
           ),
           const Divider(),
           Flexible(
@@ -182,7 +182,7 @@ class _AmountField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      style: AppTypography.monoBody,
+      style: context.type.monoBody,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
@@ -190,7 +190,7 @@ class _AmountField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hint,
         prefixText: '${Fmt.currencySymbol} ',
-        prefixStyle: AppTypography.monoBody,
+        prefixStyle: context.type.monoBody,
       ),
     );
   }

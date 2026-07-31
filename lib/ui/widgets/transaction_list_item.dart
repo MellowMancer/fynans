@@ -49,11 +49,7 @@ class _TransactionListItemState extends State<TransactionListItem> {
     final tone = _txn.isCredit ? MoneyTone.positive : MoneyTone.negative;
 
     return AppCard(
-      margin: widget.margin ??
-          const EdgeInsets.symmetric(
-            horizontal: AppSpacing.gutter,
-            vertical: AppSpacing.xs + 2,
-          ),
+      margin: widget.margin ?? AppSpacing.rowGapInsets,
       padding: const EdgeInsets.all(AppSpacing.md),
       onTap: () => setState(() => _isExpanded = !_isExpanded),
       child: Column(
@@ -70,7 +66,7 @@ class _TransactionListItemState extends State<TransactionListItem> {
                   children: [
                     Text(
                       _title,
-                      style: AppTypography.bodyStrong,
+                      style: context.type.bodyStrong,
                       overflow: TextOverflow.ellipsis,
                     ),
                     AppSpacing.gapXxs,
@@ -93,17 +89,17 @@ class _TransactionListItemState extends State<TransactionListItem> {
                   MoneyText(
                     _txn.isCredit ? _txn.amount : -_txn.amount,
                     tone: tone,
-                    style: AppTypography.amountSmall,
+                    style: context.type.amountSmall,
                     signed: _txn.isCredit,
                   ),
                   AppSpacing.gapXxs,
                   AnimatedRotation(
                     turns: _isExpanded ? 0.5 : 0,
                     duration: AppDuration.fast,
-                    child: const Icon(
+                    child: Icon(
                       Icons.keyboard_arrow_down_rounded,
                       size: 18,
-                      color: AppColors.inkFaint,
+                      color: context.colors.inkFaint,
                     ),
                   ),
                 ],

@@ -58,10 +58,10 @@ class AppMultiSelectField extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: context.colors.surface,
                 borderRadius: AppRadius.mdAll,
                 border: Border.all(
-                  color: hasSelection ? AppColors.accent : AppColors.border,
+                  color: hasSelection ? context.colors.accent : context.colors.border,
                 ),
               ),
               child: Row(
@@ -87,16 +87,16 @@ class AppMultiSelectField extends StatelessWidget {
                             options.isEmpty
                                 ? 'No ${label.toLowerCase()} values yet'
                                 : 'Any ${label.toLowerCase()}',
-                            style: AppTypography.body.copyWith(
-                              color: AppColors.inkFaint,
+                            style: context.type.body.copyWith(
+                              color: context.colors.inkFaint,
                             ),
                           ),
                   ),
                   AppSpacing.hGapSm,
-                  const Icon(
+                  Icon(
                     Icons.expand_more_rounded,
                     size: 18,
-                    color: AppColors.inkFaint,
+                    color: context.colors.inkFaint,
                   ),
                 ],
               ),
@@ -112,7 +112,7 @@ class AppMultiSelectField extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.colors.surface,
       constraints: const BoxConstraints(maxHeight: 560),
       builder: (_) => _MultiSelectSheet(
         label: label,
@@ -186,13 +186,13 @@ class _MultiSelectSheetState extends State<_MultiSelectSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('Select ${widget.label.toLowerCase()}',
-                    style: AppTypography.h2),
+                    style: context.type.h2),
                 if (showSearch) ...[
                   AppSpacing.gapMd,
                   TextField(
                     controller: _search,
                     autofocus: false,
-                    style: AppTypography.body.copyWith(color: AppColors.ink),
+                    style: context.type.body.copyWith(color: context.colors.ink),
                     onChanged: (value) => setState(() => _query = value.trim()),
                     decoration: InputDecoration(
                       hintText: 'Search ${widget.label.toLowerCase()}',
@@ -219,7 +219,7 @@ class _MultiSelectSheetState extends State<_MultiSelectSheet> {
                     padding: const EdgeInsets.all(AppSpacing.xl),
                     child: Text(
                       'Nothing matches “$_query”',
-                      style: AppTypography.small,
+                      style: context.type.small,
                     ),
                   )
                 : ListView.builder(
@@ -232,10 +232,10 @@ class _MultiSelectSheetState extends State<_MultiSelectSheet> {
                         value: checked,
                         dense: true,
                         controlAffinity: ListTileControlAffinity.leading,
-                        activeColor: AppColors.accent,
+                        activeColor: context.colors.accent,
                         title: Text(
                           _display(option),
-                          style: AppTypography.bodyStrong,
+                          style: context.type.bodyStrong,
                         ),
                         onChanged: (_) => setState(
                           () => checked

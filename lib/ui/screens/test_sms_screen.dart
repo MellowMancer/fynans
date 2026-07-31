@@ -106,7 +106,7 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
                               : '${_parsed.length} '
                                   '${_parsed.length == 1 ? "message" : "messages"} '
                                   'parsed',
-                          style: AppTypography.h2,
+                          style: context.type.h2,
                         ),
                       ],
                     ),
@@ -144,7 +144,7 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
           child: _isLoading
               ? const AppLoading()
               : RefreshIndicator(
-                  color: AppColors.accent,
+                  color: context.colors.accent,
                   onRefresh: _readAndParseSms,
                   child: _parsed.isEmpty
                       ? ListView(
@@ -160,14 +160,9 @@ class _TestSmsScreenState extends State<TestSmsScreen> {
                           ],
                         )
                       : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.gutter,
-                            AppSpacing.md,
-                            AppSpacing.gutter,
-                            AppSpacing.xxxl,
-                          ),
+                          padding: AppSpacing.pageInsets,
                           itemCount: _parsed.length,
-                          separatorBuilder: (_, __) => AppSpacing.gapMd,
+                          separatorBuilder: (_, __) => AppSpacing.gapCard,
                           itemBuilder: (context, index) => ParsedSmsCard(
                             data: _parsed[index],
                             showOriginal: _showOriginal,
@@ -254,7 +249,7 @@ class ParsedSmsCard extends StatelessWidget {
                   // MoneyText already renders mono upper-case.
                   valueWidget: MoneyText(
                     details.balance!,
-                    style: AppTypography.monoBody,
+                    style: context.type.monoBody,
                   ),
                   icon: Icons.account_balance_outlined,
                 ),

@@ -25,7 +25,7 @@ class TagIconWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasTags = tags.isNotEmpty;
     final color =
-        hasTags ? TagHelper.getColorForTag(tags.first) : AppColors.inkMuted;
+        hasTags ? context.tagColor(tags.first) : context.colors.inkMuted;
     final icon = hasTags
         ? TagHelper.getIconForTag(tags.first)
         : Icons.label_outline;
@@ -56,14 +56,14 @@ class TagIconWidget extends StatelessWidget {
                   vertical: 1,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: context.colors.surface,
                   borderRadius: AppRadius.pillAll,
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: context.colors.border),
                 ),
                 child: MonoText(
                   '+$overflow',
-                  style: AppTypography.monoSmall.copyWith(fontSize: 9.5),
-                  color: AppColors.inkSecondary,
+                  style: context.type.monoSmall.copyWith(fontSize: 9.5),
+                  color: context.colors.inkSecondary,
                 ),
               ),
             ),

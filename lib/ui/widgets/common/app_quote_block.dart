@@ -27,8 +27,8 @@ class AppQuoteBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = AppTypography.monoSmall.copyWith(
-      color: AppColors.inkSecondary,
+    final style = context.type.monoSmall.copyWith(
+      color: context.colors.inkSecondary,
     );
 
     return Column(
@@ -43,9 +43,9 @@ class AppQuoteBlock extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: AppColors.surfaceMuted,
+            color: context.colors.surfaceMuted,
             borderRadius: AppRadius.mdAll,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colors.border),
           ),
           child: SelectableText(text, style: style),
         ),
