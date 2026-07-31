@@ -32,8 +32,7 @@ Transaction _txn({
 }
 
 /// Example test proving the testing environment: a real production cubit driven
-/// by the in-memory [FakeTransactionRepository], asserted via the stream. This
-/// is the template for the BLoC/repository tests the project is missing.
+/// by the in-memory [FakeTransactionRepository], asserted via the stream.
 void main() {
   group('TransactionCubit', () {
     late FakeTransactionRepository repo;

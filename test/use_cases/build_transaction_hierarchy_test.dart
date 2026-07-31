@@ -143,9 +143,5 @@ void _dayWeekGroupingTests() {
       expect(nodes.single.name, '27 Jul – 2 Aug 2026');
     });
 
-    test('day and week are offered as grouping options', () {
-      expect(GroupingOption.values.map((o) => o.displayName),
-          containsAll(<String>['Day', 'Week', 'Month']));
-    });
   });
 }

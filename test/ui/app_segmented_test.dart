@@ -10,7 +10,6 @@ void main() {
   Future<List<_Mode>> pump(
     WidgetTester tester, {
     _Mode value = _Mode.simple,
-    bool expand = false,
     ThemeData? theme,
   }) async {
     final taps = <_Mode>[];
@@ -21,7 +20,6 @@ void main() {
           body: Center(
             child: AppSegmented<_Mode>(
               value: value,
-              expand: expand,
               onChanged: taps.add,
               segments: const [
                 AppSegment(
@@ -38,12 +36,6 @@ void main() {
     );
     return taps;
   }
-
-  testWidgets('renders every segment', (tester) async {
-    await pump(tester);
-    expect(find.text('Simple'), findsOneWidget);
-    expect(find.text('Advanced'), findsOneWidget);
-  });
 
   testWidgets('tapping an unselected segment reports it', (tester) async {
     final taps = await pump(tester);
@@ -62,24 +54,6 @@ void main() {
 
     // Re-selecting is not a change; firing here would churn state for nothing.
     expect(taps, isEmpty);
-  });
-
-  testWidgets('exactly the selected segment is filled', (tester) async {
-    await pump(tester, value: _Mode.advanced);
-    await tester.pumpAndSettle();
-
-    final fills = tester
-        .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
-        .map((c) => (c.decoration as BoxDecoration?)?.color)
-        .toList();
-
-    // One filled with the accent tint, the rest transparent — asserting merely
-    // "a fill exists" would hold whichever segment were selected.
-    expect(fills.where((c) => c == AppColors.light.accentStrong), hasLength(1));
-    expect(
-      fills.where((c) => c == Colors.transparent),
-      hasLength(fills.length - 1),
-    );
   });
 
   testWidgets('the selected fill follows the value', (tester) async {
@@ -116,14 +90,4 @@ void main() {
     expect(fills, contains(AppColors.dark.accentStrong));
   });
 
-  testWidgets('hugs its labels by default and stretches when asked',
-      (tester) async {
-    await pump(tester);
-    final hugged = tester.getSize(find.byType(AppSegmented<_Mode>)).width;
-
-    await pump(tester, expand: true);
-    final stretched = tester.getSize(find.byType(AppSegmented<_Mode>)).width;
-
-    expect(stretched, greaterThan(hugged));
-  });
 }

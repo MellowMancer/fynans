@@ -84,8 +84,7 @@ void main() {
     });
 
     test('guards divide-by-zero: no NaN percentages when outflow is 0', () async {
-      // Only credit transactions -> zero outflow. A defensive tag on a credit
-      // must not produce a NaN percentage.
+      // Only credit transactions -> zero outflow.
       repo.seed([
         _txn(amount: 500, date: DateTime(2026, 7, 6), isCredit: true),
       ]);

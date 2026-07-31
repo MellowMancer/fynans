@@ -7,9 +7,8 @@ import '../fakes/fake_transaction_repository.dart';
 void main() {
   _smsIdStabilityTests();
 
-  // Two genuinely distinct bank SMS that happen to share the same
-  // date-minute + amount + party (same UPI VPA). The old parsed-field dedup
-  // collapsed these into one transaction (Bug #1 data loss).
+  // Two genuinely distinct bank SMS that happen to share the same date-minute +
+  // amount + party (same UPI VPA).
   const sender = 'AX-HDFCBK';
   const bodyA =
       'Rs.500.00 debited from a/c XX1234 to john@okhdfc on 08Jul. Avl Bal Rs.9000';
@@ -68,9 +67,7 @@ void _smsIdStabilityTests() {
 
     test('is a pure function of the SMS content (golden)', () {
       // A hardcoded expectation is the point: it can only hold if the id is
-      // derived from content rather than a per-process hash seed. If this ever
-      // fails, dedupe has silently broken and every launch will re-import the
-      // whole inbox.
+      // derived from content rather than a per-process hash seed.
       expect(
         smsIdFor(sender: sender, body: body, date: date),
         smsIdFor(sender: sender, body: body, date: date),

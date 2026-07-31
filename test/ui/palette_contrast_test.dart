@@ -15,8 +15,7 @@ const double _kAaLarge = 3.0;
 const double _kMinDeltaE = 18;
 
 void main() {
-  // Every rule is checked against both themes. A dark theme that skipped these
-  // would be exactly as unreadable as a light one that did.
+  // Every rule is checked against both themes.
   const themes = {'light': AppColors.light, 'dark': AppColors.dark};
 
   themes.forEach((name, colors) {
@@ -58,7 +57,6 @@ void main() {
             greaterThanOrEqualTo(_kAaText));
         expect(contrast(colors.onAccent, colors.primary),
             greaterThanOrEqualTo(_kAaText));
-        // The FAB: ink fill, canvas glyph.
         expect(contrast(colors.canvas, colors.ink),
             greaterThanOrEqualTo(_kAaText));
       });
@@ -72,15 +70,12 @@ void main() {
       });
 
       // Contrast is a luminance ratio, so it cannot see a hue difference: the
-      // money colours sit at almost the same lightness on purpose. Telling them
-      // apart is a perceptual-distance question, hence CIE76 ΔE.
+      // money colours sit at almost the same lightness on purpose.
       test('money in and money out are perceptually distant', () {
         expect(deltaE(colors.success, colors.danger), greaterThan(_kMinDeltaE));
       });
 
-      // Sage Green and Lobster Pink mean credit/debit and success/failure. A
-      // tag that merely looked like them would read as a signal in a chart, so
-      // the chart scale must stay clear of both — not just avoid them exactly.
+      // Sage Green and Lobster Pink mean credit/debit and success/failure.
       test('no chart colour resembles the money colours', () {
         const reserved = {
           'sage green': AppPalette.positive,

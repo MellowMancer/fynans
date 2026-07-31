@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
 import 'package:fynans/adapters/sms/sms_parser_service.dart';
 
-/// Proves the transaction fork of the unified SMS pipeline: a whitelisted
-/// bank SMS parses into the right transaction type + amount, while non-bank
-/// and OTP/promo messages are ignored.
+/// Proves the transaction fork of the unified SMS pipeline: a whitelisted bank
+/// SMS parses into the right transaction type + amount, while non-bank and
+/// OTP/promo messages are ignored.
 void main() {
   final parser = SmsParserService();
   final now = DateTime(2026, 6, 27);
@@ -72,9 +72,8 @@ void main() {
   });
 
   test('declined SMS with a debit keyword -> declined (not debit)', () {
-    // Bug #3: this SMS carries the debit keyword "spent" AND the decline
-    // markers "declined"/"failed". It must classify as declined so the
-    // ingestor drops it instead of recording a phantom outflow.
+    // This SMS carries the debit keyword "spent" AND the decline
+    // markers "declined"/"failed".
     final r = parser.parseTransactionDetails(
       sender: 'HDFCBK',
       body:
@@ -85,18 +84,16 @@ void main() {
     expect(r!.type, TransactionType.declined);
     expect(r.type, isNot(TransactionType.debit));
 
-    // The ingestor only persists debit/credit types (see TransactionSmsIngestor),
-    // so a declined classification guarantees no saved transaction.
+    // The ingestor only persists debit/credit types (see
+    // TransactionSmsIngestor), so a declined classification guarantees no saved
+    // transaction.
     final isSaved = r.type == TransactionType.debit ||
         r.type == TransactionType.credit;
     expect(isSaved, isFalse);
   });
 
   test('balance stated before the amount is not captured as the amount', () {
-    // Bug #4: _getAmount used to return the FIRST Rs/INR-prefixed number. When
-    // the available balance is worded before the debit clause, that balance
-    // figure (Rs.9,999.00) was recorded as the transaction amount instead of
-    // the actual debit (Rs.250.00). The amount must anchor to the debit action.
+    // _getAmount used to return the FIRST Rs/INR-prefixed number.
     final r = parser.parseTransactionDetails(
       sender: 'HDFCBK',
       body:
@@ -110,11 +107,8 @@ void main() {
   });
 
   test('merchant at the very end of the SMS is not over-captured', () {
-    // Bug #5: the merchant regex's end-of-string terminator was over-escaped
-    // (\$ compiled to a literal dollar sign, which never appears in SMS text),
-    // so a merchant token sitting at the END of the body had no anchor to stop
-    // on. The lazy match failed to terminate cleanly, dropping the merchant.
-    // The clean name must be captured, ending exactly at end-of-body.
+    // The merchant regex's end-of-string terminator was over-escaped, so a
+    // merchant at the end of the body had no anchor to stop on.
     final r = parser.parseTransactionDetails(
       sender: 'HDFCBK',
       body: 'Rs.250.00 debited from a/c XX1234 on 27-06-26 at STARBUCKS',

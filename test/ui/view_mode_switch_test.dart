@@ -69,9 +69,8 @@ void main() {
     await swipeToPreviousMonth(tester);
     expect(find.text(previousMonth), findsOneWidget);
 
-    // Switching modes used to destroy the pager; rebuilding it from the
-    // controller's initialPage snapped the header back to the latest month
-    // while the list below still showed the month that had been swiped to.
+    // Switching modes used to destroy the pager, which rebuilt from its
+    // initialPage — header on the latest month, list on the swiped-to one.
     await tapMode(tester, 'Advanced');
     await tapMode(tester, 'Simple');
 

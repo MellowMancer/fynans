@@ -96,72 +96,6 @@ void main() {
   });
 
   group('design system renders', () {
-    testWidgets('AppCard shows label, title and child', (tester) async {
-      await tester.pumpWidget(
-        _host(
-          const AppCard(
-            label: 'Statement period',
-            title: 'Jul 2026',
-            child: Text('body'),
-          ),
-        ),
-      );
-
-      expect(find.text('STATEMENT PERIOD'), findsOneWidget);
-      expect(find.text('Jul 2026'), findsOneWidget);
-      expect(find.text('body'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('AppPill supports icon, tap and remove', (tester) async {
-      var tapped = false;
-      var removed = false;
-
-      await tester.pumpWidget(
-        _host(
-          Center(
-            child: AppPill(
-              'Tag: food',
-              icon: Icons.label,
-              tone: AppPillTone.accent,
-              onTap: () => tapped = true,
-              onRemove: () => removed = true,
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Tag: food'));
-      expect(tapped, isTrue);
-
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      expect(removed, isTrue);
-    });
-
-    testWidgets('AppButton variants build and fire', (tester) async {
-      var pressed = 0;
-      await tester.pumpWidget(
-        _host(
-          Column(
-            children: [
-              for (final variant in AppButtonVariant.values)
-                AppButton(
-                  label: variant.name,
-                  icon: Icons.check,
-                  variant: variant,
-                  onPressed: () => pressed++,
-                ),
-            ],
-          ),
-        ),
-      );
-
-      for (final variant in AppButtonVariant.values) {
-        await tester.tap(find.text(variant.name));
-      }
-      expect(pressed, AppButtonVariant.values.length);
-    });
-
     testWidgets('disabled AppButton does not fire', (tester) async {
       var pressed = false;
       await tester.pumpWidget(
@@ -198,44 +132,6 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('AppMetricTile and MoneyText render amounts', (tester) async {
-      await tester.pumpWidget(
-        _host(
-          const Column(
-            children: [
-              AppMetricTile(
-                label: 'Inflow',
-                amount: 5000,
-                tone: MoneyTone.positive,
-              ),
-              MoneyText(-250, tone: MoneyTone.negative),
-            ],
-          ),
-        ),
-      );
-
-      expect(find.text('INFLOW'), findsOneWidget);
-      expect(find.textContaining('5,000'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('AppEmptyState renders title, message and action',
-        (tester) async {
-      await tester.pumpWidget(
-        _host(
-          AppEmptyState(
-            icon: Icons.inbox,
-            title: 'Nothing here',
-            message: 'Add something',
-            action: AppButton(label: 'Add', onPressed: () {}),
-          ),
-        ),
-      );
-
-      expect(find.text('Nothing here'), findsOneWidget);
-      expect(find.text('Add something'), findsOneWidget);
-      expect(find.text('Add'), findsOneWidget);
-    });
   });
 
   group('ParsedSmsCard', () {

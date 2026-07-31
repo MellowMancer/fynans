@@ -6,9 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/ui/theme/app_typography.dart';
 import 'package:yaml/yaml.dart';
 
-/// Iosevka's advance is half its em. The font `flutter_test` substitutes when a
-/// family is missing is square, so a glyph measuring `fontSize / 2` proves the
-/// real file was parsed rather than silently replaced.
+/// Iosevka's advance is half its em.
 const double _kIosevkaAdvanceRatio = 0.5;
 
 double _advance(String s, TextStyle style) {

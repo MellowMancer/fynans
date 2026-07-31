@@ -9,9 +9,7 @@ import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 
 /// Mirrors the REAL repository: a controller-backed stream that stays open
-/// until cancelled. (It used to be an `async*` generator parked on
-/// `await for`, whose cancel() never completed — see the repository contract
-/// test for the guarantee that replaced it.)
+/// until cancelled.
 class _LongLivedRepository implements TransactionRepository {
   _LongLivedRepository(this.byMonth);
 
@@ -86,8 +84,8 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect((cubit.state as TransactionLoadSuccess).transactions, hasLength(1));
 
-    // The regression: this second call used to hang on `await cancel()`, so
-    // the cubit stayed on July forever.
+    // The regression: this second call used to hang on `await cancel()`, so the
+    // cubit stayed on July forever.
     await cubit
         .fetchTransactionsForMonth(DateTime(2026, 6))
         .timeout(const Duration(seconds: 2));
