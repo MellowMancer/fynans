@@ -25,8 +25,8 @@ class TransactionCubit extends Cubit<TransactionState> {
     final generation = ++_generation;
 
     // Awaiting is safe (and required) now that the repository stream is
-    // controller-backed: cancel() completes promptly, so at most one live
-    // box watcher exists at a time.
+    // controller-backed: cancel() completes promptly, so at most one live box
+    // watcher exists at a time.
     await _subscription?.cancel();
 
     emit(TransactionLoadInProgress());

@@ -8,10 +8,7 @@ import 'package:fynans/use_cases/date_range_presets.dart';
 /// Earliest date the custom picker allows.
 const int _kPickerHistoryYears = 5;
 
-/// Quick-span chips for the advanced view. Selecting a preset resolves it to a
-/// concrete [DateRange]; "Custom Range" opens a date-range picker instead.
-///
-/// Built from [AppPill] so it needs no bespoke chip widget.
+/// Quick-span chips for the advanced view.
 class DateRangeSelector extends StatelessWidget {
   const DateRangeSelector({
     super.key,

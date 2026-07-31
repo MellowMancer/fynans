@@ -20,8 +20,7 @@ Future<void> main() async {
   await Hive.openBox<Transaction>('transactions');
 
   // One-time upgrade path: drop auto-imported rows stamped with the old,
-  // non-reproducible smsId scheme. Without this the sweep below cannot match
-  // them and would import every message a second time.
+  // non-reproducible smsId scheme.
   await HiveTransactionRepository().purgeLegacySmsRecords();
 
   // Read the appearance choice before the first frame — loading it after would
@@ -30,9 +29,7 @@ Future<void> main() async {
   final themePreference = await settings.readThemePreference();
 
   runApp(MyApp(settings: settings, themePreference: themePreference));
-  // After the UI is up, sweep the inbox for bank-transaction SMS. De-dupe on
-  // the raw-SMS id keeps this idempotent, so re-running on every launch never
-  // creates duplicates; each imported record also keeps its original SMS text.
+  // After the UI is up, sweep the inbox for bank-transaction SMS.
   SmsIntakeService.catchUp();
 }
 
@@ -82,8 +79,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Maps the entity onto Flutter's own enum. Lives here, at the framework edge,
-/// so [ThemePreference] itself stays free of Flutter.
+/// Maps the entity onto Flutter's own enum.
 extension ThemePreferenceMode on ThemePreference {
   ThemeMode get themeMode => switch (this) {
         ThemePreference.system => ThemeMode.system,

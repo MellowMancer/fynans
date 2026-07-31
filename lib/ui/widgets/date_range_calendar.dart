@@ -7,8 +7,8 @@ import 'package:fynans/ui/theme/app_typography.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:intl/intl.dart';
 
-/// Height of a day cell; also the band's diameter, so a pill radius of
-/// `height / 2` produces exact semi-circles at every vertical edge.
+/// Height of a day cell; also the band's diameter, so a pill radius of `height
+/// / 2` produces exact semi-circles at every vertical edge.
 const double _kCellHeight = 40;
 
 const int _kDaysPerWeek = DateTime.daysPerWeek;
@@ -37,11 +37,6 @@ class SelectedRun {
 }
 
 /// Splits one week row into the contiguous stretches covered by [range].
-///
-/// A run breaks wherever the row does — at a leading/trailing blank (so the
-/// first and last day of a month always terminate a run) and at any gap. Each
-/// run is drawn as its own pill, which is what gives every vertical edge a
-/// rounded cap.
 List<SelectedRun> selectedRunsInWeek(List<DateTime?> week, DateRange? range) {
   if (range == null) return const [];
 
@@ -65,8 +60,7 @@ List<SelectedRun> selectedRunsInWeek(List<DateTime?> week, DateRange? range) {
   return runs;
 }
 
-/// Full-screen calendar for picking a custom span. Selected days are drawn as
-/// an outlined band with semi-circular caps at every vertical edge.
+/// Full-screen calendar for picking a custom span.
 class DateRangeCalendarSheet extends StatefulWidget {
   const DateRangeCalendarSheet({
     super.key,
@@ -183,9 +177,7 @@ class _DateRangeCalendarSheetState extends State<DateRangeCalendarSheet> {
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               itemCount: months.length,
-              // Chronological with the latest month at the BOTTOM. `reverse`
-              // lays index 0 at the bottom edge, which also means the sheet
-              // opens on the newest month instead of five years ago.
+              // Chronological with the latest month at the BOTTOM.
               reverse: true,
               itemBuilder: (context, index) => _MonthGrid(
                 month: months[months.length - 1 - index],
@@ -330,8 +322,7 @@ class _WeekRow extends StatelessWidget {
           height: _kCellHeight,
           child: Stack(
             children: [
-              // The band sits behind the numbers. Every run is its own pill, so
-              // both of its vertical edges are capped with a semi-circle.
+              // The band sits behind the numbers.
               for (final run in runs)
                 Positioned(
                   left: run.startIndex * cellWidth,

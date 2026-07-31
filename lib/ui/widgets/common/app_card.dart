@@ -4,9 +4,7 @@ import 'package:fynans/ui/theme/app_spacing.dart';
 import 'package:fynans/ui/theme/app_typography.dart';
 import 'package:fynans/ui/widgets/common/app_labels.dart';
 
-/// The one container primitive. Everything panel-shaped in the app is an
-/// [AppCard] — eyebrow label, optional title row with a trailing action, and a
-/// body — so no screen re-rolls its own `Container` + `BoxDecoration`.
+/// The one container primitive.
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -25,7 +23,7 @@ class AppCard extends StatelessWidget {
   /// Body content, below the optional header.
   final Widget? child;
 
-  /// Mono uppercase eyebrow, e.g. `STATEMENT PERIOD`.
+  /// Mono uppercase eyebrow, e.g.
   final String? label;
 
   /// Heading.

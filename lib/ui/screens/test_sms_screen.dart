@@ -25,9 +25,6 @@ class ParsedSms {
 }
 
 /// Diagnostic view of what the parser makes of the inbox.
-///
-/// This screen itself never writes; the launch sweep in `main.dart` is what
-/// imports these messages into the database.
 class TestSmsScreen extends StatefulWidget {
   const TestSmsScreen({super.key});
 

@@ -6,9 +6,6 @@ import 'package:fynans/ui/widgets/common/app_labels.dart';
 
 /// A verbatim block of text in an inset mono panel — used to quote raw source
 /// material such as the SMS a transaction was parsed from.
-///
-/// Deliberately **not** upper-cased, unlike the rest of the app's mono text:
-/// the point is to show exactly what was received, casing included.
 class AppQuoteBlock extends StatelessWidget {
   const AppQuoteBlock(
     this.text, {

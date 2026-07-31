@@ -177,7 +177,6 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                       decoration: InputDecoration(
                         // `prefixText` is only painted while the field is
                         // focused or non-empty, so the symbol vanished at rest.
-                        // A prefixIcon is always painted.
                         prefixIcon: Padding(
                           padding: EdgeInsets.only(
                             left: AppSpacing.md,

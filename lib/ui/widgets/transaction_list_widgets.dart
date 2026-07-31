@@ -22,10 +22,6 @@ import 'package:fynans/use_cases/date_range_presets.dart';
 
 
 /// Net position, with the inflow/outflow split revealed on tap.
-///
-/// Collapsed by default: the net figure answers "how did the period go?", and
-/// the bifurcation is one tap away. Uses the same chevron + animated reveal as
-/// a transaction row rather than a dropdown.
 class TransactionTotals extends StatefulWidget {
   const TransactionTotals({
     super.key,
@@ -173,11 +169,6 @@ class AdvancedSummaryCard extends StatelessWidget {
 }
 
 /// The statement-period row: the month and its picker.
-///
-/// Deliberately the ONLY thing inside the month pager — it is constant height,
-/// so the pager can be a small fixed box while the figures below it size to
-/// their content. Each page renders its own month, so the label tracks the
-/// drag instead of lagging until the page settles.
 class StatementPeriodRow extends StatelessWidget {
   const StatementPeriodRow({
     super.key,
@@ -215,7 +206,7 @@ class StatementPeriodRow extends StatelessWidget {
 }
 
 /// The selected month's figures: net (with the tap-revealed split) and top
-/// spending. Sizes to its content — it lives outside the pager.
+/// spending.
 class SummaryBody extends StatelessWidget {
   const SummaryBody({super.key, required this.summary});
 
@@ -478,7 +469,8 @@ class SimpleTransactionListView extends StatelessWidget {
             return Dismissible(
               key: ValueKey(transaction.key),
               direction: DismissDirection.endToStart,
-              // The live subscription re-emits on the delete; no manual refetch.
+              // The live subscription re-emits on the delete; no manual
+              // refetch.
               onDismissed: (_) => repository.deleteTransaction(transaction),
               background: Container(
                 margin: AppSpacing.rowGapInsets,

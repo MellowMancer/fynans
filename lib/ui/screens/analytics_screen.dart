@@ -275,8 +275,7 @@ class _SpendingByTagCard extends StatelessWidget {
 
   final MonthlyAnalytics analytics;
 
-  /// One pie section. The label colour follows the slice's fill, because the
-  /// categorical scale spans both light tans and deep olives.
+  /// One pie section.
   PieChartSectionData _section(BuildContext context, TagSlice slice) {
     final fill = context.tagColor(slice.label);
     return PieChartSectionData(

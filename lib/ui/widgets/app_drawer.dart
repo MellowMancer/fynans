@@ -60,9 +60,6 @@ class AppDrawer extends StatelessWidget {
 }
 
 /// Light / dark / follow-the-device, persisted through [ThemeCubit].
-///
-/// Selecting does not navigate — the choice applies immediately and the drawer
-/// is left as the platform leaves it, so no `Navigator.pop` here.
 class _AppearanceToggle extends StatelessWidget {
   const _AppearanceToggle();
 

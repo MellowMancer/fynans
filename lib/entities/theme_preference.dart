@@ -1,7 +1,4 @@
 /// What the user chose in the appearance toggle.
-///
-/// Deliberately not Flutter's `ThemeMode`: this is an entity, so it must not
-/// depend on the framework. The UI maps it to a `ThemeMode` at the edge.
 enum ThemePreference {
   /// Follow the device setting.
   system,
@@ -17,7 +14,6 @@ enum ThemePreference {
     );
   }
 
-  /// The form written to storage. The enum name, so the stored value stays
-  /// readable and survives reordering.
+  /// The form written to storage.
   String get storageValue => name;
 }

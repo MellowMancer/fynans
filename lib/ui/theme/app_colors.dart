@@ -2,15 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:fynans/ui/theme/app_palette.dart';
 
 /// Tier 2: semantic colour tokens, resolved per theme.
-///
-/// Every field names a *role*, never an appearance — `ink` is "the strongest
-/// text colour", which is Gunmetal on light and Seashell on dark. That is why
-/// there is no `onDark`: on a dark theme the text drawn on a filled accent is
-/// itself dark, so the name would be a lie. It is [onAccent].
-///
-/// Widgets read these through `context.colors`, so switching theme is a change
-/// of mapping rather than a change of every widget. Nothing here is `const` at
-/// the point of use — that is the whole point.
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
@@ -86,8 +77,7 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color dangerSoft;
   final Color dangerBorder;
 
-  /// Tag/category accents. Never contains the money hues — a chart colour that
-  /// looked like a signal would read as one.
+  /// Tag/category accents.
   final List<Color> categorical;
 
   static const AppColors light = AppColors(
@@ -164,9 +154,7 @@ class AppColors extends ThemeExtension<AppColors> {
     ],
   );
 
-  /// Legible text colour for a filled swatch, using this theme's own inks. The
-  /// categorical scale spans light and dark fills, so a single fixed label
-  /// colour would fail at one end; a luminance threshold gets mid-tones wrong.
+  /// Legible text colour for a filled swatch, using this theme's own inks.
   Color inkOn(Color fill) =>
       _contrast(ink, fill) >= _contrast(canvas, fill) ? ink : canvas;
 

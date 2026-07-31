@@ -24,8 +24,7 @@ extension _MoneyToneColor on MoneyTone {
       };
 }
 
-/// Renders an amount in mono with consistent formatting. The only place the
-/// app turns a `double` into currency on screen.
+/// Renders an amount in mono with consistent formatting.
 class MoneyText extends StatelessWidget {
   const MoneyText(
     this.amount, {
@@ -53,8 +52,8 @@ class MoneyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mono is upper-case throughout the theme; routed through [MonoText] so
-    // the rule holds even when a currency code carries letters.
+    // Mono is upper-case throughout the theme; routed through [MonoText] so the
+    // rule holds even when a currency code carries letters.
     final text = MonoText(
       Fmt.money(amount, decimals: decimals, signed: signed),
       style: style ?? context.type.amount,

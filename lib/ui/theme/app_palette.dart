@@ -1,16 +1,6 @@
 import 'package:flutter/material.dart';
 
 /// Tier 1: the raw palette, labelled by role.
-///
-/// These are theme-*independent* — a swatch is the same colour in light and
-/// dark. Widgets never read from here; they read the semantic tokens in
-/// `AppColors`, which map these differently per theme. That split is what makes
-/// a theme swap a change of mapping rather than a change of every widget.
-///
-/// The named swatches are the source palette. The shades below them are
-/// derived: some swatches are mid-tones that miss WCAG AA as text against one
-/// background or the other, so each theme reaches for a deeper or lighter step
-/// of the same hue.
 abstract final class AppPalette {
   // --- The palette ---
   /// Seashell — the light theme's page tone, and light text on dark.
@@ -34,10 +24,10 @@ abstract final class AppPalette {
   /// Charcoal Blue — the primary hue.
   static const Color primary = Color(0xFF1B4459);
 
-  /// Sage Green — money in. Reserved: never a chart category.
+  /// Sage Green — money in.
   static const Color positive = Color(0xFF78A776);
 
-  /// Lobster Pink — money out. Reserved: never a chart category.
+  /// Lobster Pink — money out.
   static const Color negative = Color(0xFFC05D5D);
 
   // --- Neutral ramp, deepened from Gunmetal ---

@@ -1,5 +1,4 @@
 /// A dimension transactions can be grouped by in the advanced view.
-/// Pure enum: the key-derivation policy lives in [BuildTransactionHierarchy].
 enum GroupingOption {
   group('Group'),
   tag('Tag'),

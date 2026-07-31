@@ -5,9 +5,6 @@ import 'package:fynans/ui/theme/app_typography.dart';
 
 /// Builds the app's [ThemeData] so stock Material widgets pick up the palette
 /// and the Iosevka type scale without per-widget overrides.
-///
-/// [light] and [dark] are the same builder with a different [AppColors], so the
-/// two themes cannot drift: adding a widget theme covers both at once.
 abstract final class AppTheme {
   static ThemeData light() => _build(AppColors.light, Brightness.light);
 
@@ -127,8 +124,7 @@ abstract final class AppTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colors.surface,
         // Primary, not ink: the active tab and the add button are the app's
-        // interactive anchors, so they carry the primary hue. Accent (the rose)
-        // stays editorial — eyebrow labels, rules, the selected segment.
+        // interactive anchors, so they carry the primary hue.
         selectedItemColor: colors.primary,
         unselectedItemColor: colors.inkMuted,
         selectedLabelStyle: styles.label,

@@ -17,27 +17,18 @@ class AppSegment<T> {
 
 /// A grouped set of mutually exclusive choices, drawn as one track with the
 /// selected option raised inside it.
-///
-/// Reads as a single control rather than as loose chips: the track states that
-/// the options belong together and that exactly one of them is on. Colours come
-/// from the same tokens the standalone pills use, so the two styles sit
-/// together without clashing.
 class AppSegmented<T> extends StatelessWidget {
   const AppSegmented({
     super.key,
     required this.segments,
     required this.value,
     required this.onChanged,
-    this.expand = false,
   });
 
   final List<AppSegment<T>> segments;
   final T value;
   final ValueChanged<T> onChanged;
 
-  /// Stretch to the full width, splitting it evenly. Off by default, so the
-  /// control hugs its labels.
-  final bool expand;
 
   /// Gap between the track's edge and the raised segment.
   static const double _trackInset = 3;
@@ -55,13 +46,9 @@ class AppSegmented<T> extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(_trackInset),
         child: Row(
-          mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            for (final segment in segments)
-              if (expand)
-                Expanded(child: _buildSegment(context, segment))
-              else
-                _buildSegment(context, segment),
+            for (final segment in segments) _buildSegment(context, segment),
           ],
         ),
       ),
@@ -71,10 +58,8 @@ class AppSegmented<T> extends StatelessWidget {
   Widget _buildSegment(BuildContext context, AppSegment<T> segment) {
     final colors = context.colors;
     final selected = segment.value == value;
-    // A *filled* accent pill, not the tinted one the standalone chips use: on
-    // this track the tint sat only ΔE 1.7 from the background, so the selection
-    // was invisible and read from the label weight alone. Filled puts it at
-    // ΔE 65 in light and 58 in dark, with the label above 7:1 in both.
+    // Filled, not the chips' tint: on this track the tint sat ΔE 1.7 from the
+    // background, so the selection was invisible.
     final foreground = selected ? colors.onAccent : colors.inkSecondary;
 
     return Semantics(

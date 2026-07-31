@@ -30,11 +30,7 @@ class HiveTransactionRepository implements TransactionRepository {
     required DateRange range,
     TransactionFilter? filter,
   }) {
-    // Deliberately NOT an `async*` generator. A generator parked on
-    // `await for (box.watch())` never completes its cancel(), so callers could
-    // neither await teardown nor stop the underlying box listener — every
-    // month visited leaked a live watcher that re-scanned the whole box on the
-    // next write. An explicit controller cancels deterministically.
+    // Deliberately NOT an `async*` generator.
     late final StreamController<List<Transaction>> controller;
     StreamSubscription<BoxEvent>? watcher;
 

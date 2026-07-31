@@ -5,8 +5,6 @@ import 'package:fynans/ui/widgets/common/app_labels.dart';
 
 /// A labelled field: mono uppercase label above its value, with an optional
 /// leading glyph — the building block of every labelled field in the app.
-///
-/// Pass either [value] or [valueWidget].
 class AppKeyValue extends StatelessWidget {
   const AppKeyValue({
     super.key,

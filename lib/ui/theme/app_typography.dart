@@ -1,22 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 
-/// Type tokens — metrics only. One family, **Iosevka**, in two roles:
-/// * **[sans]** — headings and prose.
-/// * **[mono]** — eyebrow labels, metadata and every number.
-///
-/// Iosevka is monospaced, so the two roles resolve to the same family and
-/// figures align in columns everywhere. The roles are kept apart anyway: they
-/// carry different weights and tracking, and splitting `sans` off again
-/// (Iosevka Aile is the proportional sibling) stays a one-line change.
-///
-/// **These styles carry no colour.** Colour is a theme concern, and a `const`
-/// style cannot vary between light and dark. Read the coloured styles from
-/// `context.type`, which resolves them against the active [AppColors].
-///
-/// **Rule: mono is always UPPER-CASE.** Don't pair these mono styles with a
-/// bare `Text`; use `MonoText` (or `AppSectionLabel` / `AppPill(mono: true)` /
-/// `MoneyText`), which apply the casing for you.
+/// Type tokens — metrics only.
 abstract final class AppTypography {
   static const String sans = 'Iosevka';
   static const String mono = 'Iosevka';
@@ -125,8 +110,8 @@ abstract final class AppTypography {
     height: 1.25,
   );
 
-  /// Material text theme for [colors], so stock widgets inherit the right
-  /// fonts *and* the right inks for the active theme.
+  /// Material text theme for [colors], so stock widgets inherit the right fonts
+  /// *and* the right inks for the active theme.
   static TextTheme textThemeFor(AppColors colors) {
     final styles = AppTextStyles(colors);
     return TextTheme(
@@ -146,7 +131,7 @@ abstract final class AppTypography {
   }
 }
 
-/// The type scale with this theme's inks applied. Reached via `context.type`.
+/// The type scale with this theme's inks applied.
 @immutable
 class AppTextStyles {
   const AppTextStyles(this._colors);

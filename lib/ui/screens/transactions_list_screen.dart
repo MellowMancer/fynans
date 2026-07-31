@@ -17,9 +17,7 @@ enum ViewMode { simple, advanced }
 /// How many years back the month pager reaches.
 const int _kMonthsHistoryYears = 5;
 
-/// Height of the month pager. It holds only the statement-period row, whose
-/// height never varies, so the figures below it can size to their content —
-/// that is what keeps swipe-to-change-month without leaving dead space.
+/// Height of the month pager.
 const double _kMonthRowHeight = 52;
 
 class TransactionsListScreen extends StatefulWidget {
@@ -117,12 +115,8 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             onChanged: (mode) => setState(() => _currentViewMode = mode),
           ),
           Expanded(
-            // IndexedStack, not a conditional: swapping the subtree out
-            // destroyed the month pager, and re-attaching rebuilt it from the
-            // controller's initialPage — so returning to Simple snapped the
-            // header back to the latest month while the list still showed the
-            // month you had swiped to. Keeping both mounted also preserves
-            // each view's scroll position.
+            // IndexedStack, not a conditional: a conditional destroyed the
+            // pager, which then rebuilt from its initialPage on the way back.
             child: IndexedStack(
               index: isSimple ? 0 : 1,
               children: [
@@ -137,16 +131,13 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   }
 
   // No refresh on return: both views hold live repository subscriptions, so the
-  // save already pushes a new snapshot. Re-fetching here only tore down and
-  // rebuilt the box watcher and flashed a loading state over data that arrived
-  // on its own.
+  // save already pushes a new snapshot.
   void _openAddTransaction() => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
       );
 
-  /// The swipeable month row, plus the figures for the settled month. Only the
-  /// row is paged; the figures below size to their content.
+  /// The swipeable month row, plus the figures for the settled month.
   Widget _buildSimpleHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -284,8 +275,7 @@ class _ViewModeSwitcher extends StatelessWidget {
   }
 }
 
-/// Reorderable editor for the grouping hierarchy. Extracted from the screen so
-/// the screen no longer hosts a 70-line dialog.
+/// Reorderable editor for the grouping hierarchy.
 class _HierarchyEditorDialog extends StatefulWidget {
   const _HierarchyEditorDialog({required this.initialHierarchy});
 

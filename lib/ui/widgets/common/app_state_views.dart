@@ -90,8 +90,7 @@ class AppLoading extends StatelessWidget {
   }
 }
 
-/// The "couldn't load X, try again" state. Three screens rendered this same
-/// AppEmptyState + danger tone + Retry button composition by hand.
+/// The "couldn't load X, try again" state.
 class AppErrorView extends StatelessWidget {
   const AppErrorView({
     super.key,
@@ -124,7 +123,7 @@ class AppErrorView extends StatelessWidget {
 }
 
 /// The two-button footer every editing sheet ends with (Cancel/Apply,
-/// Clear/Done, …). Three sheets carried byte-identical copies of this row.
+/// Clear/Done, …).
 class AppSheetActions extends StatelessWidget {
   const AppSheetActions({
     super.key,
@@ -138,7 +137,7 @@ class AppSheetActions extends StatelessWidget {
   final VoidCallback? onSecondary;
   final String primaryLabel;
 
-  /// Null disables the primary action (e.g. nothing selected yet).
+  /// Null disables the primary action (e.g.
   final VoidCallback? onPrimary;
 
   @override

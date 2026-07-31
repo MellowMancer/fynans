@@ -18,8 +18,7 @@ class FilterChipSpec {
   final TransactionFilter Function(TransactionFilter) clear;
 }
 
-/// Describes every active criterion in [filter] as a chip. Labelling and
-/// clearing live together here, so a chip can never remove the wrong field.
+/// Describes every active criterion in [filter] as a chip.
 List<FilterChipSpec> describeFilter(TransactionFilter filter) {
   final chips = <FilterChipSpec>[];
 

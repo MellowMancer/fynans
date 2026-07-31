@@ -5,15 +5,13 @@ import 'package:fynans/adapters/data/hive_transaction_repository.dart';
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
 import 'package:fynans/adapters/sms/sms_parser_service.dart';
 
-/// Turns a bank-transaction SMS into a saved [Transaction]. Used by both the
-/// live listener (SmsIntakeService) and the launch catch-up scan, so it
-/// de-dupes against the Hive box to avoid importing the same SMS twice.
+/// Turns a bank-transaction SMS into a saved [Transaction].
 class TransactionSmsIngestor {
   final SmsParserService _parser;
   final TransactionRepository _repository;
 
   /// [repository] defaults to the Hive-backed impl for production; tests inject
-  /// a fake. Full constructor DI of the parser/source is the deferred F16.
+  /// a fake.
   TransactionSmsIngestor({TransactionRepository? repository})
       : _parser = SmsParserService(),
         _repository = repository ?? HiveTransactionRepository();
@@ -41,9 +39,8 @@ class TransactionSmsIngestor {
         ? details.merchant!.trim()
         : sender;
 
-    // De-dupe on the RAW SMS identity so the full-inbox launch sweep stays
-    // idempotent, while two genuinely distinct SMS that share
-    // minute+amount+party are still imported separately (Bug #1 fix).
+    // De-dupe on raw SMS identity: keeps the launch sweep idempotent while
+    // distinct SMS sharing minute+amount+party still import separately.
     final smsId = smsIdFor(sender: sender, body: body, date: date);
     if (_repository.existsWithSmsId(smsId)) {
       return false;
@@ -75,20 +72,9 @@ class TransactionSmsIngestor {
 
 /// Deterministic identity of a raw SMS, derived purely from its content
 /// (sender, body, timestamp) using FNV-1a.
-///
-/// This MUST NOT use `Object.hash`/`String.hashCode`: Dart seeds those per
-/// process, so ids changed on every app launch, dedupe never matched and the
-/// entire inbox was re-imported (and duplicated) each start. FNV-1a over the
-/// UTF-8 bytes yields the same id in every process, on every device.
-/// Width of a current-format id: two unsigned 32-bit halves in hex.
 const int kSmsIdLength = 16;
 
 /// Whether [smsId] was produced by the current (FNV-1a) scheme.
-///
-/// The previous scheme used `Object.hash(...).toUnsigned(32)`, which is seeded
-/// per process and rendered without padding — at most 8 hex chars. Those ids
-/// can never be recomputed, so records carrying them are unmatchable and must
-/// be migrated rather than compared.
 bool isCurrentSmsIdFormat(String smsId) => _currentIdPattern.hasMatch(smsId);
 
 /// Anchored and fixed-width, so it already enforces [kSmsIdLength].

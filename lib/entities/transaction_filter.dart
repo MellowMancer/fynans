@@ -14,12 +14,11 @@ enum DirectionFilter {
   bool get isAny => this == DirectionFilter.any;
 }
 
-/// Immutable value object encapsulating all predicate logic for filtering
-/// a [Transaction]. Pass null to any repository method for "match all".
+/// Immutable value object encapsulating all predicate logic for filtering a
+/// [Transaction].
 @immutable
 class TransactionFilter {
-  /// Selected values per dimension. Within a dimension the match is OR (any
-  /// selected value), across dimensions it is AND. Empty means "no constraint".
+  /// Selected values per dimension.
   final Set<String> groups;
   final Set<String> tags;
   final Set<String> parties;

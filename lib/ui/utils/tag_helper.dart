@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 
 /// Icon + palette slot for each known tag.
-///
-/// The colour is stored as an *index* into [AppColors.categorical], not as a
-/// literal: the scale differs between light and dark, so a tag's colour can
-/// only be resolved once the active theme is known. Icon and slot live together
-/// so the two cannot drift apart.
 class _TagStyle {
   const _TagStyle(this.icon, this.slot);
 

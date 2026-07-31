@@ -6,7 +6,7 @@ import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:intl/intl.dart';
 import 'package:wheel_picker/wheel_picker.dart';
 
-/// Wheel sizing. Named so the geometry isn't a scatter of magic numbers.
+/// Wheel sizing.
 const double _kItemFontSize = 20;
 const double _kItemHeight = 1.6;
 const double _kWheelHeight = 190;
@@ -135,8 +135,7 @@ class MonthYearWheelPickerState extends State<MonthYearWheelPicker> {
   }
 
   /// The wheels offer all 12 months for every year, so a selection can fall
-  /// outside the caller's declared bounds (e.g. a future month). Clamp it so
-  /// callers only ever receive a month they said they accept.
+  /// outside the caller's declared bounds (e.g.
   DateTime _clamped() {
     final picked = DateTime(widget.firstDate.year + _yearIndex, _monthIndex + 1, 1);
     final first = DateTime(widget.firstDate.year, widget.firstDate.month, 1);

@@ -1,9 +1,6 @@
 import 'package:meta/meta.dart';
 
 /// An inclusive span of time, used for every "which transactions?" query.
-///
-/// [start] is the first instant of the first day; [end] is the last microsecond
-/// of the last day, so day-boundary comparisons never drop a transaction.
 @immutable
 class DateRange {
   const DateRange({required this.start, required this.end});

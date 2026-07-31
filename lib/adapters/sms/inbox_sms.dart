@@ -1,6 +1,6 @@
-/// A package-neutral SMS record used across the app (transaction parsing,
-/// dev TestSMS screen) so no UI/service is coupled to a specific SMS
-/// plugin's message type.
+/// A package-neutral SMS record used across the app (transaction parsing, dev
+/// TestSMS screen) so no UI/service is coupled to a specific SMS plugin's
+/// message type.
 class InboxSms {
   final String sender;
   final String body;

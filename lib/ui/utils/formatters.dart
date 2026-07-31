@@ -1,9 +1,7 @@
 import 'package:fynans/entities/date_range.dart';
 import 'package:intl/intl.dart';
 
-/// The single home for user-facing value formatting. Previously `capitalize`
-/// was reimplemented in seven places (and threw on empty strings) and the `₹`
-/// prefix was hand-built in a dozen — everything routes through here now.
+/// The single home for user-facing value formatting.
 abstract final class Fmt {
   static const String currencySymbol = '₹';
 
@@ -19,8 +17,7 @@ abstract final class Fmt {
     decimalDigits: 0,
   );
 
-  /// Money, e.g. `₹1,23,456.78`. Pass [decimals] `0` for compact columns and
-  /// [signed] to prefix an explicit `+`/`-`.
+  /// Money, e.g.
   static String money(
     double amount, {
     int decimals = 2,
@@ -37,20 +34,17 @@ abstract final class Fmt {
   static String partyLabel({required bool isCredit}) =>
       isCredit ? 'Sender' : 'Recipient';
 
-  /// Upper-cases the first character. Empty-safe (the old inline versions
-  /// crashed on `''`).
+  /// Upper-cases the first character.
   static String capitalize(String value) {
     if (value.isEmpty) return '';
     return value[0].toUpperCase() + value.substring(1);
   }
 
-  /// Capitalizes each comma-separated entry, e.g. `food, travel` →
-  /// `Food, Travel`.
+  /// Capitalizes each comma-separated entry, e.g.
   static String capitalizeAll(Iterable<String> values) =>
       values.map(capitalize).join(', ');
 
-  /// `Jul 2026` — the canonical month label. Months are always the three-letter
-  /// abbreviation, never the full name.
+  /// `Jul 2026` — the canonical month label.
   static final DateFormat _monthYear = DateFormat.yMMM();
   static final DateFormat _dayMonth = DateFormat('d MMM');
   static final DateFormat _fullDate = DateFormat('d MMM yyyy');
@@ -65,8 +59,8 @@ abstract final class Fmt {
   /// `12 Jul 2026` — date only, for the date picker field.
   static String fullDate(DateTime date) => _fullDate.format(date);
 
-  /// Human description of a span, collapsing shared parts:
-  /// `15 Jul 2026` · `1 – 31 Jul 2026` · `1 Apr 2026 – 31 Mar 2027`.
+  /// Human description of a span, collapsing shared parts: `15 Jul 2026` · `1 –
+  /// 31 Jul 2026` · `1 Apr 2026 – 31 Mar 2027`.
   static String range(DateRange range) {
     if (range.isSingleDay) return fullDate(range.start);
 

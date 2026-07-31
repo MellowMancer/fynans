@@ -9,8 +9,7 @@ enum AppButtonVariant { primary, dark, accent, secondary, ghost }
 
 enum AppButtonSize { sm, md }
 
-/// The single button widget. Variants + optional icon/expand/loading props
-/// replace what would otherwise be several bespoke button widgets.
+/// The single button widget.
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,

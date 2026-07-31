@@ -5,13 +5,12 @@ import 'package:fynans/use_cases/summarise_transactions.dart';
 import 'package:fynans/use_cases/date_range_presets.dart';
 import 'package:intl/intl.dart';
 
-/// Label used when a transaction has no value for the current grouping dimension.
+/// Label used when a transaction has no value for the current grouping
+/// dimension.
 const String kUncategorizedBucket = 'Uncategorized';
 
 /// Folds a flat transaction list into a recursive [HierarchyNode] tree by
-/// applying [hierarchy] level by level. This is the single home for all
-/// grouping/bucketing policy (canonical empty-bucket label + month format);
-/// no other layer decides grouping keys.
+/// applying [hierarchy] level by level.
 class BuildTransactionHierarchy {
   // Hoisted: constructing a DateFormat parses its pattern and resolves locale
   // symbols, and _keysFor runs per transaction on every re-group.
@@ -22,8 +21,7 @@ class BuildTransactionHierarchy {
   const BuildTransactionHierarchy();
 
   /// Groups [transactions] by each [GroupingOption] in [hierarchy] in order,
-  /// summarising every node. Time buckets are ordered newest-first; the rest
-  /// are ranked by descending total.
+  /// summarising every node.
   List<HierarchyNode> call(
     List<Transaction> transactions,
     List<GroupingOption> hierarchy,
@@ -59,9 +57,6 @@ class BuildTransactionHierarchy {
 
     if (currentLevel.isChronological) {
       // Time buckets read as a timeline (newest first), matching the flat list.
-      // Ranking them by total scrambles days/weeks/months into a meaningless
-      // order — and since `total` is income-minus-expenses, an expense-only
-      // period would even list the *smallest* spend first.
       nodes.sort((a, b) => (bucketDates[b.name] ?? DateTime(0))
           .compareTo(bucketDates[a.name] ?? DateTime(0)));
     } else {
@@ -70,9 +65,7 @@ class BuildTransactionHierarchy {
     return nodes;
   }
 
-  /// Label for the week containing [date], e.g. `13 – 19 Jul 2026`. Weeks
-  /// start on [kWeekStartsOn], the same boundary the range presets use, so
-  /// "This Week" and a week-grouped tree always agree.
+  /// Label for the week containing [date], e.g.
   String _weekKey(DateTime date) {
     final daysSinceWeekStart = (date.weekday - kWeekStartsOn + 7) % 7;
     final start = DateTime(date.year, date.month, date.day)
@@ -98,10 +91,10 @@ class BuildTransactionHierarchy {
         GroupingOption.party => transaction.party.isNotEmpty
             ? [transaction.party]
             : const [kUncategorizedBucket],
-        // e.g. `15 Jul 2026`.
+        // e.g.
         GroupingOption.day => [_dayFormat.format(transaction.date)],
         GroupingOption.week => [_weekKey(transaction.date)],
-        // Three-letter month, e.g. `Jul 2026` — never the full month name.
+        // Three-letter month, e.g.
         GroupingOption.month => [_monthFormat.format(transaction.date)],
       };
 }

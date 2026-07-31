@@ -3,13 +3,10 @@ import 'package:fynans/ui/theme/app_colors.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
 import 'package:fynans/ui/theme/app_typography.dart';
 
-/// Semantic tones for [AppPill]. Each maps to a fill/text/border triple so
-/// callers never pick raw colours.
+/// Semantic tones for [AppPill].
 enum AppPillTone { neutral, muted, accent, success, danger, outline }
 
-/// A compact rounded tag. One widget covers every chip in the design: plain
-/// tags, mono codes, metadata chips with a leading icon, status colours, and
-/// removable filter chips.
+/// A compact rounded tag.
 class AppPill extends StatelessWidget {
   const AppPill(
     this.label, {

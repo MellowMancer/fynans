@@ -7,9 +7,7 @@ import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/ui/widgets/tag_icon_widget.dart';
 
-/// A single transaction row. Tapping expands the metadata, which is rendered
-/// with the shared [AppKeyValue] so it matches every other labelled field in
-/// the app.
+/// A single transaction row.
 class TransactionListItem extends StatefulWidget {
   const TransactionListItem({
     super.key,
@@ -70,9 +68,8 @@ class _TransactionListItemState extends State<TransactionListItem> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     AppSpacing.gapXxs,
-                    // One ellipsized line rather than a Row of fixed-width
-                    // pieces — the date+time string is long enough to overflow
-                    // a Row on narrow screens.
+                    // One ellipsized line: a Row of fixed pieces overflows on
+                    // narrow screens.
                     MonoText.small(
                       _meta,
                       maxLines: 1,
@@ -200,8 +197,6 @@ class _ExpandedDetails extends StatelessWidget {
             ),
           ],
           // Only auto-imported records carry the SMS they were parsed from.
-          // Records imported before this field existed have a null body, so
-          // the block is skipped rather than rendered empty.
           if (transaction.isAutoImported &&
               smsBody != null &&
               smsBody.trim().isNotEmpty) ...[

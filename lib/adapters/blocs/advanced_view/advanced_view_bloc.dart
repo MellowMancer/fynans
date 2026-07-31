@@ -21,13 +21,11 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
   final BuildTransactionHierarchy _buildHierarchy;
   StreamSubscription<List<Transaction>>? _subscription;
 
-  /// Bumped per re-subscribe so a late event from a superseded subscription
-  /// can be discarded instead of overwriting the newly selected month.
+  /// Bumped per re-subscribe so a late event from a superseded subscription can
+  /// be discarded instead of overwriting the newly selected month.
   int _generation = 0;
 
-  /// The last good view configuration (range, filter, grouping). Handlers work
-  /// from this rather than the current state, so [AdvancedViewFailure] is not
-  /// a dead end — changing the range or retrying can still recover.
+  /// The last good view configuration (range, filter, grouping).
   AdvancedViewLoadSuccess? _lastSuccess;
 
   AdvancedViewBloc(
@@ -47,7 +45,8 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
           ),
         ) {
     // Seed the remembered configuration from the initial state, otherwise the
-    // handlers (which all work off _lastSuccess) would have nothing to build on.
+    // handlers (which all work off _lastSuccess) would have nothing to build
+    // on.
     _lastSuccess = state as AdvancedViewLoadSuccess;
 
     on<AdvancedViewDataFetched>(_onDataFetched);
@@ -63,8 +62,7 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     _updateConfig(emit, (s) => s.copyWith(range: event.range, preset: event.preset));
   }
 
-  /// Applies [change] to the last good configuration and refetches. Works even
-  /// from a failure state, which is what makes the view recoverable.
+  /// Applies [change] to the last good configuration and refetches.
   void _updateConfig(
     Emitter<AdvancedViewState> emit,
     AdvancedViewLoadSuccess Function(AdvancedViewLoadSuccess) change,
@@ -95,8 +93,8 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
 
     final generation = ++_generation;
 
-    // Safe to await now that the repository stream is controller-backed, so
-    // the previous box watcher is torn down before the next one starts.
+    // Safe to await now that the repository stream is controller-backed, so the
+    // previous box watcher is torn down before the next one starts.
     await _subscription?.cancel();
     emit(AdvancedViewLoading());
 

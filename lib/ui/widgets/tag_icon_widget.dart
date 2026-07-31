@@ -5,12 +5,8 @@ import 'package:fynans/ui/theme/app_typography.dart';
 import 'package:fynans/ui/utils/tag_helper.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 
-/// Rounded-square avatar for a transaction's tags: the leading tag's glyph on
-/// a tint of its own colour, with a `+n` badge when there are more.
-///
-/// (The old version hand-built a two-tag split-circle out of nested `ClipRect`
-/// aligns and magic fractions; a single glyph reads better at list density and
-/// removes that geometry entirely.)
+/// Rounded-square avatar for a transaction's tags: the leading tag's glyph on a
+/// tint of its own colour, with a `+n` badge when there are more.
 class TagIconWidget extends StatelessWidget {
   const TagIconWidget({
     super.key,

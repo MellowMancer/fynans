@@ -21,7 +21,7 @@ class FilterOptions {
 }
 
 /// One sheet covering every filter criterion: group, tag, party, direction and
-/// amount bounds. Returns the edited filter, or null if dismissed.
+/// amount bounds.
 class TransactionFilterSheet extends StatefulWidget {
   const TransactionFilterSheet({
     super.key,

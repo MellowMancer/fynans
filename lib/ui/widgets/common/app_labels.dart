@@ -3,10 +3,7 @@ import 'package:fynans/ui/theme/app_colors.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
 import 'package:fynans/ui/theme/app_typography.dart';
 
-/// Any text set in JetBrains Mono. **Mono is always upper-case in this theme**,
-/// so this widget applies the casing itself — render mono through here (or
-/// through [AppSectionLabel] / `AppPill(mono: true)` / `MoneyText`) rather than
-/// a bare `Text` with a mono style, and the rule can't be forgotten.
+/// Any text set in JetBrains Mono.
 class MonoText extends StatelessWidget {
   const MonoText(
     this.text, {
@@ -53,9 +50,8 @@ class MonoText extends StatelessWidget {
   }
 }
 
-/// Mono uppercase eyebrow label — the recurring motif of this theme
-///
-/// Text is upper-cased for you, so callers pass natural casing.
+/// Mono uppercase eyebrow label — the recurring motif of this theme Text is
+/// upper-cased for you, so callers pass natural casing.
 class AppSectionLabel extends StatelessWidget {
   const AppSectionLabel(
     this.text, {
@@ -72,7 +68,7 @@ class AppSectionLabel extends StatelessWidget {
   /// Small leading glyph, sized to the label.
   final IconData? icon;
 
-  /// Widget pinned after the text (e.g. a count).
+  /// Widget pinned after the text (e.g.
   final Widget? trailing;
 
   final EdgeInsetsGeometry? padding;
@@ -102,9 +98,8 @@ class AppSectionLabel extends StatelessWidget {
   }
 }
 
-/// Flat page header — mono eyebrow over a title, an optional trailing
-/// action, optional body, closed by a rule. The treatment used by the Parsed
-/// SMS screen, offered as an alternative to wrapping a header in [AppCard].
+/// Flat page header — mono eyebrow over a title, an optional trailing action,
+/// optional body, closed by a rule.
 class AppScreenHeader extends StatelessWidget {
   const AppScreenHeader({
     super.key,

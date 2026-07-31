@@ -10,9 +10,6 @@ import 'package:fynans/ui/widgets/common/app_state_views.dart';
 const int _kSearchThreshold = 6;
 
 /// A dropdown-style field for picking several values from a list.
-///
-/// Shows the current selection inline; tapping opens a searchable sheet where
-/// values are toggled. Used for the group / tag / party filters.
 class AppMultiSelectField extends StatelessWidget {
   const AppMultiSelectField({
     super.key,
@@ -28,7 +25,7 @@ class AppMultiSelectField extends StatelessWidget {
   final Set<String> selected;
   final ValueChanged<Set<String>> onChanged;
 
-  /// Optional display transform (e.g. capitalisation).
+  /// Optional display transform (e.g.
   final String Function(String)? formatOption;
 
   String _display(String value) =>

@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-/// Spacing scale (4pt base). Use these instead of ad-hoc numbers so rhythm
-/// stays consistent across screens.
+/// Spacing scale (4pt base).
 abstract final class AppSpacing {
   static const double xxs = 2;
   static const double xs = 4;
@@ -22,9 +21,7 @@ abstract final class AppSpacing {
   static const double _scrollTop = sm;
   static const double _scrollBottom = _scrollTop;
 
-  /// The one padding every page's scroll view uses. Cards sit flush inside it
-  /// and never carry their own horizontal margin, so the gutter is defined in
-  /// exactly one place.
+  /// The one padding every page's scroll view uses.
   static const EdgeInsets pageInsets =
       EdgeInsets.fromLTRB(gutter, _scrollTop, gutter, _scrollBottom);
 

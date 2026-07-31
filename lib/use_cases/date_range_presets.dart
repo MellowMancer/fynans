@@ -18,18 +18,15 @@ enum DateRangePreset {
   bool get isCustom => this == DateRangePreset.custom;
 }
 
-/// The day a week starts on. `DateTime.monday == 1`, so this doubles as the
-/// offset used to walk back to the start of the week.
+/// The day a week starts on.
 const int kWeekStartsOn = DateTime.monday;
 
-/// The month the financial year starts in — April, per the Indian FY
-/// (1 Apr – 31 Mar) this app's currency and bank parsing target.
+/// The month the financial year starts in — April, per the Indian FY (1 Apr –
+/// 31 Mar) this app's currency and bank parsing target.
 const int kFinancialYearStartMonth = DateTime.april;
 
 /// Turns a preset into a concrete span, relative to [now] (injectable so the
 /// resolution is deterministic in tests).
-///
-/// Throws for [DateRangePreset.custom], which has no implicit span.
 DateRange resolveDateRangePreset(
   DateRangePreset preset, {
   required DateTime now,

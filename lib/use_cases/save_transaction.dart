@@ -24,8 +24,7 @@ class SaveTransactionResult {
 }
 
 /// Validates raw add-transaction form values, builds a [Transaction] entity,
-/// and persists it via the [TransactionRepository]. Never throws on invalid
-/// input — it returns a [SaveTransactionResult.failure] instead.
+/// and persists it via the [TransactionRepository].
 class SaveTransaction {
   final TransactionRepository _repository;
 
