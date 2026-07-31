@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+docs/
 
 # IntelliJ related
 *.iml
@@ -28,7 +29,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+build/
 
 # Symbolication
 app.*.symbols
@@ -40,19 +41,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-fynans-Keystore.jks
+*.jks
+*.keystore
 
-# amplify
-node_modules
-.amplify
-amplify_outputs*
-amplifyconfiguration*
-.env
-docs/**
 # Claude Code local state (worktrees, local settings)
 .claude/
 coverage/
 
-# Track the architecture review even though docs/** is ignored
-!docs/ARCHITECTURE_REVIEW.md
-!docs/REMEDIATION_DECISIONS.md
+.env
+**/google-services.json
