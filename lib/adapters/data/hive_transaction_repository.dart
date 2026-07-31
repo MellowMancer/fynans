@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/adapters/data/transaction_box.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ports/transaction_repository.dart';
@@ -8,7 +9,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 /// Hive-backed implementation of [TransactionRepository].
 class HiveTransactionRepository implements TransactionRepository {
-  Box<Transaction> get _box => Hive.box<Transaction>('transactions');
+  Box<Transaction> get _box => Hive.box<Transaction>(kTransactionsBoxName);
 
   @override
   Future<void> saveTransaction(Transaction transaction) async {
