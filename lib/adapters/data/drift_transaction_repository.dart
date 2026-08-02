@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
 import 'package:fynans/adapters/data/app_database.dart';
-import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
@@ -78,20 +77,6 @@ class DriftTransactionRepository implements TransactionRepository {
           .map(_toEntity)
           .where((t) => filter == null || filter.matches(t))
           .toList();
-
-  @override
-  Future<int> purgeLegacySmsRecords() async {
-    final stale = await (_db.select(_db.transactions)
-          ..where((t) => t.smsId.isNotNull()))
-        .get();
-    final ids = stale
-        .where((row) => !isCurrentSmsIdFormat(row.smsId!))
-        .map((row) => row.id)
-        .toList();
-    if (ids.isEmpty) return 0;
-    await (_db.delete(_db.transactions)..where((t) => t.id.isIn(ids))).go();
-    return ids.length;
-  }
 
   @override
   Future<List<String>> getAllGroups() async =>

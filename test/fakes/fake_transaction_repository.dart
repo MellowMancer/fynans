@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
@@ -12,6 +11,10 @@ class FakeTransactionRepository implements TransactionRepository {
   /// Mirrors the real repository stamping a storage key onto saved records —
   /// without it every row keys on null and widget tests collide.
   int _nextId = 0;
+
+  /// How many times a live query has been opened. Lets tests assert that
+  /// changing the range re-subscribes rather than reusing a stale stream.
+  int subscribeCount = 0;
 
   /// Fires whenever the stored set changes, so `listenToTransactionsInRange`
   /// behaves like the real repository: a live stream, not a one-shot yield.
@@ -63,6 +66,7 @@ class FakeTransactionRepository implements TransactionRepository {
     required DateRange range,
     TransactionFilter? filter,
   }) {
+    subscribeCount++;
     late final StreamController<List<Transaction>> controller;
     StreamSubscription<void>? watcher;
 
@@ -93,15 +97,6 @@ class FakeTransactionRepository implements TransactionRepository {
         .where((t) => filter == null || filter.matches(t))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
-  @override
-  Future<int> purgeLegacySmsRecords() async {
-    final stale = _transactions
-        .where((t) => t.smsId != null && !isCurrentSmsIdFormat(t.smsId!))
-        .toList();
-    _transactions.removeWhere(stale.contains);
-    return stale.length;
   }
 
   @override

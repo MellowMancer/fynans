@@ -62,14 +62,8 @@ class TransactionSmsIngestor {
 }
 
 /// Deterministic identity of a raw SMS, derived purely from its content
-/// (sender, body, timestamp) using FNV-1a.
-const int kSmsIdLength = 16;
 
-/// Whether [smsId] was produced by the current (FNV-1a) scheme.
-bool isCurrentSmsIdFormat(String smsId) => _currentIdPattern.hasMatch(smsId);
 
-/// Anchored and fixed-width, so it already enforces [kSmsIdLength].
-final RegExp _currentIdPattern = RegExp('^[0-9a-f]{$kSmsIdLength}\$');
 
 String smsIdFor({
   required String sender,

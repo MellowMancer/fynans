@@ -26,10 +26,6 @@ abstract class TransactionRepository {
     required DateRange range,
     TransactionFilter? filter,
   });
-  /// Removes auto-imported records whose `smsId` predates the current hashing
-  /// scheme.
-  Future<int> purgeLegacySmsRecords();
-
   Future<List<String>> getAllGroups();
   Future<List<String>> getAllUniqueTags();
   Future<List<String>> getAllParties();

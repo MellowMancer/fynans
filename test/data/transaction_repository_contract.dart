@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
@@ -195,36 +194,5 @@ void runTransactionRepositoryContract(
       });
     });
 
-    group('purgeLegacySmsRecords', () {
-      test('removes only rows whose smsId predates the current scheme',
-          () async {
-        const legacyId = '1a2b3c4d'; // old Object.hash form: 8 hex chars
-        final currentId =
-            smsIdFor(sender: 'HDFCBK', body: 'x', date: DateTime(2026, 7, 5));
-
-        await repo.saveTransaction(
-            txn(date: DateTime(2026, 7, 1), smsId: legacyId));
-        await repo.saveTransaction(
-            txn(date: DateTime(2026, 7, 2), smsId: currentId));
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 3)));
-
-        expect(await repo.purgeLegacySmsRecords(), 1);
-
-        final remaining = (await inJuly()).map((t) => t.smsId);
-        expect(remaining, containsAll([currentId, null]));
-        expect(remaining, isNot(contains(legacyId)));
-      });
-
-      test('is a no-op once migrated', () async {
-        await repo.saveTransaction(txn(
-          date: DateTime(2026, 7, 2),
-          smsId: smsIdFor(sender: 'A', body: 'b', date: DateTime(2026, 7, 2)),
-        ));
-
-        expect(await repo.purgeLegacySmsRecords(), 0);
-        expect(await repo.purgeLegacySmsRecords(), 0);
-        expect(await inJuly(), hasLength(1));
-      });
-    });
   });
 }

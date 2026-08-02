@@ -97,14 +97,4 @@ void _smsIdStabilityTests() {
     });
   });
 
-  test('isCurrentSmsIdFormat distinguishes the two schemes', () {
-    expect(isCurrentSmsIdFormat('1a2b3c4d'), isFalse, reason: 'legacy 8-char');
-    expect(isCurrentSmsIdFormat(''), isFalse);
-    expect(
-      isCurrentSmsIdFormat(
-        smsIdFor(sender: 'A', body: 'b', date: DateTime(2026)),
-      ),
-      isTrue,
-    );
-  });
 }
