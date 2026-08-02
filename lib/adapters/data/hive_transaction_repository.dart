@@ -13,17 +13,26 @@ class HiveTransactionRepository implements TransactionRepository {
 
   @override
   Future<void> saveTransaction(Transaction transaction) async {
-    await _box.add(transaction);
+    transaction.id = await _box.add(transaction);
   }
 
   @override
   Future<void> deleteTransaction(Transaction transaction) async {
-    await transaction.delete();
+    final id = transaction.id;
+    if (id == null) {
+      throw StateError('Cannot delete a transaction that was never saved.');
+    }
+    await _box.delete(id);
   }
 
   @override
-  bool existsWithSmsId(String smsId) {
-    return _box.values.any((t) => t.smsId == smsId);
+  Future<bool> importTransaction(Transaction transaction) async {
+    final smsId = transaction.smsId;
+    if (smsId != null && _box.values.any((t) => t.smsId == smsId)) {
+      return false;
+    }
+    await saveTransaction(transaction);
+    return true;
   }
 
   @override
@@ -63,9 +72,14 @@ class HiveTransactionRepository implements TransactionRepository {
     return _box.values
         .where((e) => range.contains(e.date))
         .where((e) => filter == null || filter.matches(e))
+        .map(_withId)
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
+
+  /// Stamps the box key onto the record as its storage-neutral identity.
+  Transaction _withId(Transaction transaction) =>
+      transaction..id = transaction.key as int;
 
   @override
   Future<int> purgeLegacySmsRecords() async {

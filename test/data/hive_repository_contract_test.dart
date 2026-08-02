@@ -42,6 +42,70 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
+  group('record identity', () {
+    test('saved and queried records carry a storage id', () async {
+      repo = HiveTransactionRepository();
+      final saved = _txn(date: DateTime(2026, 7, 10));
+
+      await repo.saveTransaction(saved);
+      expect(saved.id, isNotNull, reason: 'save must stamp the id');
+
+      final fetched = await repo.fetchTransactionsInRange(
+        range: DateRange.month(DateTime(2026, 7)),
+      );
+      expect(fetched.single.id, saved.id);
+    });
+
+    test('delete removes by id, not by object identity', () async {
+      repo = HiveTransactionRepository();
+      await repo.saveTransaction(_txn(date: DateTime(2026, 7, 10)));
+
+      final fetched = await repo.fetchTransactionsInRange(
+        range: DateRange.month(DateTime(2026, 7)),
+      );
+      // A detached copy carrying the same id must still delete the row.
+      final copy = _txn(date: DateTime(2026, 7, 10))..id = fetched.single.id;
+      await repo.deleteTransaction(copy);
+
+      expect(box.values, isEmpty);
+    });
+
+    test('deleting an unsaved record is an error, not a silent no-op', () async {
+      repo = HiveTransactionRepository();
+      expect(
+        () => repo.deleteTransaction(_txn(date: DateTime(2026, 7, 10))),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
+
+  group('importTransaction', () {
+    test('imports once and reports it, ignores the duplicate', () async {
+      repo = HiveTransactionRepository();
+
+      final first = await repo.importTransaction(
+        _txn(date: DateTime(2026, 7, 10), smsId: 'abc123'),
+      );
+      final second = await repo.importTransaction(
+        _txn(date: DateTime(2026, 7, 10), smsId: 'abc123'),
+      );
+
+      expect(first, isTrue);
+      expect(second, isFalse);
+      expect(box.values, hasLength(1));
+    });
+
+    test('records without an smsId always import', () async {
+      repo = HiveTransactionRepository();
+
+      await repo.importTransaction(_txn(date: DateTime(2026, 7, 10)));
+      await repo.importTransaction(_txn(date: DateTime(2026, 7, 10)));
+
+      expect(box.values, hasLength(2),
+          reason: 'manual entries have no identity to collide on');
+    });
+  });
+
   group('listenToTransactionsInRange', () {
     test('cancel() completes promptly (no parked generator)', () async {
       repo = HiveTransactionRepository();

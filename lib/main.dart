@@ -21,28 +21,38 @@ Future<void> main() async {
   Hive.registerAdapter(TransactionAdapter());
   await openTransactionBox(const KeystoreSecretKeyStore());
 
+  // One repository instance, passed everywhere. Constructing it in more than
+  // one place works with Hive's global box registry but would mean two separate
+  // connections under any real database.
+  final TransactionRepository repository = HiveTransactionRepository();
   final settings = SharedPrefsSettingsRepository();
   // Different stores, so these overlap rather than sum. The purge is a one-time
   // upgrade path dropping rows stamped with the old, non-reproducible smsId
   // scheme; the appearance choice must be read before the first frame, or it
   // paints once in the wrong theme.
   final (_, themePreference) = await (
-    HiveTransactionRepository().purgeLegacySmsRecords(),
+    repository.purgeLegacySmsRecords(),
     settings.readThemePreference(),
   ).wait;
 
-  runApp(MyApp(settings: settings, themePreference: themePreference));
+  runApp(MyApp(
+    repository: repository,
+    settings: settings,
+    themePreference: themePreference,
+  ));
   // After the UI is up, sweep the inbox for bank-transaction SMS.
-  SmsIntakeService.catchUp();
+  SmsIntakeService.catchUp(repository);
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({
     super.key,
+    required this.repository,
     required this.settings,
     this.themePreference = ThemePreference.system,
   });
 
+  final TransactionRepository repository;
   final SettingsRepository settings;
   final ThemePreference themePreference;
 
@@ -52,9 +62,7 @@ class MyApp extends StatelessWidget {
     // Navigator so every route (including pushed screens) reads it via context.
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<TransactionRepository>(
-          create: (_) => HiveTransactionRepository(),
-        ),
+        RepositoryProvider<TransactionRepository>.value(value: repository),
         RepositoryProvider<SettingsRepository>.value(value: settings),
       ],
       // Above MaterialApp, so selecting a theme rebuilds the app itself.

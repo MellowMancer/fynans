@@ -8,9 +8,13 @@ abstract class TransactionRepository {
   Future<void> saveTransaction(Transaction transaction);
   Future<void> deleteTransaction(Transaction transaction);
 
-  /// True if a transaction with the given raw-SMS identity hash already exists
-  /// — used to keep SMS import idempotent without collapsing distinct SMS.
-  bool existsWithSmsId(String smsId);
+  /// Saves [transaction] unless one with the same `smsId` is already stored,
+  /// and reports whether it was saved.
+  ///
+  /// Check and write are one call so the SMS sweep stays idempotent without a
+  /// read-then-write race. A null `smsId` always saves, since manual entries
+  /// have no identity to collide on.
+  Future<bool> importTransaction(Transaction transaction);
 
   /// Live transactions inside [range], newest first.
   Stream<List<Transaction>> listenToTransactionsInRange({

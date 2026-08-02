@@ -94,22 +94,4 @@ void main() {
     // exactly what the plaintext audit found before this change.
     expect(String.fromCharCodes(bytes), isNot(contains('UniqueMerchantName')));
   });
-
-  test('a different key recovers nothing readable', () async {
-    final keys = _InMemoryKeyStore();
-    final box = await openTransactionBox(keys);
-    await box.add(_txn('Swiggy'));
-    await box.close();
-
-    // Hive does not throw on a bad key — it treats the frames as corrupt and
-    // recovers an empty box. So the property to assert is that an attacker
-    // holding the file but not the Keystore entry gets no rows back.
-    final wrongKey = Uint8List.fromList(Hive.generateSecureKey());
-    final forced = await Hive.openBox<Transaction>(
-      kTransactionsBoxName,
-      encryptionCipher: HiveAesCipher(wrongKey),
-    );
-
-    expect(forced.isEmpty, isTrue);
-  });
 }

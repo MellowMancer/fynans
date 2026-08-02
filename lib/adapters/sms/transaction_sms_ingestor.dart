@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
-import 'package:fynans/adapters/data/hive_transaction_repository.dart';
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
 import 'package:fynans/adapters/sms/sms_parser_service.dart';
 
@@ -10,11 +9,9 @@ class TransactionSmsIngestor {
   final SmsParserService _parser;
   final TransactionRepository _repository;
 
-  /// [repository] defaults to the Hive-backed impl for production; tests inject
-  /// a fake.
-  TransactionSmsIngestor({TransactionRepository? repository})
+  TransactionSmsIngestor({required TransactionRepository repository})
       : _parser = SmsParserService(),
-        _repository = repository ?? HiveTransactionRepository();
+        _repository = repository;
 
   /// Returns true if a new transaction was saved.
   Future<bool> ingest({
@@ -39,13 +36,6 @@ class TransactionSmsIngestor {
         ? details.merchant!.trim()
         : sender;
 
-    // De-dupe on raw SMS identity: keeps the launch sweep idempotent while
-    // distinct SMS sharing minute+amount+party still import separately.
-    final smsId = smsIdFor(sender: sender, body: body, date: date);
-    if (_repository.existsWithSmsId(smsId)) {
-      return false;
-    }
-
     final t = Transaction()
       ..amount = details.amount
       ..date = details.date
@@ -54,12 +44,13 @@ class TransactionSmsIngestor {
       ..tags = <String>[]
       ..group = <String>[]
       ..note = _buildNote(sender, details)
-      ..smsId = smsId
+      // De-dupe on raw SMS identity: keeps the launch sweep idempotent while
+      // distinct SMS sharing minute+amount+party still import separately.
+      ..smsId = smsIdFor(sender: sender, body: body, date: date)
       // Keep the original text so the UI can show what was parsed.
       ..smsBody = body;
 
-    await _repository.saveTransaction(t);
-    return true;
+    return _repository.importTransaction(t);
   }
 
   String _buildNote(String sender, ParsedTransactionDetails d) {
