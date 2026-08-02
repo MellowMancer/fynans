@@ -22,8 +22,5 @@ Future<Box<Transaction>> openTransactionBox(SecretKeyStore keys) async {
   return Hive.openBox<Transaction>(
     kTransactionsBoxName,
     encryptionCipher: HiveAesCipher(key),
-    // Hive's default crash recovery truncates the file, so it
-    // would silently delete the whole database. Fail loudly instead.
-    // crashRecovery: false,
   );
 }

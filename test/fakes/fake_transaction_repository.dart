@@ -37,7 +37,14 @@ class FakeTransactionRepository implements TransactionRepository {
 
   @override
   Future<void> deleteTransaction(Transaction transaction) async {
-    _transactions.removeWhere((t) => t.id == transaction.id);
+    final id = transaction.id;
+    // Matches HiveTransactionRepository: deleting an unsaved record is a
+    // programming error, not a silent no-op. A fake that is more forgiving
+    // than the real thing hides bugs instead of catching them.
+    if (id == null) {
+      throw StateError('Cannot delete a transaction that was never saved.');
+    }
+    _transactions.removeWhere((t) => t.id == id);
     _notify();
   }
 
