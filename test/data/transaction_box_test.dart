@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/data/transaction_box.dart';
+import 'package:fynans/adapters/data/transaction_hive_adapter.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/secret_key_store.dart';
 import 'package:hive/hive.dart';

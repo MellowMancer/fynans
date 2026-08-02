@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fynans/entities/theme_preference.dart';
-import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/adapters/data/transaction_hive_adapter.dart';
 import 'package:fynans/ui/main_screen.dart';
 import 'package:fynans/ports/settings_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';

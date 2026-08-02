@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
 
-part 'transaction.g.dart';
-
 @HiveType(typeId: 0) // Unique typeId for each model
 class Transaction extends HiveObject {
   /// Storage-assigned row identity, null until the record has been saved.

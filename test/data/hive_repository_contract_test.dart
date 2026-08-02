@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/data/hive_transaction_repository.dart';
 import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/adapters/data/transaction_hive_adapter.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:hive/hive.dart';
 
