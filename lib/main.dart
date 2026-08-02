@@ -1,30 +1,28 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fynans/entities/theme_preference.dart';
-import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ui/main_screen.dart';
 import 'package:fynans/ports/settings_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/blocs/theme/theme_cubit.dart';
-import 'package:fynans/adapters/data/hive_transaction_repository.dart';
+import 'package:fynans/adapters/data/drift_transaction_repository.dart';
+import 'package:fynans/adapters/data/encrypted_database.dart';
 import 'package:fynans/adapters/data/keystore_secret_key_store.dart';
-import 'package:fynans/adapters/data/transaction_box.dart';
+import 'package:fynans/adapters/data/legacy_hive_cleanup.dart';
 import 'package:fynans/adapters/data/shared_prefs_settings_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter();
-  Hive.registerAdapter(TransactionAdapter());
-  await openTransactionBox(const KeystoreSecretKeyStore());
 
-  // One repository instance, passed everywhere. Constructing it in more than
-  // one place works with Hive's global box registry but would mean two separate
-  // connections under any real database.
-  final TransactionRepository repository = HiveTransactionRepository();
+  // One database and one repository, passed everywhere. A second connection to
+  // the same file would not see the first one's writes, so live queries would
+  // silently stop updating.
+  final database = await openEncryptedDatabase(const KeystoreSecretKeyStore());
+  final TransactionRepository repository = DriftTransactionRepository(database);
   final settings = SharedPrefsSettingsRepository();
   // Different stores, so these overlap rather than sum. The purge is a one-time
   // upgrade path dropping rows stamped with the old, non-reproducible smsId
@@ -35,6 +33,7 @@ Future<void> main() async {
     settings.readThemePreference(),
   ).wait;
 
+  unawaited(deleteLegacyHiveBox());
   runApp(MyApp(
     repository: repository,
     settings: settings,

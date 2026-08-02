@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/summarise_transactions.dart';
 
-// Helper to build Transaction objects without Hive key operations
+// Helper to build Transaction objects.
 Transaction makeDebit({
   required double amount,
   List<String> tags = const [],

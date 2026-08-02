@@ -14,8 +14,11 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   intl: ^0.20.2 
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
+  # Drift + SQLCipher. sqlite3 3.x selects the native build through the
+  # hooks block at the end of this file, so no *_flutter_libs package and no
+  # runtime DynamicLibrary override are involved.
+  drift: ^2.34.3
+  sqlite3: ^3.5.0
   flutter_secure_storage: ^9.2.2 # Keystore-backed home for the Hive AES key
   path_provider: ^2.1.3
   fl_chart: ^1.0.0
@@ -34,8 +37,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  hive_generator: ^2.0.1
   build_runner: ^2.4.9
+  drift_dev: ^2.34.5
   mocktail: ^1.0.5
 
 flutter:
@@ -85,3 +88,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Links SQLCipher instead of stock SQLite. Without this the app would run on
+# plain SQLite, which silently ignores PRAGMA key and writes plaintext.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
