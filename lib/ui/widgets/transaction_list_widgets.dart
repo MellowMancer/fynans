@@ -475,7 +475,7 @@ class SimpleTransactionListView extends StatelessWidget {
 
             final transaction = transactions[index - leading];
             return Dismissible(
-              key: ValueKey(transaction.key),
+              key: ValueKey(transaction.id),
               direction: DismissDirection.endToStart,
               // The live subscription re-emits on the delete; no manual
               // refetch.

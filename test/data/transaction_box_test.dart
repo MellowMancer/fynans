@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -42,7 +43,10 @@ void main() {
   });
 
   tearDown(() async {
-    await Hive.close();
+    // A rejected open leaves Hive registry state behind, so closing can throw.
+    try {
+      await Hive.close();
+    } catch (_) {}
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
@@ -95,21 +99,41 @@ void main() {
     expect(String.fromCharCodes(bytes), isNot(contains('UniqueMerchantName')));
   });
 
-  test('a different key recovers nothing readable', () async {
+  test('a wrong key is rejected instead of emptying the box', () async {
     final keys = _InMemoryKeyStore();
     final box = await openTransactionBox(keys);
     await box.add(_txn('Swiggy'));
     await box.close();
 
-    // Hive does not throw on a bad key — it treats the frames as corrupt and
-    // recovers an empty box. So the property to assert is that an attacker
-    // holding the file but not the Keystore entry gets no rows back.
-    final wrongKey = Uint8List.fromList(Hive.generateSecureKey());
-    final forced = await Hive.openBox<Transaction>(
-      kTransactionsBoxName,
-      encryptionCipher: HiveAesCipher(wrongKey),
-    );
+    final sizeBefore =
+        File('${dir.path}/$kTransactionsBoxName.hive').lengthSync();
 
-    expect(forced.isEmpty, isTrue);
+    // With crashRecovery left at its default, Hive truncates the file at the
+    // first unparseable frame — and a wrong key makes every frame unparseable,
+    // so the whole database would be deleted just by attempting to open it.
+    // Hive also parks the failed future in its own box registry, where nothing
+    // awaits it, so the error arrives twice — once here and once as an
+    // unhandled zone error. Guard the zone to catch both.
+    final wrongKey = Uint8List.fromList(Hive.generateSecureKey());
+    final errors = <Object>[];
+    await runZonedGuarded(() async {
+      try {
+        await Hive.openBox<Transaction>(
+          kTransactionsBoxName,
+          encryptionCipher: HiveAesCipher(wrongKey),
+          crashRecovery: false,
+        );
+      } catch (error) {
+        errors.add(error);
+      }
+    }, (error, _) => errors.add(error));
+
+    expect(errors, isNotEmpty);
+    expect(errors.first, isA<HiveError>());
+
+    expect(File('${dir.path}/$kTransactionsBoxName.hive').lengthSync(),
+        sizeBefore,
+        reason: 'the failed open must not have truncated the file');
   });
+
 }

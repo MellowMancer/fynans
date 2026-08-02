@@ -4,6 +4,13 @@ part 'transaction.g.dart';
 
 @HiveType(typeId: 0) // Unique typeId for each model
 class Transaction extends HiveObject {
+  /// Storage-assigned row identity, null until the record has been saved.
+  ///
+  /// Deliberately not a [HiveField]: it *is* the storage key, so persisting it
+  /// as a field would store the same value twice. The repository stamps it on
+  /// read and on save, which is what lets callers identify a record without
+  /// reaching for a storage-specific API.
+  int? id;
 
   @HiveField(0)
   late double amount;

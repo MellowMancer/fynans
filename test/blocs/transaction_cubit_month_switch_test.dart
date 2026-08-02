@@ -50,7 +50,7 @@ class _LongLivedRepository implements TransactionRepository {
   @override
   Future<void> deleteTransaction(Transaction transaction) async {}
   @override
-  bool existsWithSmsId(String smsId) => false;
+  Future<bool> importTransaction(Transaction transaction) async => false;
   @override
   Future<int> purgeLegacySmsRecords() async => 0;
   @override

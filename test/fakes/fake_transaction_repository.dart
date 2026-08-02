@@ -9,6 +9,10 @@ import 'package:fynans/ports/transaction_repository.dart';
 class FakeTransactionRepository implements TransactionRepository {
   final List<Transaction> _transactions = [];
 
+  /// Mirrors the real repository stamping a storage key onto saved records —
+  /// without it every row keys on null and widget tests collide.
+  int _nextId = 0;
+
   /// Fires whenever the stored set changes, so `listenToTransactionsInRange`
   /// behaves like the real repository: a live stream, not a one-shot yield.
   final StreamController<void> _changes = StreamController<void>.broadcast();
@@ -20,25 +24,31 @@ class FakeTransactionRepository implements TransactionRepository {
   void seed(List<Transaction> transactions) {
     _transactions
       ..clear()
-      ..addAll(transactions);
+      ..addAll(transactions.map((t) => t..id ??= ++_nextId));
     _notify();
   }
 
   @override
   Future<void> saveTransaction(Transaction transaction) async {
+    transaction.id = ++_nextId;
     _transactions.add(transaction);
     _notify();
   }
 
   @override
   Future<void> deleteTransaction(Transaction transaction) async {
-    _transactions.remove(transaction);
+    _transactions.removeWhere((t) => t.id == transaction.id);
     _notify();
   }
 
   @override
-  bool existsWithSmsId(String smsId) {
-    return _transactions.any((t) => t.smsId == smsId);
+  Future<bool> importTransaction(Transaction transaction) async {
+    final smsId = transaction.smsId;
+    if (smsId != null && _transactions.any((t) => t.smsId == smsId)) {
+      return false;
+    }
+    await saveTransaction(transaction);
+    return true;
   }
 
   @override
