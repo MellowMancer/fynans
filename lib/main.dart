@@ -9,6 +9,8 @@ import 'package:fynans/ports/settings_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/blocs/theme/theme_cubit.dart';
 import 'package:fynans/adapters/data/hive_transaction_repository.dart';
+import 'package:fynans/adapters/data/keystore_secret_key_store.dart';
+import 'package:fynans/adapters/data/transaction_box.dart';
 import 'package:fynans/adapters/data/shared_prefs_settings_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
@@ -17,7 +19,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(TransactionAdapter());
-  await Hive.openBox<Transaction>('transactions');
+  await openTransactionBox(const KeystoreSecretKeyStore());
 
   final settings = SharedPrefsSettingsRepository();
   // Different stores, so these overlap rather than sum. The purge is a one-time
