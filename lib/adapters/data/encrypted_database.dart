@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:fynans/adapters/data/app_database.dart';
 import 'package:fynans/ports/secret_key_store.dart';
+import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/common.dart';
 
@@ -23,7 +24,7 @@ class DatabaseNotEncrypted extends StateError {
 /// Opens the encrypted transactions database.
 ///
 /// When no key exists yet, any database already on disk cannot be opened, so
-/// it is deleted rather than migrated — the same stance the Hive box takes.
+/// it is deleted rather than migrated.
 Future<AppDatabase> openEncryptedDatabase(SecretKeyStore keys) async {
   final directory = await getApplicationDocumentsDirectory();
   final file = File('${directory.path}/$kDatabaseFileName');
@@ -31,16 +32,17 @@ Future<AppDatabase> openEncryptedDatabase(SecretKeyStore keys) async {
   var key = await keys.read();
   if (key == null) {
     await _deleteDatabase(file);
-    key = _generateKey();
+    key = generateDatabaseKey();
     await keys.write(key);
   }
 
-  final pragma = _rawKeyPragma(key);
+  final pragma = rawKeyPragma(key);
   return AppDatabase(NativeDatabase(file, setup: (db) => _configure(db, pragma)));
 }
 
 /// A fresh 256-bit key from the platform CSPRNG.
-Uint8List _generateKey() {
+@visibleForTesting
+Uint8List generateDatabaseKey() {
   final random = Random.secure();
   return Uint8List.fromList(
     List<int>.generate(32, (_) => random.nextInt(256)),
@@ -50,7 +52,8 @@ Uint8List _generateKey() {
 /// The raw-key form. `PRAGMA key = '<hex>'` without the `x'...'` wrapper is a
 /// *passphrase*, which SQLCipher would run through PBKDF2 to derive a
 /// different key — encrypted, but not with the key we hold.
-String _rawKeyPragma(Uint8List key) {
+@visibleForTesting
+String rawKeyPragma(Uint8List key) {
   if (key.length != 32) {
     throw ArgumentError('Expected a 32-byte key, got ${key.length}.');
   }

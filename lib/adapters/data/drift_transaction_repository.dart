@@ -105,7 +105,7 @@ class DriftTransactionRepository implements TransactionRepository {
   Future<List<String>> getAllParties() async =>
       _distinct((row) => [row.party]);
 
-  /// Trim-drop-empty-dedupe over one field, matching the Hive implementation.
+  /// Trim-drop-empty-dedupe over one field, shared by the three above.
   Future<List<String>> _distinct(
     Iterable<String> Function(TransactionRow) select,
   ) async {

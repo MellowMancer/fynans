@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +10,7 @@ import 'package:fynans/adapters/blocs/theme/theme_cubit.dart';
 import 'package:fynans/adapters/data/drift_transaction_repository.dart';
 import 'package:fynans/adapters/data/encrypted_database.dart';
 import 'package:fynans/adapters/data/keystore_secret_key_store.dart';
+import 'package:fynans/adapters/data/legacy_hive_cleanup.dart';
 import 'package:fynans/adapters/data/shared_prefs_settings_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
@@ -31,6 +33,7 @@ Future<void> main() async {
     settings.readThemePreference(),
   ).wait;
 
+  unawaited(deleteLegacyHiveBox());
   runApp(MyApp(
     repository: repository,
     settings: settings,
