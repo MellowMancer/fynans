@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,7 +9,6 @@ import 'package:fynans/adapters/blocs/theme/theme_cubit.dart';
 import 'package:fynans/adapters/data/drift_transaction_repository.dart';
 import 'package:fynans/adapters/data/encrypted_database.dart';
 import 'package:fynans/adapters/data/keystore_secret_key_store.dart';
-import 'package:fynans/adapters/data/legacy_hive_cleanup.dart';
 import 'package:fynans/adapters/data/shared_prefs_settings_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
@@ -24,16 +22,9 @@ Future<void> main() async {
   final database = await openEncryptedDatabase(const KeystoreSecretKeyStore());
   final TransactionRepository repository = DriftTransactionRepository(database);
   final settings = SharedPrefsSettingsRepository();
-  // Different stores, so these overlap rather than sum. The purge is a one-time
-  // upgrade path dropping rows stamped with the old, non-reproducible smsId
-  // scheme; the appearance choice must be read before the first frame, or it
-  // paints once in the wrong theme.
-  final (_, themePreference) = await (
-    repository.purgeLegacySmsRecords(),
-    settings.readThemePreference(),
-  ).wait;
+  // Read before the first frame, or the app paints once in the wrong theme.
+  final themePreference = await settings.readThemePreference();
 
-  unawaited(deleteLegacyHiveBox());
   runApp(MyApp(
     repository: repository,
     settings: settings,
