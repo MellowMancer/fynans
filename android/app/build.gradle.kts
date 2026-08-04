@@ -2,7 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    // id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -19,10 +19,8 @@ val keystoreProperties = Properties().apply {
 
 android {
     namespace = "com.example.fynans"
-    // --- FIX #1: Override the default Flutter SDK version ---
-    // We are hardcoding this to 34 to solve the "lStar not found" error.
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     println("--> The value of flutter.minSdkVersion is: ${flutter.minSdkVersion}")
 
@@ -65,7 +63,16 @@ android {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
 
-            signingConfig = signingConfigs.getByName("release")
+            // Fall back to the debug key when key.properties is absent, so a
+            // release build is still producible for sideloading and testing.
+            // Debug-signed builds cannot be published — Play identifies an app
+            // by its signing key — but they are AOT-compiled and not
+            // debuggable, unlike a debug build.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
