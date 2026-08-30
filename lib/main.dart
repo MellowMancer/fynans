@@ -16,6 +16,7 @@ import 'package:fynans/adapters/data/keystore_secret_key_store.dart';
 import 'package:fynans/adapters/data/shared_prefs_settings_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
+import 'package:fynans/use_cases/purge_phantom_card_statements.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,8 +40,14 @@ Future<void> main() async {
     settings: settings,
     themePreference: themePreference,
   ));
-  // After the UI is up, sweep the inbox for bank-transaction SMS.
-  SmsIntakeService.catchUp(repository, cardRepository, detectedCardRepository);
+  // After the UI is up: first repair any card transaction imported before
+  // the statement/due-date-reminder exclusion existed (a phantom debit whose
+  // stale "Avl Limit" pinned a card at 100% utilization forever), then sweep
+  // the inbox for new bank-transaction SMS. Both are self-healing — safe to
+  // run on every launch, since a clean database makes each a no-op.
+  purgePhantomCardStatementTransactions(repository).then((_) {
+    SmsIntakeService.catchUp(repository, cardRepository, detectedCardRepository);
+  });
 }
 
 class MyApp extends StatelessWidget {

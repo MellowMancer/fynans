@@ -264,4 +264,39 @@ void main() {
     expect(result!.type, TransactionType.declined);
     expect(result.isCreditCard, isFalse);
   });
+
+  group('looksLikeCardStatementText', () {
+    test('matches statement/due-date reminder phrasing', () {
+      expect(
+        parser.looksLikeCardStatementText(
+            'Your SBI Credit Card statement is generated. Total Due: Rs.5,000.'),
+        isTrue,
+      );
+      expect(
+        parser.looksLikeCardStatementText(
+            'Payment of Rs.5,000 is due on 15-Jul-26.'),
+        isTrue,
+      );
+    });
+
+    test('does not match a real spend or refund body', () {
+      expect(
+        parser.looksLikeCardStatementText(
+            'Rs.259.00 spent on your SBI Credit Card ending with 1234.'),
+        isFalse,
+      );
+      expect(
+        parser.looksLikeCardStatementText(
+            'refund of INR 250 adjusted against the outstanding on your card account'),
+        isFalse,
+      );
+    });
+
+    test('is case-insensitive', () {
+      expect(
+        parser.looksLikeCardStatementText('TOTAL DUE: RS.5,000.00'),
+        isTrue,
+      );
+    });
+  });
 }
