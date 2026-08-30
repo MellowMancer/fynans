@@ -268,6 +268,16 @@ class SmsParserService {
         _creditCardBodyKeywords.any((kw) => lowerCaseBody.contains(kw));
   }
 
+  /// True when [body] reads like a card statement/due-date reminder rather
+  /// than a real spend/payment — see `_cardStatementKeywords`. Exposed
+  /// (unlike the other rule sets, which stay private) so already-imported
+  /// transactions saved before this exclusion existed can be identified and
+  /// purged — see `purgePhantomCardStatementTransactions`.
+  bool looksLikeCardStatementText(String body) {
+    final lowerCaseBody = body.toLowerCase();
+    return _cardStatementKeywords.any((k) => lowerCaseBody.contains(k));
+  }
+
   bool isTransactionSms(String sender, String messageBody) {
     final lowerCaseSender = sender.toLowerCase();
     final lowerCaseBody = messageBody.toLowerCase();
