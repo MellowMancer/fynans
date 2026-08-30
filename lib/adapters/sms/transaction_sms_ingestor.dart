@@ -1,17 +1,37 @@
 import 'dart:convert';
+import 'package:fynans/entities/credit_card.dart';
 import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
 import 'package:fynans/adapters/sms/sms_parser_service.dart';
+import 'package:fynans/use_cases/guess_card_issuer.dart';
+import 'package:fynans/use_cases/match_transaction_to_card.dart';
 
 /// Turns a bank-transaction SMS into a saved [Transaction].
 class TransactionSmsIngestor {
   final SmsParserService _parser;
   final TransactionRepository _repository;
+  final CardRepository _cardRepository;
+  final DetectedCardRepository _detectedCardRepository;
 
-  TransactionSmsIngestor({required TransactionRepository repository})
-      : _parser = SmsParserService(),
-        _repository = repository;
+  /// Fetched once and reused for this instance's lifetime, not per [ingest]
+  /// call — `SmsIntakeService.catchUp` creates one ingestor and calls
+  /// [ingest] up to 1000 times per launch sweep.
+  Future<List<CreditCard>>? _cardsFuture;
+
+  TransactionSmsIngestor({
+    required TransactionRepository repository,
+    required CardRepository cardRepository,
+    required DetectedCardRepository detectedCardRepository,
+  })  : _parser = SmsParserService(),
+        _repository = repository,
+        _cardRepository = cardRepository,
+        _detectedCardRepository = detectedCardRepository;
+
+  Future<List<CreditCard>> _cards() =>
+      _cardsFuture ??= _cardRepository.fetchCards();
 
   /// Returns true if a new transaction was saved.
   Future<bool> ingest({
@@ -31,10 +51,41 @@ class TransactionSmsIngestor {
       return false;
     }
 
+    int? cardId;
+    double? cardAvailableLimit;
+    if (details.isCreditCard) {
+      final card = matchCard(
+        await _cards(),
+        last4: details.cardLast4,
+        sender: sender,
+      );
+      // Unmatched → still no transaction is saved (never guess-attribute
+      // real money to a card), but record a sighting so the user can be
+      // prompted to register it, instead of the SMS silently vanishing.
+      if (card == null) {
+        final last4 = details.cardLast4;
+        if (last4 != null) {
+          await _detectedCardRepository.recordSighting(
+            sender: sender,
+            issuerGuess: guessCardIssuer(sender),
+            last4: last4,
+            seenAt: date,
+          );
+        }
+        return false;
+      }
+      cardId = card.id;
+      cardAvailableLimit = details.availableLimit;
+    }
+
     final isCredit = details.type == TransactionType.credit;
     final party = (details.merchant?.trim().isNotEmpty ?? false)
         ? details.merchant!.trim()
         : sender;
+
+    // De-dupe on raw SMS identity: keeps the launch sweep idempotent while
+    // distinct SMS sharing minute+amount+party still import separately.
+    final smsId = smsIdFor(sender: sender, body: body, date: date);
 
     final t = Transaction()
       ..amount = details.amount
@@ -44,13 +95,29 @@ class TransactionSmsIngestor {
       ..tags = <String>[]
       ..group = <String>[]
       ..note = _buildNote(sender, details)
-      // De-dupe on raw SMS identity: keeps the launch sweep idempotent while
-      // distinct SMS sharing minute+amount+party still import separately.
-      ..smsId = smsIdFor(sender: sender, body: body, date: date)
+      ..smsId = smsId
       // Keep the original text so the UI can show what was parsed.
-      ..smsBody = body;
+      ..smsBody = body
+      ..cardId = cardId
+      ..cardAvailableLimit = cardAvailableLimit;
 
-    return _repository.importTransaction(t);
+    final imported = await _repository.importTransaction(t);
+    if (imported) return true;
+
+    // Already on disk under this smsId — the common case is just a repeat
+    // scan (nothing to do). But if this is a matched card SMS, the existing
+    // row might be one that got unlinked when its card was deleted and is
+    // now sitting cardId-less in the main list; re-link it to the
+    // newly-(re)registered card rather than leaving it stranded forever,
+    // since importTransaction's insert-or-ignore has no way to do that itself.
+    if (cardId != null) {
+      return _repository.relinkTransactionToCard(
+        smsId: smsId,
+        cardId: cardId,
+        cardAvailableLimit: cardAvailableLimit,
+      );
+    }
+    return false;
   }
 
   String _buildNote(String sender, ParsedTransactionDetails d) {
@@ -62,8 +129,6 @@ class TransactionSmsIngestor {
 }
 
 /// Deterministic identity of a raw SMS, derived purely from its content
-
-
 
 String smsIdFor({
   required String sender,
