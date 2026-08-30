@@ -46,6 +46,7 @@ class SaveTransaction {
     required DateTime date,
     String? note,
     Transaction? existing,
+    int? cardId,
   }) async {
     final fromSms = existing != null && existing.isAutoImported;
     final amountResult = parseAmount(amount);
@@ -61,9 +62,8 @@ class SaveTransaction {
         .toList();
 
     final trimmedParty = party.trim();
-    final resolvedParty = isCredit && trimmedParty.isEmpty
-        ? kDefaultCreditParty
-        : trimmedParty;
+    final resolvedParty =
+        isCredit && trimmedParty.isEmpty ? kDefaultCreditParty : trimmedParty;
 
     final transaction = Transaction()
       ..id = existing?.id
@@ -75,7 +75,10 @@ class SaveTransaction {
       ..isCredit = isCredit
       ..note = (note != null && note.isNotEmpty) ? note : null
       ..smsId = existing?.smsId
-      ..smsBody = existing?.smsBody;
+      ..smsBody = existing?.smsBody
+      // An edit keeps the row's own card and the limit that its SMS reported.
+      ..cardId = existing == null ? cardId : existing.cardId
+      ..cardAvailableLimit = existing?.cardAvailableLimit;
 
     if (existing == null) {
       await _repository.saveTransaction(transaction);

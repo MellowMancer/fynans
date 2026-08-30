@@ -39,6 +39,7 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
     required DateTime date,
     String? note,
     Transaction? existing,
+    int? cardId,
   }) async {
     emit(state.copyWith(status: SaveStatus.inProgress));
     try {
@@ -51,6 +52,7 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
         date: date,
         note: note,
         existing: existing,
+        cardId: cardId,
       );
       if (!result.isSuccess) {
         emit(state.copyWith(status: SaveStatus.invalid, message: result.error));
