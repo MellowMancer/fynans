@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_state.dart';
+import 'package:fynans/entities/credit_card.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
@@ -17,8 +18,14 @@ const int _kBackdateYears = 1;
 
 /// Provides the [AddTransactionCubit] (built from the repository in context)
 /// and renders the transaction entry form.
+///
+/// [card], when set, binds the saved transaction to that card — pushed this
+/// way from [CardDetailScreen]'s "add transaction" action. The regular
+/// Expenses FAB pushes this with no card.
 class AddTransactionScreen extends StatelessWidget {
-  const AddTransactionScreen({super.key});
+  const AddTransactionScreen({super.key, this.card});
+
+  final CreditCard? card;
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +33,15 @@ class AddTransactionScreen extends StatelessWidget {
       create: (context) =>
           AddTransactionCubit(context.read<TransactionRepository>())
             ..loadSuggestions(),
-      child: const _AddTransactionForm(),
+      child: _AddTransactionForm(card: card),
     );
   }
 }
 
 class _AddTransactionForm extends StatefulWidget {
-  const _AddTransactionForm();
+  const _AddTransactionForm({this.card});
+
+  final CreditCard? card;
 
   @override
   State<_AddTransactionForm> createState() => _AddTransactionFormState();
@@ -81,6 +90,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           isCredit: _creditFlag,
           note: _noteController.text,
           date: _selectedDate,
+          cardId: widget.card?.id,
         );
   }
 
@@ -146,7 +156,12 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppSectionLabel('New entry', color: context.colors.accent),
+            AppSectionLabel(
+              widget.card == null
+                  ? 'New entry'
+                  : '${widget.card!.issuer} •••• ${widget.card!.last4}',
+              color: context.colors.accent,
+            ),
             AppSpacing.gapXxs,
             Text('Add transaction', style: context.type.h1),
           ],
@@ -514,9 +529,8 @@ class _TagPickerSheetState extends State<_TagPickerSheet> {
                   AppPill(
                     Fmt.capitalize(tag),
                     icon: TagHelper.getIconForTag(tag),
-                    color: _selected.contains(tag)
-                        ? context.tagColor(tag)
-                        : null,
+                    color:
+                        _selected.contains(tag) ? context.tagColor(tag) : null,
                     tone: AppPillTone.outline,
                     onTap: () => setState(
                       () => _selected.contains(tag)

@@ -40,6 +40,7 @@ class SaveTransaction {
     required bool isCredit,
     required DateTime date,
     String? note,
+    int? cardId,
   }) async {
     final amountResult = parseAmount(amount);
     if (amountResult.value == null) {
@@ -53,9 +54,8 @@ class SaveTransaction {
         .toList();
 
     final trimmedParty = party.trim();
-    final resolvedParty = isCredit && trimmedParty.isEmpty
-        ? kDefaultCreditParty
-        : trimmedParty;
+    final resolvedParty =
+        isCredit && trimmedParty.isEmpty ? kDefaultCreditParty : trimmedParty;
 
     final transaction = Transaction()
       ..amount = amountResult.value!
@@ -64,7 +64,8 @@ class SaveTransaction {
       ..group = groups
       ..party = resolvedParty
       ..isCredit = isCredit
-      ..note = (note != null && note.isNotEmpty) ? note : null;
+      ..note = (note != null && note.isNotEmpty) ? note : null
+      ..cardId = cardId;
 
     await _repository.saveTransaction(transaction);
     return const SaveTransactionResult.success();
