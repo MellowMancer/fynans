@@ -134,7 +134,9 @@ class SmsParserService {
     'BOIIND',
   ];
 
-  // Credit-card senders.
+  // Credit-card senders. Most of these don't overlap _whiteListedSenders, so
+  // isTransactionSms's sender-whitelist gate unions this list in separately
+  // for card SMS — see isCreditCardSms.
   static const List<String> _creditCardSenders = [
     'SBICRD', // SBI Card
     'SBICARD',
@@ -144,6 +146,13 @@ class SmsParserService {
     'CITICC',
     'HDFCCC',
     'ICICCC',
+    'AXISCC',
+    'KOTAKCC',
+    'RBLCRD',
+    'AUBANK',
+    'INDUSIND', // IndusInd card alerts
+    'CREDIN', // CRED bill-payment confirmations
+    'CRED',
   ];
 
   // Content markers that identify a credit-card SMS even when it arrives from a
@@ -158,34 +167,141 @@ class SmsParserService {
     'card statement',
   ];
 
+  // Card SMS decide direction from these explicit markers rather than the
+  // generic _creditKeywords, whose bare 'credit' substring matches "credit
+  // card" in the body of nearly every card SMS regardless of which way money
+  // moved — see isTransactionSms/_getTransactionType.
+  static const List<String> _cardCreditMarkers = [
+    'refund',
+    'reversed',
+    'reversal',
+    'credited to your',
+    'payment received',
+    'has been received',
+  ];
+
+  // Applied instead of _exclusionKeywords for SMS already recognized as card
+  // SMS: the full list's 'due'/'outstanding' would drop real spend alerts,
+  // which routinely carry a legitimate "Avl limit ... Total due ..." tail.
+  static const List<String> _cardExclusionKeywords = [
+    'otp',
+    'one time password',
+    'offer',
+    'discount',
+    'cashback',
+    'sale',
+    'congratulations',
+  ];
+
+  // Statement/due-date reminder language, applied alongside
+  // _cardExclusionKeywords for card SMS. Phase 1 deliberately doesn't parse
+  // statements (CREDIT_CARD_PLAN.md) — without this, a reminder mentioning
+  // "payment"/"due" can still clear Rule 3's inclusion check on its own and
+  // get recorded as a phantom debit for the due amount, whose "Avl Limit"
+  // (a billing-cycle snapshot, not a live figure) then permanently overrides
+  // the real fold in summariseCard. Phrases, not bare 'due'/'outstanding' —
+  // those bare words sit in real spend-alert tails (see the exclusion note
+  // above) and in legitimate refund text ("adjusted against the
+  // outstanding"), so only multi-word statement-specific phrasing is safe
+  // to exclude here.
+  static const List<String> _cardStatementKeywords = [
+    'statement is generated',
+    'statement generated',
+    'e-statement',
+    'bill generated',
+    'total due',
+    'total amount due',
+    'minimum due',
+    'minimum amount due',
+    'min due',
+    'amount due',
+    'due date',
+    'due on',
+    'is due',
+    'payment due',
+    'please pay by',
+    'kindly pay',
+    'make payment by',
+    'pay by',
+  ];
+
+  // Widens Rule 3's inclusion check for card SMS: a refund/reversal notice
+  // (e.g. "Refund initiated: Amt: Rs.X on HDFC Bank Credit Card 1111.")
+  // often carries none of the generic _transactionKeywords.
+  static const List<String> _cardInclusionKeywords = [
+    'refund',
+    'reversed',
+    'reversal',
+  ];
+
+  // Card last-4 shapes _accountRegex can't reach: "ending 1234"/"ending with
+  // 1234", and unmasked forms like "Credit Card 1111" with no x's at all.
+  // dotAll defensively, in case a real message wraps one of these phrases
+  // across a line break differently than the corpus this was built against.
+  static final _cardLast4Regex = RegExp(
+    r'(?:card\s*(?:no\.?)?\s*[:\-]?\s*x{2,}(\d{2,4}))'
+    r'|(?:ending\s*(?:with)?\s*(\d{2,4}))'
+    r'|(?:card\s+(\d{2,4})\b)',
+    caseSensitive: false,
+    dotAll: true,
+  );
+
+  // "Your available limit is Rs.X" / "Avl Limit: INR X" / "Avl Lmt INR X" —
+  // every major issuer prints this in the spend alert; treated as
+  // authoritative over a fold of past transactions (see summariseCard).
+  static final _availableLimitRegex = RegExp(
+    r'(?:available\s+limit\s*(?:is)?|avl\s*(?:limit|lmt)\.?)\s*:?\s*'
+    r'(?:rs\.?|inr)\s*([\d,]+\.?\d*)',
+    caseSensitive: false,
+    dotAll: true,
+  );
+
+  /// Rule 0: does this SMS describe a credit-card spend/payment rather than a
+  /// savings-account transaction? Card SMS are classified, not rejected —
+  /// `isTransactionSms` still returns true for them, but routes them through
+  /// the card-aware exclusion/inclusion rules below.
+  bool isCreditCardSms(String sender, String messageBody) {
+    final lowerCaseSender = sender.toLowerCase();
+    final lowerCaseBody = messageBody.toLowerCase();
+    return _creditCardSenders
+            .any((token) => lowerCaseSender.contains(token.toLowerCase())) ||
+        _creditCardBodyKeywords.any((kw) => lowerCaseBody.contains(kw));
+  }
+
   bool isTransactionSms(String sender, String messageBody) {
     final lowerCaseSender = sender.toLowerCase();
     final lowerCaseBody = messageBody.toLowerCase();
-
-    // Rule 0: Credit-card check.
-    if (_creditCardSenders
-        .any((token) => lowerCaseSender.contains(token.toLowerCase()))) {
-      return false;
-    }
-    if (_creditCardBodyKeywords.any((kw) => lowerCaseBody.contains(kw))) {
-      return false;
-    }
+    final isCard = isCreditCardSms(sender, messageBody);
 
     // Rule 1: Exclusion Check.
-    if (_exclusionKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
+    final exclusionKeywords = isCard
+        ? [..._cardExclusionKeywords, ..._cardStatementKeywords]
+        : _exclusionKeywords;
+    if (exclusionKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       // This log helps you see what's being actively blocked.
       return false;
     }
 
-    if (!(_whiteListedSenders
-        .any((keyword) => lowerCaseSender.contains(keyword.toLowerCase())))) {
+    // Sender whitelist. Most _creditCardSenders values don't match
+    // _whiteListedSenders (AMEX, ONECRD, CITICC, ICICCC, ...), so without
+    // this union a card SMS would be dropped here regardless of what Rule 0
+    // classified it as.
+    final whitelisted = _whiteListedSenders.any(
+            (keyword) => lowerCaseSender.contains(keyword.toLowerCase())) ||
+        (isCard &&
+            _creditCardSenders
+                .any((token) => lowerCaseSender.contains(token.toLowerCase())));
+    if (!whitelisted) {
       // This log is crucial for debugging your sender list.
       return false;
     }
 
-    // Rule 3: Inclusion Check.
-    return _transactionKeywords
-        .any((keyword) => lowerCaseBody.contains(keyword));
+    // Rule 3: Inclusion Check. Widened for card SMS — a refund/reversal
+    // notice often carries none of the generic _transactionKeywords.
+    final inclusionKeywords = isCard
+        ? [..._transactionKeywords, ..._cardInclusionKeywords]
+        : _transactionKeywords;
+    return inclusionKeywords.any((keyword) => lowerCaseBody.contains(keyword));
   }
 
   ParsedTransactionDetails? parseTransactionDetails({
@@ -197,12 +313,15 @@ class SmsParserService {
 
     final lowerCaseBody = body.toLowerCase();
 
-    if (!isTransactionSms(sender, lowerCaseBody)){
+    if (!isTransactionSms(sender, lowerCaseBody)) {
       return null;
     }
 
+    final isCard = isCreditCardSms(sender, lowerCaseBody);
+
     // 1.
-    final transactionType = _getTransactionType(lowerCaseBody);
+    final transactionType =
+        _getTransactionType(lowerCaseBody, isCreditCard: isCard);
     if (transactionType == TransactionType.unknown) {
       return null;
     }
@@ -217,6 +336,8 @@ class SmsParserService {
     final balance = _getBalance(lowerCaseBody);
     final accountNumber = _getAccountNumber(lowerCaseBody);
     final merchant = _getMerchant(lowerCaseBody, transactionType);
+    final cardLast4 = isCard ? _getCardLast4(lowerCaseBody) : null;
+    final availableLimit = isCard ? _getAvailableLimit(lowerCaseBody) : null;
 
     return ParsedTransactionDetails(
       type: transactionType,
@@ -225,16 +346,31 @@ class SmsParserService {
       balance: balance,
       accountNumber: accountNumber,
       merchant: merchant,
+      isCreditCard: isCard,
+      cardLast4: cardLast4,
+      availableLimit: availableLimit,
     );
   }
 
   // --- PRIVATE HELPER METHODS ---
 
-  TransactionType _getTransactionType(String lowerCaseBody) {
+  TransactionType _getTransactionType(String lowerCaseBody,
+      {bool isCreditCard = false}) {
     // Declines still contain debit keywords ("spent"), so this must run first
     // or a failed payment is recorded as real outflow.
     if (_declinedKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.declined;
+    }
+    if (isCreditCard) {
+      // Never fall through to the generic _creditKeywords here: its bare
+      // 'credit' substring matches "credit card" in almost every card SMS
+      // body, which would mis-sign a plain spend as a refund whenever the
+      // message happens to lack a debit keyword — silently inflating the
+      // shown available limit. Card SMS decide direction only from this
+      // explicit marker list, defaulting to debit otherwise.
+      return _cardCreditMarkers.any((k) => lowerCaseBody.contains(k))
+          ? TransactionType.credit
+          : TransactionType.debit;
     }
     if (_debitKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.debit;
@@ -246,7 +382,8 @@ class SmsParserService {
     // an amount but omit "debited"/"credited" (e.g.
     if (_transferModeKeywords.any((k) => lowerCaseBody.contains(k))) {
       final hasOutgoing = RegExp(r'\b(?:to|sent)\b').hasMatch(lowerCaseBody);
-      final hasIncoming = RegExp(r'\b(?:from|received)\b').hasMatch(lowerCaseBody);
+      final hasIncoming =
+          RegExp(r'\b(?:from|received)\b').hasMatch(lowerCaseBody);
       if (hasOutgoing && !hasIncoming) return TransactionType.debit;
       if (hasIncoming && !hasOutgoing) return TransactionType.credit;
       // "from ...
@@ -418,6 +555,24 @@ class SmsParserService {
     return match?.group(1)?.trim();
   }
 
+  /// The card's last 2-4 digits, tried against shapes _accountRegex can't
+  /// reach ("ending 1234", unmasked "Credit Card 1111") before falling back
+  /// to it for the masked "card.*?xx1234" shape it already handles.
+  String? _getCardLast4(String lowerCaseBody) {
+    final match = _cardLast4Regex.firstMatch(lowerCaseBody);
+    final digits = match?.group(1) ?? match?.group(2) ?? match?.group(3);
+    if (digits != null) return digits;
+    return _getAccountNumber(lowerCaseBody);
+  }
+
+  /// The available credit limit as reported by a card SMS, if present.
+  double? _getAvailableLimit(String lowerCaseBody) {
+    final match = _availableLimitRegex.firstMatch(lowerCaseBody);
+    final amountString = match?.group(1);
+    if (amountString == null) return null;
+    return _cleanAmount(amountString);
+  }
+
   String? _getMerchant(String lowerCaseBody, TransactionType type) {
     // First, prioritize UPI ID as the merchant
     final upiMatch = _upiIdRegex.firstMatch(lowerCaseBody);
@@ -447,7 +602,7 @@ class SmsParserService {
     // Terminates on a keyword, on '(' ';' ',', or at end of string.
     final terminators =
         "(?=(\\s+(${terminatorKeywords.join('|')}))|\\s*\\(|\$|;|\\,)";
-    
+
     // --- FIX #2: Create a MODIFIABLE copy of the keyword lists ---
     List<String> keywords;
     if (type == TransactionType.debit) {
