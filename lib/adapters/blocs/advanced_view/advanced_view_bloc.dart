@@ -32,7 +32,8 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     this._repository, {
     DateRange? initialRange,
     DateRangePreset initialPreset = DateRangePreset.thisMonth,
-    BuildTransactionHierarchy buildHierarchy = const BuildTransactionHierarchy(),
+    BuildTransactionHierarchy buildHierarchy =
+        const BuildTransactionHierarchy(),
   })  : _buildHierarchy = buildHierarchy,
         super(
           // Start with a successful but empty state.
@@ -59,7 +60,8 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
 
   void _onRangeChanged(
       AdvancedViewRangeChanged event, Emitter<AdvancedViewState> emit) {
-    _updateConfig(emit, (s) => s.copyWith(range: event.range, preset: event.preset));
+    _updateConfig(
+        emit, (s) => s.copyWith(range: event.range, preset: event.preset));
   }
 
   /// Applies [change] to the last good configuration and refetches.
@@ -80,8 +82,10 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
     _updateConfig(emit, (s) => s.copyWith(filter: event.filter));
   }
 
-  void _onHierarchyChanged(AdvancedViewHierarchyChanged event, Emitter<AdvancedViewState> emit) {
-    _updateConfig(emit, (s) => s.copyWith(groupingHierarchy: event.newHierarchy));
+  void _onHierarchyChanged(
+      AdvancedViewHierarchyChanged event, Emitter<AdvancedViewState> emit) {
+    _updateConfig(
+        emit, (s) => s.copyWith(groupingHierarchy: event.newHierarchy));
   }
 
   /// Subscribes to the selected month's transactions so the advanced view
@@ -100,24 +104,28 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
 
     _subscription = _repository
         .listenToTransactionsInRange(
-          range: currentState.range,
-          filter: currentState.filter.isEmpty ? null : currentState.filter,
-        )
+      // Always passed, even when the filter is otherwise empty: its
+      // default CardScope still has to exclude card spends from this
+      // view, so this can no longer collapse to null the way an
+      // unfiltered request would.
+      range: currentState.range,
+      filter: currentState.filter,
+    )
         .listen(
-          (transactions) {
-            if (isClosed || generation != _generation) return;
-            add(_AdvancedViewTransactionsUpdated(transactions));
-          },
-          onError: (Object error) {
-            if (isClosed || generation != _generation) return;
-            add(_AdvancedViewStreamFailed(error.toString()));
-          },
-        );
+      (transactions) {
+        if (isClosed || generation != _generation) return;
+        add(_AdvancedViewTransactionsUpdated(transactions));
+      },
+      onError: (Object error) {
+        if (isClosed || generation != _generation) return;
+        add(_AdvancedViewStreamFailed(error.toString()));
+      },
+    );
   }
 
   /// Rebuilds the grouped success state from a fresh transaction snapshot.
-  void _onTransactionsUpdated(_AdvancedViewTransactionsUpdated event,
-      Emitter<AdvancedViewState> emit) {
+  void _onTransactionsUpdated(
+      _AdvancedViewTransactionsUpdated event, Emitter<AdvancedViewState> emit) {
     // Read the CURRENT configuration, not one captured when the subscription
     // was created — a snapshot queued just before the user changed the range
     // must not re-emit (and thereby revert to) the old selection.

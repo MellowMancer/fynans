@@ -100,6 +100,55 @@ class FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
+  Stream<List<Transaction>> listenToTransactionsForCard(int cardId) {
+    subscribeCount++;
+    late final StreamController<List<Transaction>> controller;
+    StreamSubscription<void>? watcher;
+
+    Future<void> emit() async => controller.add(
+          _transactions.where((t) => t.cardId == cardId).toList()
+            ..sort((a, b) => b.date.compareTo(a.date)),
+        );
+
+    controller = StreamController<List<Transaction>>(
+      onListen: () {
+        emit();
+        watcher = _changes.stream.listen((_) => emit());
+      },
+      onCancel: () async {
+        await watcher?.cancel();
+        watcher = null;
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<void> unlinkCard(int cardId) async {
+    for (final t in _transactions.where((t) => t.cardId == cardId)) {
+      t.cardId = null;
+    }
+    _notify();
+  }
+
+  @override
+  Future<bool> relinkTransactionToCard({
+    required String smsId,
+    required int cardId,
+    double? cardAvailableLimit,
+  }) async {
+    for (final t in _transactions) {
+      if (t.smsId == smsId && t.cardId == null) {
+        t.cardId = cardId;
+        t.cardAvailableLimit = cardAvailableLimit;
+        _notify();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
   Future<List<String>> getAllGroups() async => _distinct((t) => t.group);
 
   @override
@@ -108,8 +157,11 @@ class FakeTransactionRepository implements TransactionRepository {
   @override
   Future<List<String>> getAllParties() async => _distinct((t) => [t.party]);
 
+  /// Excludes card transactions, matching DriftTransactionRepository — see
+  /// its `_distinct` for why.
   List<String> _distinct(Iterable<String> Function(Transaction) select) =>
       _transactions
+          .where((t) => t.cardId == null)
           .expand(select)
           .map((value) => value.trim())
           .where((value) => value.isNotEmpty)
