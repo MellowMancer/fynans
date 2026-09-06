@@ -101,8 +101,11 @@ class CardsCubit extends Cubit<CardsState> {
     emit(CardsLoadSuccess([
       for (final card in _cards)
         CardWithTransactions(
-          summary:
-              summariseCard(card, _transactionsByCard[card.id] ?? const []),
+          summary: summariseCard(
+            card,
+            _transactionsByCard[card.id] ?? const [],
+            latestStatement: _statementByCard[card.id],
+          ),
           transactions: _transactionsByCard[card.id] ?? const [],
           latestStatement: _statementByCard[card.id],
         ),
