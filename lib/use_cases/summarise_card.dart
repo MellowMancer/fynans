@@ -1,3 +1,4 @@
+import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/card_summary.dart';
 import 'package:fynans/entities/credit_card.dart';
 import 'package:fynans/entities/transaction.dart';
@@ -10,9 +11,20 @@ import 'package:fynans/entities/transaction.dart';
 /// avoids the fold's two failure modes: a card that already carried a
 /// balance when added reads wrong from the first screen, and any dropped or
 /// mis-parsed SMS skews a purely-folded number with no way back to the
-/// truth. The fold below is the fallback for a card with no SMS history yet
-/// (e.g. added manually), not the primary source.
-CardSummary summariseCard(CreditCard card, List<Transaction> transactions) {
+/// truth.
+///
+/// [latestStatement] is the fallback for issuers that never print an
+/// available limit in the spend alert at all (SBI Card is the known case):
+/// its `totalDue` anchors the fold at the last real statement instead of at
+/// zero-since-card-added, so drift is bounded to one billing cycle rather
+/// than the card's whole lifetime. The unanchored all-time fold below that
+/// is the last resort — a card with neither an SMS-reported limit nor a
+/// statement yet (e.g. just added, or added manually).
+CardSummary summariseCard(
+  CreditCard card,
+  List<Transaction> transactions, {
+  CardStatement? latestStatement,
+}) {
   double? reportedAvailable;
   DateTime? asOf;
   for (final t in transactions) {
@@ -25,9 +37,20 @@ CardSummary summariseCard(CreditCard card, List<Transaction> transactions) {
 
   final double spent;
   final double available;
+  final totalDue = latestStatement?.totalDue;
   if (reportedAvailable != null) {
     available = reportedAvailable.clamp(0.0, card.creditLimit);
     spent = (card.creditLimit - available).clamp(0.0, card.creditLimit);
+  } else if (totalDue != null) {
+    final statementDate = latestStatement!.statementDate;
+    var delta = 0.0;
+    for (final t in transactions) {
+      if (!t.date.isAfter(statementDate)) continue;
+      delta += t.isCredit ? -t.amount : t.amount;
+    }
+    spent = (totalDue + delta).clamp(0.0, card.creditLimit);
+    available = (card.creditLimit - spent).clamp(0.0, card.creditLimit);
+    asOf = statementDate;
   } else {
     double foldedSpent = 0;
     for (final t in transactions) {
