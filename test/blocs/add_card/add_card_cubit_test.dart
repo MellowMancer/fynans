@@ -4,6 +4,7 @@ import 'package:fynans/adapters/blocs/add_card/add_card_state.dart';
 import 'package:fynans/entities/detected_card.dart';
 
 import '../../fakes/fake_card_repository.dart';
+import '../../fakes/fake_card_statement_repository.dart';
 import '../../fakes/fake_detected_card_repository.dart';
 import '../../fakes/fake_transaction_repository.dart';
 
@@ -12,18 +13,20 @@ void main() {
     late FakeCardRepository cardRepository;
     late FakeTransactionRepository transactionRepository;
     late FakeDetectedCardRepository detectedCardRepository;
+    late FakeCardStatementRepository statementRepository;
 
     setUp(() {
       cardRepository = FakeCardRepository();
       transactionRepository = FakeTransactionRepository();
       detectedCardRepository = FakeDetectedCardRepository();
+      statementRepository = FakeCardStatementRepository();
     });
 
     test(
         'a valid save persists the card, then sweeps SMS before reporting success',
         () async {
       final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository);
+          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       // The post-save SMS sweep goes through a real platform plugin
@@ -62,7 +65,7 @@ void main() {
 
     test('a blank issuer is rejected before saving or sweeping', () async {
       final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository);
+          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       final expectation = expectLater(
@@ -83,7 +86,7 @@ void main() {
 
     test('last4 outside 2-4 digits is rejected', () async {
       final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository);
+          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       await cubit.save(issuer: 'HDFC', last4: '123456', creditLimit: '50000');
@@ -94,7 +97,7 @@ void main() {
 
     test('a credit limit of 0 or less is rejected', () async {
       final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository);
+          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       await cubit.save(issuer: 'HDFC', last4: '1234', creditLimit: '0');
@@ -106,7 +109,7 @@ void main() {
     test('registering the same issuer + last4 twice fails on the second save',
         () async {
       final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository);
+          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       await cubit.save(issuer: 'HDFC', last4: '1234', creditLimit: '50000');
@@ -118,7 +121,7 @@ void main() {
 
     test('an empty nickname is stored as null, not an empty string', () async {
       final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository);
+          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       await cubit.save(
@@ -143,7 +146,7 @@ void main() {
       detectedCardRepository.seed([detection]);
 
       final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository);
+          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       await cubit.save(

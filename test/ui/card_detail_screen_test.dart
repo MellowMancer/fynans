@@ -5,12 +5,14 @@ import 'package:fynans/adapters/blocs/cards/cards_cubit.dart';
 import 'package:fynans/entities/credit_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/screens/card_detail_screen.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
 import 'package:fynans/ui/utils/formatters.dart';
 
 import '../fakes/fake_card_repository.dart';
+import '../fakes/fake_card_statement_repository.dart';
 import '../fakes/fake_transaction_repository.dart';
 
 Transaction spend(double amount, DateTime date, int cardId) => Transaction()
@@ -25,11 +27,13 @@ Transaction spend(double amount, DateTime date, int cardId) => Transaction()
 void main() {
   late FakeTransactionRepository transactionRepository;
   late FakeCardRepository cardRepository;
+  late FakeCardStatementRepository statementRepository;
   late CreditCard card;
 
   setUp(() {
     transactionRepository = FakeTransactionRepository();
     cardRepository = FakeCardRepository();
+    statementRepository = FakeCardStatementRepository();
     card = CreditCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
@@ -40,6 +44,7 @@ void main() {
   tearDown(() async {
     await transactionRepository.dispose();
     await cardRepository.dispose();
+    await statementRepository.dispose();
   });
 
   Future<void> pumpScreen(WidgetTester tester) async {
@@ -49,6 +54,8 @@ void main() {
           RepositoryProvider<TransactionRepository>.value(
               value: transactionRepository),
           RepositoryProvider<CardRepository>.value(value: cardRepository),
+          RepositoryProvider<CardStatementRepository>.value(
+              value: statementRepository),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -56,6 +63,7 @@ void main() {
             create: (context) => CardsCubit(
               context.read<TransactionRepository>(),
               context.read<CardRepository>(),
+              context.read<CardStatementRepository>(),
             )..loadCards(),
             child: CardDetailScreen(cardId: card.id!),
           ),

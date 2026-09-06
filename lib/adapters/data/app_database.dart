@@ -103,12 +103,27 @@ class DetectedCards extends Table {
       ];
 }
 
-@DriftDatabase(tables: [Transactions, Cards, DetectedCards])
+/// A card's billing-cycle statement — due date, total/minimum due. Parsed
+/// from a statement SMS instead of the excluded-outright treatment
+/// `Transactions` gives that same SMS; see `entities/card_statement.dart`.
+@DataClassName('CardStatementRow')
+class CardStatements extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get cardId => integer().references(Cards, #id)();
+  DateTimeColumn get statementDate => dateTime()();
+  DateTimeColumn get dueDate => dateTime().nullable()();
+  RealColumn get totalDue => real().nullable()();
+  RealColumn get minimumDue => real().nullable()();
+  TextColumn get smsId => text().nullable().unique()();
+  TextColumn get smsBody => text().nullable()();
+}
+
+@DriftDatabase(tables: [Transactions, Cards, DetectedCards, CardStatements])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// Stores DateTime as ISO-8601 text rather than Drift's default unix
   /// *seconds*, which truncates. SMS timestamps carry sub-second precision and
@@ -147,6 +162,13 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 3) {
             await m.createTable(detectedCards);
+          }
+          if (from < 4) {
+            await m.createTable(cardStatements);
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_card_statements_card_id '
+              'ON card_statements (card_id)',
+            );
           }
         },
         beforeOpen: (details) async {

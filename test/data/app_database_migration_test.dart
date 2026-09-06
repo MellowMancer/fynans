@@ -135,14 +135,105 @@ void main() {
     expect(await db.select(db.detectedCards).get(), isEmpty);
   });
 
-  test('a fresh install lands directly on schema 3', () async {
+  test(
+      'v3 -> v4 adds CardStatements without disturbing existing card/'
+      'transaction/detected-card data', () async {
+    // A raw v3-shaped database: cards, card-aware transactions, and
+    // detected_cards already exist, but no card_statements table yet — this
+    // is what a phone that installed auto-detect (schema 3) before due-date
+    // tracking (schema 4) actually has on disk.
+    final raw = sqlite3.openInMemory();
+    raw.execute('''
+      CREATE TABLE "cards" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "issuer" TEXT NOT NULL,
+        "last4" TEXT NOT NULL,
+        "credit_limit" REAL NOT NULL,
+        "nickname" TEXT NULL,
+        UNIQUE ("issuer", "last4")
+      );
+    ''');
+    raw.execute('''
+      CREATE TABLE "transactions" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "amount" REAL NOT NULL,
+        "date" TEXT NOT NULL,
+        "party" TEXT NOT NULL,
+        "is_credit" INTEGER NOT NULL DEFAULT 0 CHECK ("is_credit" IN (0, 1)),
+        "note" TEXT NULL,
+        "sms_id" TEXT NULL UNIQUE,
+        "sms_body" TEXT NULL,
+        "tags" TEXT NOT NULL,
+        "groups" TEXT NOT NULL,
+        "card_id" INTEGER NULL REFERENCES cards (id),
+        "card_available_limit" REAL NULL
+      );
+    ''');
+    raw.execute('''
+      CREATE TABLE "detected_cards" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "issuer_guess" TEXT NOT NULL,
+        "sender" TEXT NOT NULL,
+        "last4" TEXT NOT NULL,
+        "first_seen" TEXT NOT NULL,
+        "last_seen" TEXT NOT NULL,
+        "sighting_count" INTEGER NOT NULL DEFAULT 1,
+        "dismissed" INTEGER NOT NULL DEFAULT 0 CHECK ("dismissed" IN (0, 1)),
+        UNIQUE ("issuer_guess", "last4")
+      );
+    ''');
+    raw.execute(
+        'CREATE INDEX idx_transactions_date ON transactions (date);');
+    raw.execute(
+        'CREATE INDEX idx_transactions_card_id ON transactions (card_id);');
+    raw.execute('''
+      INSERT INTO "cards" (issuer, last4, credit_limit, nickname)
+      VALUES ('HDFC', '1234', 50000.0, NULL);
+    ''');
+    raw.execute('''
+      INSERT INTO "transactions"
+        (amount, date, party, is_credit, note, sms_id, sms_body, tags,
+         groups, card_id, card_available_limit)
+      VALUES
+        (259.0, '2026-01-15 10:30:00.000000', 'Merchant', 0, NULL, 'abc123',
+         'spent', '[]', '[]', 1, 1235.0);
+    ''');
+    raw.execute('PRAGMA user_version = 3');
+
+    final db = AppDatabase(NativeDatabase.opened(raw));
+    addTearDown(db.close);
+
+    final cardRows = await db.select(db.cards).get();
+    expect(cardRows, hasLength(1));
+
+    final txnRows = await db.select(db.transactions).get();
+    expect(txnRows, hasLength(1));
+    expect(txnRows.single.cardAvailableLimit, 1235.0);
+
+    // The new table exists and is queryable, and can store a row referencing
+    // the existing card.
+    expect(await db.select(db.cardStatements).get(), isEmpty);
+    await db.into(db.cardStatements).insert(CardStatementsCompanion.insert(
+          cardId: cardRows.single.id,
+          statementDate: DateTime(2026, 1, 20),
+        ));
+    expect(await db.select(db.cardStatements).get(), hasLength(1));
+
+    expect(
+      await _indexNames(db),
+      contains('idx_card_statements_card_id'),
+    );
+  });
+
+  test('a fresh install lands directly on schema 4', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 3);
+    expect(db.schemaVersion, 4);
     expect(await db.select(db.cards).get(), isEmpty);
     expect(await db.select(db.transactions).get(), isEmpty);
     expect(await db.select(db.detectedCards).get(), isEmpty);
+    expect(await db.select(db.cardStatements).get(), isEmpty);
   });
 
   test('foreign_keys pragma is enabled, so cardId references are enforced',

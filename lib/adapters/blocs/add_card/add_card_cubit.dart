@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/entities/credit_card.dart';
 import 'package:fynans/entities/detected_card.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
@@ -15,11 +16,13 @@ class AddCardCubit extends Cubit<AddCardState> {
   final CardRepository _cardRepository;
   final TransactionRepository _transactionRepository;
   final DetectedCardRepository _detectedCardRepository;
+  final CardStatementRepository _statementRepository;
 
   AddCardCubit(
     this._cardRepository,
     this._transactionRepository,
     this._detectedCardRepository,
+    this._statementRepository,
   ) : super(const AddCardState());
 
   static final _last4Pattern = RegExp(r'^\d{2,4}$');
@@ -92,6 +95,7 @@ class AddCardCubit extends Cubit<AddCardState> {
         _transactionRepository,
         _cardRepository,
         _detectedCardRepository,
+        _statementRepository,
         onProgress: (scanned, total) {
           if (isClosed) return;
           emit(state.copyWith(

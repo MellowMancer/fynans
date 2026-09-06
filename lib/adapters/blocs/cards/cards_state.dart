@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/card_summary.dart';
 import 'package:fynans/entities/transaction.dart';
 
@@ -18,11 +19,18 @@ class CardsLoadInProgress extends CardsState {}
 /// list. Not [Equatable]: nested the same way `MonthlySummary` sits inside
 /// `TransactionLoadSuccess`.
 class CardWithTransactions {
-  const CardWithTransactions(
-      {required this.summary, required this.transactions});
+  const CardWithTransactions({
+    required this.summary,
+    required this.transactions,
+    this.latestStatement,
+  });
 
   final CardSummary summary;
   final List<Transaction> transactions;
+
+  /// The most recent parsed statement for this card, or null if none has
+  /// been seen yet. Drives `PaymentDueBanner` on the card detail screen.
+  final CardStatement? latestStatement;
 }
 
 class CardsLoadSuccess extends CardsState {

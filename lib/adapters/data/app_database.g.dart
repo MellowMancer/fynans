@@ -1342,18 +1342,453 @@ class DetectedCardsCompanion extends UpdateCompanion<DetectedCardRow> {
   }
 }
 
+class $CardStatementsTable extends CardStatements
+    with TableInfo<$CardStatementsTable, CardStatementRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CardStatementsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _cardIdMeta = const VerificationMeta('cardId');
+  @override
+  late final GeneratedColumn<int> cardId = GeneratedColumn<int>(
+      'card_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES cards (id)'));
+  static const VerificationMeta _statementDateMeta =
+      const VerificationMeta('statementDate');
+  @override
+  late final GeneratedColumn<DateTime> statementDate =
+      GeneratedColumn<DateTime>('statement_date', aliasedName, false,
+          type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _dueDateMeta =
+      const VerificationMeta('dueDate');
+  @override
+  late final GeneratedColumn<DateTime> dueDate = GeneratedColumn<DateTime>(
+      'due_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _totalDueMeta =
+      const VerificationMeta('totalDue');
+  @override
+  late final GeneratedColumn<double> totalDue = GeneratedColumn<double>(
+      'total_due', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _minimumDueMeta =
+      const VerificationMeta('minimumDue');
+  @override
+  late final GeneratedColumn<double> minimumDue = GeneratedColumn<double>(
+      'minimum_due', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _smsIdMeta = const VerificationMeta('smsId');
+  @override
+  late final GeneratedColumn<String> smsId = GeneratedColumn<String>(
+      'sms_id', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _smsBodyMeta =
+      const VerificationMeta('smsBody');
+  @override
+  late final GeneratedColumn<String> smsBody = GeneratedColumn<String>(
+      'sms_body', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        cardId,
+        statementDate,
+        dueDate,
+        totalDue,
+        minimumDue,
+        smsId,
+        smsBody
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'card_statements';
+  @override
+  VerificationContext validateIntegrity(Insertable<CardStatementRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('card_id')) {
+      context.handle(_cardIdMeta,
+          cardId.isAcceptableOrUnknown(data['card_id']!, _cardIdMeta));
+    } else if (isInserting) {
+      context.missing(_cardIdMeta);
+    }
+    if (data.containsKey('statement_date')) {
+      context.handle(
+          _statementDateMeta,
+          statementDate.isAcceptableOrUnknown(
+              data['statement_date']!, _statementDateMeta));
+    } else if (isInserting) {
+      context.missing(_statementDateMeta);
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(_dueDateMeta,
+          dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta));
+    }
+    if (data.containsKey('total_due')) {
+      context.handle(_totalDueMeta,
+          totalDue.isAcceptableOrUnknown(data['total_due']!, _totalDueMeta));
+    }
+    if (data.containsKey('minimum_due')) {
+      context.handle(
+          _minimumDueMeta,
+          minimumDue.isAcceptableOrUnknown(
+              data['minimum_due']!, _minimumDueMeta));
+    }
+    if (data.containsKey('sms_id')) {
+      context.handle(
+          _smsIdMeta, smsId.isAcceptableOrUnknown(data['sms_id']!, _smsIdMeta));
+    }
+    if (data.containsKey('sms_body')) {
+      context.handle(_smsBodyMeta,
+          smsBody.isAcceptableOrUnknown(data['sms_body']!, _smsBodyMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CardStatementRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CardStatementRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      cardId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}card_id'])!,
+      statementDate: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}statement_date'])!,
+      dueDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}due_date']),
+      totalDue: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_due']),
+      minimumDue: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}minimum_due']),
+      smsId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sms_id']),
+      smsBody: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sms_body']),
+    );
+  }
+
+  @override
+  $CardStatementsTable createAlias(String alias) {
+    return $CardStatementsTable(attachedDatabase, alias);
+  }
+}
+
+class CardStatementRow extends DataClass
+    implements Insertable<CardStatementRow> {
+  final int id;
+  final int cardId;
+  final DateTime statementDate;
+  final DateTime? dueDate;
+  final double? totalDue;
+  final double? minimumDue;
+  final String? smsId;
+  final String? smsBody;
+  const CardStatementRow(
+      {required this.id,
+      required this.cardId,
+      required this.statementDate,
+      this.dueDate,
+      this.totalDue,
+      this.minimumDue,
+      this.smsId,
+      this.smsBody});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['card_id'] = Variable<int>(cardId);
+    map['statement_date'] = Variable<DateTime>(statementDate);
+    if (!nullToAbsent || dueDate != null) {
+      map['due_date'] = Variable<DateTime>(dueDate);
+    }
+    if (!nullToAbsent || totalDue != null) {
+      map['total_due'] = Variable<double>(totalDue);
+    }
+    if (!nullToAbsent || minimumDue != null) {
+      map['minimum_due'] = Variable<double>(minimumDue);
+    }
+    if (!nullToAbsent || smsId != null) {
+      map['sms_id'] = Variable<String>(smsId);
+    }
+    if (!nullToAbsent || smsBody != null) {
+      map['sms_body'] = Variable<String>(smsBody);
+    }
+    return map;
+  }
+
+  CardStatementsCompanion toCompanion(bool nullToAbsent) {
+    return CardStatementsCompanion(
+      id: Value(id),
+      cardId: Value(cardId),
+      statementDate: Value(statementDate),
+      dueDate: dueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDate),
+      totalDue: totalDue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalDue),
+      minimumDue: minimumDue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(minimumDue),
+      smsId:
+          smsId == null && nullToAbsent ? const Value.absent() : Value(smsId),
+      smsBody: smsBody == null && nullToAbsent
+          ? const Value.absent()
+          : Value(smsBody),
+    );
+  }
+
+  factory CardStatementRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CardStatementRow(
+      id: serializer.fromJson<int>(json['id']),
+      cardId: serializer.fromJson<int>(json['cardId']),
+      statementDate: serializer.fromJson<DateTime>(json['statementDate']),
+      dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
+      totalDue: serializer.fromJson<double?>(json['totalDue']),
+      minimumDue: serializer.fromJson<double?>(json['minimumDue']),
+      smsId: serializer.fromJson<String?>(json['smsId']),
+      smsBody: serializer.fromJson<String?>(json['smsBody']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'cardId': serializer.toJson<int>(cardId),
+      'statementDate': serializer.toJson<DateTime>(statementDate),
+      'dueDate': serializer.toJson<DateTime?>(dueDate),
+      'totalDue': serializer.toJson<double?>(totalDue),
+      'minimumDue': serializer.toJson<double?>(minimumDue),
+      'smsId': serializer.toJson<String?>(smsId),
+      'smsBody': serializer.toJson<String?>(smsBody),
+    };
+  }
+
+  CardStatementRow copyWith(
+          {int? id,
+          int? cardId,
+          DateTime? statementDate,
+          Value<DateTime?> dueDate = const Value.absent(),
+          Value<double?> totalDue = const Value.absent(),
+          Value<double?> minimumDue = const Value.absent(),
+          Value<String?> smsId = const Value.absent(),
+          Value<String?> smsBody = const Value.absent()}) =>
+      CardStatementRow(
+        id: id ?? this.id,
+        cardId: cardId ?? this.cardId,
+        statementDate: statementDate ?? this.statementDate,
+        dueDate: dueDate.present ? dueDate.value : this.dueDate,
+        totalDue: totalDue.present ? totalDue.value : this.totalDue,
+        minimumDue: minimumDue.present ? minimumDue.value : this.minimumDue,
+        smsId: smsId.present ? smsId.value : this.smsId,
+        smsBody: smsBody.present ? smsBody.value : this.smsBody,
+      );
+  CardStatementRow copyWithCompanion(CardStatementsCompanion data) {
+    return CardStatementRow(
+      id: data.id.present ? data.id.value : this.id,
+      cardId: data.cardId.present ? data.cardId.value : this.cardId,
+      statementDate: data.statementDate.present
+          ? data.statementDate.value
+          : this.statementDate,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      totalDue: data.totalDue.present ? data.totalDue.value : this.totalDue,
+      minimumDue:
+          data.minimumDue.present ? data.minimumDue.value : this.minimumDue,
+      smsId: data.smsId.present ? data.smsId.value : this.smsId,
+      smsBody: data.smsBody.present ? data.smsBody.value : this.smsBody,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CardStatementRow(')
+          ..write('id: $id, ')
+          ..write('cardId: $cardId, ')
+          ..write('statementDate: $statementDate, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('totalDue: $totalDue, ')
+          ..write('minimumDue: $minimumDue, ')
+          ..write('smsId: $smsId, ')
+          ..write('smsBody: $smsBody')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, cardId, statementDate, dueDate, totalDue, minimumDue, smsId, smsBody);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CardStatementRow &&
+          other.id == this.id &&
+          other.cardId == this.cardId &&
+          other.statementDate == this.statementDate &&
+          other.dueDate == this.dueDate &&
+          other.totalDue == this.totalDue &&
+          other.minimumDue == this.minimumDue &&
+          other.smsId == this.smsId &&
+          other.smsBody == this.smsBody);
+}
+
+class CardStatementsCompanion extends UpdateCompanion<CardStatementRow> {
+  final Value<int> id;
+  final Value<int> cardId;
+  final Value<DateTime> statementDate;
+  final Value<DateTime?> dueDate;
+  final Value<double?> totalDue;
+  final Value<double?> minimumDue;
+  final Value<String?> smsId;
+  final Value<String?> smsBody;
+  const CardStatementsCompanion({
+    this.id = const Value.absent(),
+    this.cardId = const Value.absent(),
+    this.statementDate = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.totalDue = const Value.absent(),
+    this.minimumDue = const Value.absent(),
+    this.smsId = const Value.absent(),
+    this.smsBody = const Value.absent(),
+  });
+  CardStatementsCompanion.insert({
+    this.id = const Value.absent(),
+    required int cardId,
+    required DateTime statementDate,
+    this.dueDate = const Value.absent(),
+    this.totalDue = const Value.absent(),
+    this.minimumDue = const Value.absent(),
+    this.smsId = const Value.absent(),
+    this.smsBody = const Value.absent(),
+  })  : cardId = Value(cardId),
+        statementDate = Value(statementDate);
+  static Insertable<CardStatementRow> custom({
+    Expression<int>? id,
+    Expression<int>? cardId,
+    Expression<DateTime>? statementDate,
+    Expression<DateTime>? dueDate,
+    Expression<double>? totalDue,
+    Expression<double>? minimumDue,
+    Expression<String>? smsId,
+    Expression<String>? smsBody,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (cardId != null) 'card_id': cardId,
+      if (statementDate != null) 'statement_date': statementDate,
+      if (dueDate != null) 'due_date': dueDate,
+      if (totalDue != null) 'total_due': totalDue,
+      if (minimumDue != null) 'minimum_due': minimumDue,
+      if (smsId != null) 'sms_id': smsId,
+      if (smsBody != null) 'sms_body': smsBody,
+    });
+  }
+
+  CardStatementsCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? cardId,
+      Value<DateTime>? statementDate,
+      Value<DateTime?>? dueDate,
+      Value<double?>? totalDue,
+      Value<double?>? minimumDue,
+      Value<String?>? smsId,
+      Value<String?>? smsBody}) {
+    return CardStatementsCompanion(
+      id: id ?? this.id,
+      cardId: cardId ?? this.cardId,
+      statementDate: statementDate ?? this.statementDate,
+      dueDate: dueDate ?? this.dueDate,
+      totalDue: totalDue ?? this.totalDue,
+      minimumDue: minimumDue ?? this.minimumDue,
+      smsId: smsId ?? this.smsId,
+      smsBody: smsBody ?? this.smsBody,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (cardId.present) {
+      map['card_id'] = Variable<int>(cardId.value);
+    }
+    if (statementDate.present) {
+      map['statement_date'] = Variable<DateTime>(statementDate.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<DateTime>(dueDate.value);
+    }
+    if (totalDue.present) {
+      map['total_due'] = Variable<double>(totalDue.value);
+    }
+    if (minimumDue.present) {
+      map['minimum_due'] = Variable<double>(minimumDue.value);
+    }
+    if (smsId.present) {
+      map['sms_id'] = Variable<String>(smsId.value);
+    }
+    if (smsBody.present) {
+      map['sms_body'] = Variable<String>(smsBody.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CardStatementsCompanion(')
+          ..write('id: $id, ')
+          ..write('cardId: $cardId, ')
+          ..write('statementDate: $statementDate, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('totalDue: $totalDue, ')
+          ..write('minimumDue: $minimumDue, ')
+          ..write('smsId: $smsId, ')
+          ..write('smsBody: $smsBody')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $CardsTable cards = $CardsTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $DetectedCardsTable detectedCards = $DetectedCardsTable(this);
+  late final $CardStatementsTable cardStatements = $CardStatementsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [cards, transactions, detectedCards];
+      [cards, transactions, detectedCards, cardStatements];
 }
 
 typedef $$CardsTableCreateCompanionBuilder = CardsCompanion Function({
@@ -1385,6 +1820,20 @@ final class $$CardsTableReferences
         .filter((f) => f.cardId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$CardStatementsTable, List<CardStatementRow>>
+      _cardStatementsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.cardStatements,
+              aliasName: 'cards__id__card_statements__card_id');
+
+  $$CardStatementsTableProcessedTableManager get cardStatementsRefs {
+    final manager = $$CardStatementsTableTableManager($_db, $_db.cardStatements)
+        .filter((f) => f.cardId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_cardStatementsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -1426,6 +1875,27 @@ class $$CardsTableFilterComposer extends Composer<_$AppDatabase, $CardsTable> {
             $$TransactionsTableFilterComposer(
               $db: $db,
               $table: $db.transactions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> cardStatementsRefs(
+      Expression<bool> Function($$CardStatementsTableFilterComposer f) f) {
+    final $$CardStatementsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.cardStatements,
+        getReferencedColumn: (t) => t.cardId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CardStatementsTableFilterComposer(
+              $db: $db,
+              $table: $db.cardStatements,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -1504,6 +1974,27 @@ class $$CardsTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> cardStatementsRefs<T extends Object>(
+      Expression<T> Function($$CardStatementsTableAnnotationComposer a) f) {
+    final $$CardStatementsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.cardStatements,
+        getReferencedColumn: (t) => t.cardId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CardStatementsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.cardStatements,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$CardsTableTableManager extends RootTableManager<
@@ -1517,7 +2008,7 @@ class $$CardsTableTableManager extends RootTableManager<
     $$CardsTableUpdateCompanionBuilder,
     (CardRow, $$CardsTableReferences),
     CardRow,
-    PrefetchHooks Function({bool transactionsRefs})> {
+    PrefetchHooks Function({bool transactionsRefs, bool cardStatementsRefs})> {
   $$CardsTableTableManager(_$AppDatabase db, $CardsTable table)
       : super(TableManagerState(
           db: db,
@@ -1560,10 +2051,14 @@ class $$CardsTableTableManager extends RootTableManager<
               .map((e) =>
                   (e.readTable(table), $$CardsTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: ({transactionsRefs = false}) {
+          prefetchHooksCallback: (
+              {transactionsRefs = false, cardStatementsRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [if (transactionsRefs) db.transactions],
+              explicitlyWatchedTables: [
+                if (transactionsRefs) db.transactions,
+                if (cardStatementsRefs) db.cardStatements
+              ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
@@ -1576,6 +2071,19 @@ class $$CardsTableTableManager extends RootTableManager<
                         managerFromTypedResult: (p0) =>
                             $$CardsTableReferences(db, table, p0)
                                 .transactionsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.cardId == item.id),
+                        typedResults: items),
+                  if (cardStatementsRefs)
+                    await $_getPrefetchedData<CardRow, $CardsTable,
+                            CardStatementRow>(
+                        currentTable: table,
+                        referencedTable:
+                            $$CardsTableReferences._cardStatementsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$CardsTableReferences(db, table, p0)
+                                .cardStatementsRefs,
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.cardId == item.id),
@@ -1598,7 +2106,7 @@ typedef $$CardsTableProcessedTableManager = ProcessedTableManager<
     $$CardsTableUpdateCompanionBuilder,
     (CardRow, $$CardsTableReferences),
     CardRow,
-    PrefetchHooks Function({bool transactionsRefs})>;
+    PrefetchHooks Function({bool transactionsRefs, bool cardStatementsRefs})>;
 typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
     Function({
   Value<int> id,
@@ -2191,6 +2699,322 @@ typedef $$DetectedCardsTableProcessedTableManager = ProcessedTableManager<
     ),
     DetectedCardRow,
     PrefetchHooks Function()>;
+typedef $$CardStatementsTableCreateCompanionBuilder = CardStatementsCompanion
+    Function({
+  Value<int> id,
+  required int cardId,
+  required DateTime statementDate,
+  Value<DateTime?> dueDate,
+  Value<double?> totalDue,
+  Value<double?> minimumDue,
+  Value<String?> smsId,
+  Value<String?> smsBody,
+});
+typedef $$CardStatementsTableUpdateCompanionBuilder = CardStatementsCompanion
+    Function({
+  Value<int> id,
+  Value<int> cardId,
+  Value<DateTime> statementDate,
+  Value<DateTime?> dueDate,
+  Value<double?> totalDue,
+  Value<double?> minimumDue,
+  Value<String?> smsId,
+  Value<String?> smsBody,
+});
+
+final class $$CardStatementsTableReferences extends BaseReferences<
+    _$AppDatabase, $CardStatementsTable, CardStatementRow> {
+  $$CardStatementsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $CardsTable _cardIdTable(_$AppDatabase db) =>
+      db.cards.createAlias('card_statements__card_id__cards__id');
+
+  $$CardsTableProcessedTableManager get cardId {
+    final $_column = $_itemColumn<int>('card_id')!;
+
+    final manager = $$CardsTableTableManager($_db, $_db.cards)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_cardIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$CardStatementsTableFilterComposer
+    extends Composer<_$AppDatabase, $CardStatementsTable> {
+  $$CardStatementsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get statementDate => $composableBuilder(
+      column: $table.statementDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get dueDate => $composableBuilder(
+      column: $table.dueDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get totalDue => $composableBuilder(
+      column: $table.totalDue, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get minimumDue => $composableBuilder(
+      column: $table.minimumDue, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get smsId => $composableBuilder(
+      column: $table.smsId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get smsBody => $composableBuilder(
+      column: $table.smsBody, builder: (column) => ColumnFilters(column));
+
+  $$CardsTableFilterComposer get cardId {
+    final $$CardsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.cardId,
+        referencedTable: $db.cards,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CardsTableFilterComposer(
+              $db: $db,
+              $table: $db.cards,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$CardStatementsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CardStatementsTable> {
+  $$CardStatementsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get statementDate => $composableBuilder(
+      column: $table.statementDate,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get dueDate => $composableBuilder(
+      column: $table.dueDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get totalDue => $composableBuilder(
+      column: $table.totalDue, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get minimumDue => $composableBuilder(
+      column: $table.minimumDue, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get smsId => $composableBuilder(
+      column: $table.smsId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get smsBody => $composableBuilder(
+      column: $table.smsBody, builder: (column) => ColumnOrderings(column));
+
+  $$CardsTableOrderingComposer get cardId {
+    final $$CardsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.cardId,
+        referencedTable: $db.cards,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CardsTableOrderingComposer(
+              $db: $db,
+              $table: $db.cards,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$CardStatementsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CardStatementsTable> {
+  $$CardStatementsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get statementDate => $composableBuilder(
+      column: $table.statementDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<double> get totalDue =>
+      $composableBuilder(column: $table.totalDue, builder: (column) => column);
+
+  GeneratedColumn<double> get minimumDue => $composableBuilder(
+      column: $table.minimumDue, builder: (column) => column);
+
+  GeneratedColumn<String> get smsId =>
+      $composableBuilder(column: $table.smsId, builder: (column) => column);
+
+  GeneratedColumn<String> get smsBody =>
+      $composableBuilder(column: $table.smsBody, builder: (column) => column);
+
+  $$CardsTableAnnotationComposer get cardId {
+    final $$CardsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.cardId,
+        referencedTable: $db.cards,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CardsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.cards,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$CardStatementsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CardStatementsTable,
+    CardStatementRow,
+    $$CardStatementsTableFilterComposer,
+    $$CardStatementsTableOrderingComposer,
+    $$CardStatementsTableAnnotationComposer,
+    $$CardStatementsTableCreateCompanionBuilder,
+    $$CardStatementsTableUpdateCompanionBuilder,
+    (CardStatementRow, $$CardStatementsTableReferences),
+    CardStatementRow,
+    PrefetchHooks Function({bool cardId})> {
+  $$CardStatementsTableTableManager(
+      _$AppDatabase db, $CardStatementsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CardStatementsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CardStatementsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CardStatementsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> cardId = const Value.absent(),
+            Value<DateTime> statementDate = const Value.absent(),
+            Value<DateTime?> dueDate = const Value.absent(),
+            Value<double?> totalDue = const Value.absent(),
+            Value<double?> minimumDue = const Value.absent(),
+            Value<String?> smsId = const Value.absent(),
+            Value<String?> smsBody = const Value.absent(),
+          }) =>
+              CardStatementsCompanion(
+            id: id,
+            cardId: cardId,
+            statementDate: statementDate,
+            dueDate: dueDate,
+            totalDue: totalDue,
+            minimumDue: minimumDue,
+            smsId: smsId,
+            smsBody: smsBody,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int cardId,
+            required DateTime statementDate,
+            Value<DateTime?> dueDate = const Value.absent(),
+            Value<double?> totalDue = const Value.absent(),
+            Value<double?> minimumDue = const Value.absent(),
+            Value<String?> smsId = const Value.absent(),
+            Value<String?> smsBody = const Value.absent(),
+          }) =>
+              CardStatementsCompanion.insert(
+            id: id,
+            cardId: cardId,
+            statementDate: statementDate,
+            dueDate: dueDate,
+            totalDue: totalDue,
+            minimumDue: minimumDue,
+            smsId: smsId,
+            smsBody: smsBody,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$CardStatementsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({cardId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (cardId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.cardId,
+                    referencedTable:
+                        $$CardStatementsTableReferences._cardIdTable(db),
+                    referencedColumn:
+                        $$CardStatementsTableReferences._cardIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$CardStatementsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CardStatementsTable,
+    CardStatementRow,
+    $$CardStatementsTableFilterComposer,
+    $$CardStatementsTableOrderingComposer,
+    $$CardStatementsTableAnnotationComposer,
+    $$CardStatementsTableCreateCompanionBuilder,
+    $$CardStatementsTableUpdateCompanionBuilder,
+    (CardStatementRow, $$CardStatementsTableReferences),
+    CardStatementRow,
+    PrefetchHooks Function({bool cardId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2201,4 +3025,6 @@ class $AppDatabaseManager {
       $$TransactionsTableTableManager(_db, _db.transactions);
   $$DetectedCardsTableTableManager get detectedCards =>
       $$DetectedCardsTableTableManager(_db, _db.detectedCards);
+  $$CardStatementsTableTableManager get cardStatements =>
+      $$CardStatementsTableTableManager(_db, _db.cardStatements);
 }

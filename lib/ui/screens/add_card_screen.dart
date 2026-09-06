@@ -5,6 +5,7 @@ import 'package:fynans/adapters/blocs/add_card/add_card_cubit.dart';
 import 'package:fynans/adapters/blocs/add_card/add_card_state.dart';
 import 'package:fynans/entities/detected_card.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
@@ -33,6 +34,7 @@ class AddCardScreen extends StatelessWidget {
         context.read<CardRepository>(),
         context.read<TransactionRepository>(),
         context.read<DetectedCardRepository>(),
+        context.read<CardStatementRepository>(),
       ),
       child: _AddCardForm(fromDetection: fromDetection),
     );

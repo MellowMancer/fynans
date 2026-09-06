@@ -4,11 +4,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/entities/theme_preference.dart';
 import 'package:fynans/ui/main_screen.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/settings_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/blocs/theme/theme_cubit.dart';
 import 'package:fynans/adapters/data/drift_card_repository.dart';
+import 'package:fynans/adapters/data/drift_card_statement_repository.dart';
 import 'package:fynans/adapters/data/drift_detected_card_repository.dart';
 import 'package:fynans/adapters/data/drift_transaction_repository.dart';
 import 'package:fynans/adapters/data/encrypted_database.dart';
@@ -29,6 +31,8 @@ Future<void> main() async {
   final CardRepository cardRepository = DriftCardRepository(database);
   final DetectedCardRepository detectedCardRepository =
       DriftDetectedCardRepository(database);
+  final CardStatementRepository statementRepository =
+      DriftCardStatementRepository(database);
   final settings = SharedPrefsSettingsRepository();
   // Read before the first frame, or the app paints once in the wrong theme.
   final themePreference = await settings.readThemePreference();
@@ -37,6 +41,7 @@ Future<void> main() async {
     repository: repository,
     cardRepository: cardRepository,
     detectedCardRepository: detectedCardRepository,
+    statementRepository: statementRepository,
     settings: settings,
     themePreference: themePreference,
   ));
@@ -46,7 +51,12 @@ Future<void> main() async {
   // the inbox for new bank-transaction SMS. Both are self-healing — safe to
   // run on every launch, since a clean database makes each a no-op.
   purgePhantomCardStatementTransactions(repository).then((_) {
-    SmsIntakeService.catchUp(repository, cardRepository, detectedCardRepository);
+    SmsIntakeService.catchUp(
+      repository,
+      cardRepository,
+      detectedCardRepository,
+      statementRepository,
+    );
   });
 }
 
@@ -56,6 +66,7 @@ class MyApp extends StatelessWidget {
     required this.repository,
     required this.cardRepository,
     required this.detectedCardRepository,
+    required this.statementRepository,
     required this.settings,
     this.themePreference = ThemePreference.system,
   });
@@ -63,6 +74,7 @@ class MyApp extends StatelessWidget {
   final TransactionRepository repository;
   final CardRepository cardRepository;
   final DetectedCardRepository detectedCardRepository;
+  final CardStatementRepository statementRepository;
   final SettingsRepository settings;
   final ThemePreference themePreference;
 
@@ -76,6 +88,8 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<CardRepository>.value(value: cardRepository),
         RepositoryProvider<DetectedCardRepository>.value(
             value: detectedCardRepository),
+        RepositoryProvider<CardStatementRepository>.value(
+            value: statementRepository),
         RepositoryProvider<SettingsRepository>.value(value: settings),
       ],
       // Above MaterialApp, so selecting a theme rebuilds the app itself.

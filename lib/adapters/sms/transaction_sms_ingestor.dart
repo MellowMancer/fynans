@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/credit_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
@@ -9,12 +11,14 @@ import 'package:fynans/adapters/sms/sms_parser_service.dart';
 import 'package:fynans/use_cases/guess_card_issuer.dart';
 import 'package:fynans/use_cases/match_transaction_to_card.dart';
 
-/// Turns a bank-transaction SMS into a saved [Transaction].
+/// Turns a bank-transaction SMS into a saved [Transaction], or a card
+/// statement SMS into a saved [CardStatement] — never both for the same SMS.
 class TransactionSmsIngestor {
   final SmsParserService _parser;
   final TransactionRepository _repository;
   final CardRepository _cardRepository;
   final DetectedCardRepository _detectedCardRepository;
+  final CardStatementRepository _statementRepository;
 
   /// Fetched once and reused for this instance's lifetime, not per [ingest]
   /// call — `SmsIntakeService.catchUp` creates one ingestor and calls
@@ -25,20 +29,53 @@ class TransactionSmsIngestor {
     required TransactionRepository repository,
     required CardRepository cardRepository,
     required DetectedCardRepository detectedCardRepository,
+    required CardStatementRepository statementRepository,
   })  : _parser = SmsParserService(),
         _repository = repository,
         _cardRepository = cardRepository,
-        _detectedCardRepository = detectedCardRepository;
+        _detectedCardRepository = detectedCardRepository,
+        _statementRepository = statementRepository;
 
   Future<List<CreditCard>> _cards() =>
       _cardsFuture ??= _cardRepository.fetchCards();
 
-  /// Returns true if a new transaction was saved.
+  /// Returns true if a new transaction was saved. A recognized statement SMS
+  /// returns false too — it saves a [CardStatement], never a [Transaction] —
+  /// so callers counting "transactions imported" (`SmsIntakeService.catchUp`)
+  /// don't have to distinguish the two.
   Future<bool> ingest({
     required String sender,
     required String body,
     required DateTime date,
   }) async {
+    final statement = _parser.parseCardStatement(
+      sender: sender,
+      body: body,
+      date: date,
+    );
+    if (statement != null) {
+      final card = matchCard(
+        await _cards(),
+        last4: statement.cardLast4,
+        sender: sender,
+      );
+      if (card?.id != null) {
+        final smsId = smsIdFor(sender: sender, body: body, date: date);
+        await _statementRepository.importStatement(CardStatement()
+          ..cardId = card!.id!
+          ..statementDate = statement.statementDate
+          ..dueDate = statement.dueDate
+          ..totalDue = statement.totalDue
+          ..minimumDue = statement.minimumDue
+          ..smsId = smsId
+          ..smsBody = body);
+      }
+      // Unmatched → drop, same as an unmatched card transaction, minus the
+      // detected-card sighting: a statement alone (no spend yet) is a
+      // thinner signal that the card is actually the user's.
+      return false;
+    }
+
     final details = _parser.parseTransactionDetails(
       sender: sender,
       body: body,
