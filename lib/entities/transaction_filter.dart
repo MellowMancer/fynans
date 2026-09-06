@@ -14,6 +14,18 @@ enum DirectionFilter {
   bool get isAny => this == DirectionFilter.any;
 }
 
+/// Which card scope to keep. Card spends live under their card, not in the
+/// main list — [excludeCards] is the default everywhere except the cards
+/// screens themselves. [onlyCards] is headroom for a future all-cards view;
+/// nothing in phase 1 sets it.
+enum CardScope {
+  excludeCards,
+  onlyCards,
+  any;
+
+  bool get isDefault => this == CardScope.excludeCards;
+}
+
 /// Immutable value object encapsulating all predicate logic for filtering a
 /// [Transaction].
 @immutable
@@ -30,6 +42,10 @@ class TransactionFilter {
   final double? minAmount;
   final double? maxAmount;
 
+  /// Whether card transactions are excluded, kept exclusively, or included
+  /// alongside everything else.
+  final CardScope cardScope;
+
   const TransactionFilter({
     this.groups = const {},
     this.tags = const {},
@@ -37,6 +53,7 @@ class TransactionFilter {
     this.direction = DirectionFilter.any,
     this.minAmount,
     this.maxAmount,
+    this.cardScope = CardScope.excludeCards,
   });
 
   const TransactionFilter.empty() : this();
@@ -47,7 +64,8 @@ class TransactionFilter {
       parties.isEmpty &&
       direction.isAny &&
       minAmount == null &&
-      maxAmount == null;
+      maxAmount == null &&
+      cardScope.isDefault;
 
   /// How many criteria are active — drives the badge on the filter button.
   int get activeCount =>
@@ -55,7 +73,8 @@ class TransactionFilter {
       tags.length +
       parties.length +
       (direction.isAny ? 0 : 1) +
-      (minAmount != null || maxAmount != null ? 1 : 0);
+      (minAmount != null || maxAmount != null ? 1 : 0) +
+      (cardScope.isDefault ? 0 : 1);
 
   /// Single source of truth: does [t] satisfy every active criterion?
   bool matches(Transaction t) {
@@ -68,6 +87,14 @@ class TransactionFilter {
       case DirectionFilter.outflow:
         if (t.isCredit) return false;
       case DirectionFilter.any:
+        break;
+    }
+    switch (cardScope) {
+      case CardScope.excludeCards:
+        if (t.isCardTransaction) return false;
+      case CardScope.onlyCards:
+        if (!t.isCardTransaction) return false;
+      case CardScope.any:
         break;
     }
     if (minAmount != null && t.amount < minAmount!) return false;
@@ -83,16 +110,16 @@ class TransactionFilter {
     DirectionFilter? direction,
     Object? minAmount = _sentinel,
     Object? maxAmount = _sentinel,
+    CardScope? cardScope,
   }) {
     return TransactionFilter(
       groups: groups ?? this.groups,
       tags: tags ?? this.tags,
       parties: parties ?? this.parties,
       direction: direction ?? this.direction,
-      minAmount:
-          minAmount == _sentinel ? this.minAmount : minAmount as double?,
-      maxAmount:
-          maxAmount == _sentinel ? this.maxAmount : maxAmount as double?,
+      minAmount: minAmount == _sentinel ? this.minAmount : minAmount as double?,
+      maxAmount: maxAmount == _sentinel ? this.maxAmount : maxAmount as double?,
+      cardScope: cardScope ?? this.cardScope,
     );
   }
 
@@ -108,8 +135,7 @@ class TransactionFilter {
       a.length == b.length && a.containsAll(b);
 
   /// Order-independent hash for a set of values.
-  static int _setHash(Set<String> values) =>
-      Object.hashAllUnordered(values);
+  static int _setHash(Set<String> values) => Object.hashAllUnordered(values);
 
   @override
   bool operator ==(Object other) =>
@@ -119,7 +145,8 @@ class TransactionFilter {
       _sameSet(other.parties, parties) &&
       other.direction == direction &&
       other.minAmount == minAmount &&
-      other.maxAmount == maxAmount;
+      other.maxAmount == maxAmount &&
+      other.cardScope == cardScope;
 
   @override
   int get hashCode => Object.hash(
@@ -129,6 +156,7 @@ class TransactionFilter {
         direction,
         minAmount,
         maxAmount,
+        cardScope,
       );
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/ui/widgets/app_drawer.dart';
 import 'package:fynans/ui/screens/analytics_screen.dart';
+import 'package:fynans/ui/screens/cards_screen.dart';
 import 'package:fynans/ui/screens/test_sms_screen.dart';
 import 'package:fynans/ui/screens/transactions_list_screen.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_cubit.dart';
@@ -61,6 +62,13 @@ class _MainScreenState extends State<MainScreen> {
       activeIcon: Icons.sms,
       label: 'SMS (DEV)',
     ),
+    _Destination(
+      eyebrow: 'Plastic',
+      title: 'Cards',
+      icon: Icons.credit_card_outlined,
+      activeIcon: Icons.credit_card,
+      label: 'CARDS',
+    ),
   ];
 
   late final List<Widget> _pages;
@@ -85,6 +93,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       const AnalyticsScreen(),
       const TestSmsScreen(),
+      const CardsScreen(),
     ];
   }
 

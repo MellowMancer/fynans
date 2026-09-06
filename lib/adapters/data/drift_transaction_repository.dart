@@ -17,7 +17,8 @@ class DriftTransactionRepository implements TransactionRepository {
 
   @override
   Future<void> saveTransaction(Transaction transaction) async {
-    transaction.id = await _db.into(_db.transactions).insert(_toRow(transaction));
+    transaction.id =
+        await _db.into(_db.transactions).insert(_toRow(transaction));
   }
 
   @override
@@ -72,29 +73,64 @@ class DriftTransactionRepository implements TransactionRepository {
   /// Applies the filter in Dart deliberately: `TransactionFilter.matches` is
   /// the single definition of the case- and trim-insensitive semantics, and a
   /// SQL translation would be a second one, free to drift from it.
-  List<Transaction> _apply(List<TransactionRow> rows, TransactionFilter? filter) =>
+  List<Transaction> _apply(
+          List<TransactionRow> rows, TransactionFilter? filter) =>
       rows
           .map(_toEntity)
           .where((t) => filter == null || filter.matches(t))
           .toList();
 
   @override
-  Future<List<String>> getAllGroups() async =>
-      _distinct((row) => row.groups);
+  Stream<List<Transaction>> listenToTransactionsForCard(int cardId) =>
+      (_db.select(_db.transactions)
+            ..where((t) => t.cardId.equals(cardId))
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.date),
+              (t) => OrderingTerm.desc(t.id),
+            ]))
+          .watch()
+          .map((rows) => rows.map(_toEntity).toList());
 
   @override
-  Future<List<String>> getAllUniqueTags() async =>
-      _distinct((row) => row.tags);
+  Future<void> unlinkCard(int cardId) async {
+    await (_db.update(_db.transactions)..where((t) => t.cardId.equals(cardId)))
+        .write(const TransactionsCompanion(cardId: Value(null)));
+  }
 
   @override
-  Future<List<String>> getAllParties() async =>
-      _distinct((row) => [row.party]);
+  Future<bool> relinkTransactionToCard({
+    required String smsId,
+    required int cardId,
+    double? cardAvailableLimit,
+  }) async {
+    final updated = await (_db.update(_db.transactions)
+          ..where((t) => t.smsId.equals(smsId) & t.cardId.isNull()))
+        .write(TransactionsCompanion(
+      cardId: Value(cardId),
+      cardAvailableLimit: Value(cardAvailableLimit),
+    ));
+    return updated > 0;
+  }
+
+  @override
+  Future<List<String>> getAllGroups() async => _distinct((row) => row.groups);
+
+  @override
+  Future<List<String>> getAllUniqueTags() async => _distinct((row) => row.tags);
+
+  @override
+  Future<List<String>> getAllParties() async => _distinct((row) => [row.party]);
 
   /// Trim-drop-empty-dedupe over one field, shared by the three above.
+  ///
+  /// Excludes card transactions: their issuer/merchant strings aren't
+  /// relevant autocomplete suggestions for the regular add-transaction form.
   Future<List<String>> _distinct(
     Iterable<String> Function(TransactionRow) select,
   ) async {
-    final rows = await _db.select(_db.transactions).get();
+    final rows = await (_db.select(_db.transactions)
+          ..where((t) => t.cardId.isNull()))
+        .get();
     return rows
         .expand(select)
         .map((value) => value.trim())
@@ -113,6 +149,8 @@ class DriftTransactionRepository implements TransactionRepository {
         smsBody: Value(t.smsBody),
         tags: t.tags,
         groups: t.group,
+        cardId: Value(t.cardId),
+        cardAvailableLimit: Value(t.cardAvailableLimit),
       );
 
   Transaction _toEntity(TransactionRow row) => Transaction()
@@ -125,5 +163,7 @@ class DriftTransactionRepository implements TransactionRepository {
     ..smsId = row.smsId
     ..smsBody = row.smsBody
     ..tags = List<String>.from(row.tags)
-    ..group = List<String>.from(row.groups);
+    ..group = List<String>.from(row.groups)
+    ..cardId = row.cardId
+    ..cardAvailableLimit = row.cardAvailableLimit;
 }
