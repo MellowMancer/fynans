@@ -15,6 +15,7 @@ import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/widgets/card_tile.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/ui/widgets/month_year_wheel_picker.dart';
+import 'package:fynans/ui/widgets/payment_due_banner.dart';
 import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/ui/widgets/transaction_list_widgets.dart';
 import 'package:fynans/use_cases/summarise_transactions.dart';
@@ -204,6 +205,10 @@ class _CardDetailBody extends StatelessWidget {
       padding: AppSpacing.pageInsets,
       children: [
         CardTile(summary: entry.summary),
+        if (entry.latestStatement != null) ...[
+          AppSpacing.gapMd,
+          PaymentDueBanner(statement: entry.latestStatement),
+        ],
         AppSpacing.gapXl,
         StatementPeriodRow(month: selectedMonth, onSelectMonth: onSelectMonth),
         AppSpacing.gapMd,

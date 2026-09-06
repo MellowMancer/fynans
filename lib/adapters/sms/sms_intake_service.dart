@@ -2,6 +2,7 @@ import 'package:fynans/adapters/sms/inbox_sms.dart';
 import 'package:fynans/adapters/sms/read_sms_service.dart';
 import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 
@@ -21,13 +22,15 @@ class SmsIntakeService {
   static Future<int> catchUp(
     TransactionRepository repository,
     CardRepository cardRepository,
-    DetectedCardRepository detectedCardRepository, {
+    DetectedCardRepository detectedCardRepository,
+    CardStatementRepository statementRepository, {
     void Function(int scanned, int total)? onProgress,
   }) async {
     final ingestor = TransactionSmsIngestor(
       repository: repository,
       cardRepository: cardRepository,
       detectedCardRepository: detectedCardRepository,
+      statementRepository: statementRepository,
     );
     final List<InboxSms> messages = await ReadSmsService().getAllSms();
     var imported = 0;

@@ -5,6 +5,7 @@ import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
 
 import '../fakes/fake_card_repository.dart';
+import '../fakes/fake_card_statement_repository.dart';
 import '../fakes/fake_detected_card_repository.dart';
 import '../fakes/fake_transaction_repository.dart';
 
@@ -23,16 +24,19 @@ void main() {
   late FakeTransactionRepository repository;
   late FakeCardRepository cardRepository;
   late FakeDetectedCardRepository detectedCardRepository;
+  late FakeCardStatementRepository statementRepository;
   late TransactionSmsIngestor ingestor;
 
   setUp(() {
     repository = FakeTransactionRepository();
     cardRepository = FakeCardRepository();
     detectedCardRepository = FakeDetectedCardRepository();
+    statementRepository = FakeCardStatementRepository();
     ingestor = TransactionSmsIngestor(
       repository: repository,
       cardRepository: cardRepository,
       detectedCardRepository: detectedCardRepository,
+      statementRepository: statementRepository,
     );
   });
 
@@ -87,6 +91,7 @@ void main() {
         repository: repository,
         cardRepository: cardRepository,
         detectedCardRepository: detectedCardRepository,
+        statementRepository: statementRepository,
       );
 
       final saved = await ingestor.ingest(
@@ -178,6 +183,7 @@ void main() {
         repository: repository,
         cardRepository: cardRepository,
         detectedCardRepository: detectedCardRepository,
+        statementRepository: statementRepository,
       );
 
       await ingestor.ingest(sender: cardSender, body: spendBody, date: cardDate);
@@ -228,6 +234,7 @@ void main() {
         repository: repository,
         cardRepository: cardRepository,
         detectedCardRepository: detectedCardRepository,
+        statementRepository: statementRepository,
       );
       final relinked = await ingestor.ingest(
           sender: cardSender, body: spendBody, date: cardDate);

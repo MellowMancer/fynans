@@ -5,6 +5,7 @@ import 'package:fynans/entities/credit_card.dart';
 import 'package:fynans/entities/detected_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/screens/add_card_screen.dart';
@@ -13,6 +14,7 @@ import 'package:fynans/ui/screens/cards_screen.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
 
 import '../fakes/fake_card_repository.dart';
+import '../fakes/fake_card_statement_repository.dart';
 import '../fakes/fake_detected_card_repository.dart';
 import '../fakes/fake_transaction_repository.dart';
 
@@ -20,17 +22,20 @@ void main() {
   late FakeTransactionRepository transactionRepository;
   late FakeCardRepository cardRepository;
   late FakeDetectedCardRepository detectedCardRepository;
+  late FakeCardStatementRepository statementRepository;
 
   setUp(() {
     transactionRepository = FakeTransactionRepository();
     cardRepository = FakeCardRepository();
     detectedCardRepository = FakeDetectedCardRepository();
+    statementRepository = FakeCardStatementRepository();
   });
 
   tearDown(() async {
     await transactionRepository.dispose();
     await cardRepository.dispose();
     await detectedCardRepository.dispose();
+    await statementRepository.dispose();
   });
 
   Future<void> pumpScreen(WidgetTester tester) async {
@@ -46,6 +51,8 @@ void main() {
           RepositoryProvider<CardRepository>.value(value: cardRepository),
           RepositoryProvider<DetectedCardRepository>.value(
               value: detectedCardRepository),
+          RepositoryProvider<CardStatementRepository>.value(
+              value: statementRepository),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),

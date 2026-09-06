@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+import 'package:fynans/adapters/sms/parsed_card_statement.dart';
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
 
 class SmsParserService {
@@ -256,6 +258,22 @@ class SmsParserService {
     dotAll: true,
   );
 
+  // Statement-SMS-only regexes — never run against a plain spend/payment
+  // alert, only against text `looksLikeCardStatementText` already flagged.
+  static final _dueDateRegex = RegExp(
+    r'(?:due\s*(?:date)?|pay\s*by)\s*(?:is|:|on)?\s*'
+    r'(\d{1,2}[-/][A-Za-z]{3,9}[-/]?\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
+    caseSensitive: false,
+  );
+  static final _totalDueRegex = RegExp(
+    r'total\s*(?:amount)?\s*due\s*(?:is|:)?\s*(?:rs\.?|inr)\s*([\d,]+\.?\d*)',
+    caseSensitive: false,
+  );
+  static final _minimumDueRegex = RegExp(
+    r'min(?:imum)?\s*(?:amount)?\s*due\s*(?:is|:)?\s*(?:rs\.?|inr)\s*([\d,]+\.?\d*)',
+    caseSensitive: false,
+  );
+
   /// Rule 0: does this SMS describe a credit-card spend/payment rather than a
   /// savings-account transaction? Card SMS are classified, not rejected —
   /// `isTransactionSms` still returns true for them, but routes them through
@@ -276,6 +294,34 @@ class SmsParserService {
   bool looksLikeCardStatementText(String body) {
     final lowerCaseBody = body.toLowerCase();
     return _cardStatementKeywords.any((k) => lowerCaseBody.contains(k));
+  }
+
+  /// Extracts due-date/total/minimum from a statement SMS. Only meaningful
+  /// when [looksLikeCardStatementText] is true — unlike
+  /// [parseTransactionDetails], this is never gated behind
+  /// [isTransactionSms], since statement SMS are deliberately excluded from
+  /// ever becoming a `Transaction` (see `entities/card_statement.dart`).
+  ParsedCardStatementDetails? parseCardStatement({
+    required String sender,
+    required String body,
+    required DateTime date,
+  }) {
+    if (body.trim().isEmpty) return null;
+    if (!isCreditCardSms(sender, body) || !looksLikeCardStatementText(body)) {
+      return null;
+    }
+
+    final lowerCaseBody = body.toLowerCase();
+    final cardLast4 = _getCardLast4(lowerCaseBody);
+    if (cardLast4 == null) return null; // can't route without a card match
+
+    return ParsedCardStatementDetails(
+      statementDate: date,
+      cardLast4: cardLast4,
+      dueDate: _getDueDate(lowerCaseBody),
+      totalDue: _extractAmount(_totalDueRegex, lowerCaseBody),
+      minimumDue: _extractAmount(_minimumDueRegex, lowerCaseBody),
+    );
   }
 
   bool isTransactionSms(String sender, String messageBody) {
@@ -581,6 +627,52 @@ class SmsParserService {
     final amountString = match?.group(1);
     if (amountString == null) return null;
     return _cleanAmount(amountString);
+  }
+
+  double? _extractAmount(RegExp regex, String lowerCaseBody) {
+    final match = regex.firstMatch(lowerCaseBody);
+    final amountString = match?.group(1);
+    if (amountString == null) return null;
+    return _cleanAmount(amountString);
+  }
+
+  DateTime? _getDueDate(String lowerCaseBody) {
+    final match = _dueDateRegex.firstMatch(lowerCaseBody);
+    final raw = match?.group(1);
+    if (raw == null) return null;
+    return _parseFlexibleDate(raw);
+  }
+
+  /// Tries the handful of date shapes real due-date SMS actually use (see the
+  /// §9 corpus in CREDIT_CARD_PLAN.md — "15Jan26", "06-Sep-25", "13/02/26").
+  /// Returns null rather than guessing when none of these formats recognize
+  /// the matched text.
+  DateTime? _parseFlexibleDate(String raw) {
+    // DateFormat's month-name matching expects title case ("Jan"), but this
+    // runs against an already-lowercased body.
+    final titleCased = raw.replaceAllMapped(
+      RegExp('[a-zA-Z]+'),
+      (m) => m[0]!.substring(0, 1).toUpperCase() + m[0]!.substring(1),
+    );
+    const formats = [
+      'ddMMMyy',
+      'dd-MMM-yy',
+      'dd/MMM/yy',
+      'dd-MMM-yyyy',
+      'dd/MMM/yyyy',
+      'dd-MM-yy',
+      'dd/MM/yy',
+      'dd-MM-yyyy',
+      'dd/MM/yyyy',
+    ];
+    for (final pattern in formats) {
+      try {
+        return DateFormat(pattern, 'en_US').parseStrict(titleCased);
+      } on FormatException {
+        continue;
+      }
+    }
+    return null;
   }
 
   String? _getMerchant(String lowerCaseBody, TransactionType type) {

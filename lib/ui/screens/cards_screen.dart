@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/cards/cards_cubit.dart';
 import 'package:fynans/adapters/blocs/cards/cards_state.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/screens/add_card_screen.dart';
 import 'package:fynans/ui/screens/card_detail_screen.dart';
@@ -25,6 +26,7 @@ class CardsScreen extends StatelessWidget {
       create: (context) => CardsCubit(
         context.read<TransactionRepository>(),
         context.read<CardRepository>(),
+        context.read<CardStatementRepository>(),
       )..loadCards(),
       child: const _CardsView(),
     );
