@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:fynans/adapters/sms/inbox_sms.dart';
 import 'package:fynans/adapters/sms/read_sms_service.dart';
 import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
@@ -12,6 +14,11 @@ class SmsIntakeService {
   /// default to a concrete implementation, which is the kind of hidden
   /// construction that makes the storage layer hard to swap.
   static Future<int> catchUp(TransactionRepository repository) async {
+    // Guard the pipeline itself, not just its callers: only Android lets an
+    // app read the SMS inbox, and flutter_sms_inbox has no iOS
+    // implementation, so calling it there throws at runtime.
+    if (!Platform.isAndroid) return 0;
+
     final ingestor = TransactionSmsIngestor(repository: repository);
     final List<InboxSms> messages = await ReadSmsService().getAllSms();
     var imported = 0;
