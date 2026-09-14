@@ -4,8 +4,8 @@
 |---|---|
 | **Document** | iOS prototype: product scope, delivery milestones, and build guide |
 | **Version** | 2.0 (supersedes the Hive-era iOS plan) |
-| **Status** | Active. M0 in progress |
-| **Last updated** | 2026-09-12 |
+| **Status** | Active. M0, M1, M3 done; M2/M4/M5 paused by choice — resuming later |
+| **Last updated** | 2026-09-13 |
 | **Integration branch** | `ios_build` (cut from `main` @ `51eb16c`) |
 | **Target** | iOS Simulator (iOS 26.x runtime), deployment target iOS 13.0 |
 | **Estimated effort** | ~5 engineering days |
@@ -260,12 +260,12 @@ flutter run -d <simulator-id>
 
 | ID | Milestone | Outcome | Estimate | Depends on | Status |
 |---|---|---|---|---|---|
-| **M0** | Project Setup | Clean integration branch with this plan committed and published | 0.25 d | — | In progress |
-| **M1** | Development Environment | iOS toolchain ready; simulator available | 0.5 d | M0 | Not started |
-| **M2** | iOS Platform Bring-up | App builds and launches on the Simulator with encrypted storage | 1 d | M1 | Not started |
-| **M3** | Platform Adaptation | Manual-entry mode on iOS; SMS paths gated; tests added | 1 d | M0 | Not started |
-| **M4** | Quality Assurance | QA suite passes on iOS; Android regression verified | 1.5 d | M2, M3 | Not started |
-| **M5** | Prototype Release | Merged to `main`, tagged, documented, demo-ready | 0.75 d | M4 | Not started |
+| **M0** | Project Setup | Clean integration branch with this plan committed and published | 0.25 d | — | Done (branch not yet pushed — M0.4 open) |
+| **M1** | Development Environment | iOS toolchain ready; simulator available | 0.5 d | M0 | Done |
+| **M2** | iOS Platform Bring-up | App builds and launches on the Simulator with encrypted storage | 1 d | M1 | Not started (paused by choice; blocked on disk space when last attempted) |
+| **M3** | Platform Adaptation | Manual-entry mode on iOS; SMS paths gated; tests added | 1 d | M0 | Done, on `ios/m3-platform-gating` (not yet merged/pushed) |
+| **M4** | Quality Assurance | QA suite passes on iOS; Android regression verified | 1.5 d | M2, M3 | Not started (paused by choice) |
+| **M5** | Prototype Release | Merged to `main`, tagged, documented, demo-ready | 0.75 d | M4 | Not started (paused by choice) |
 
 **Critical path:** M0 → M1 → M2 → M4 → M5. M3 is pure Dart and can run in
 parallel with M1 and M2. Only its simulator verification needs M2.
@@ -277,9 +277,9 @@ parallel with M1 and M2. Only its simulator verification needs M2.
 | ID | Task | Acceptance criteria | Est. | Status |
 |---|---|---|---|---|
 | M0.1 | Create the integration branch `ios_build` from `main` | Branch exists at `main` @ `51eb16c` | 0.25 h | Done (2026-09-11) |
-| M0.2 | Reset iOS/macOS project files to the `main` baseline ([§6.1](#61-baseline-reset-m02)) | `git status` shows no changes under `ios/` or `macos/` | 0.5 h | Not started |
-| M0.3 | Commit this plan (`IOS_PLAN.md`) to `ios_build` | Plan is tracked on the branch | 0.25 h | Not started |
-| M0.4 | Publish `ios_build` to `origin` | Branch is visible on the remote for contributors | 0.25 h | Not started |
+| M0.2 | Reset iOS/macOS project files to the `main` baseline ([§6.1](#61-baseline-reset-m02)) | `git status` shows no changes under `ios/` or `macos/` | 0.5 h | Done (2026-09-12) — note: `flutter pub get` regenerates the `ios/` CocoaPods include lines as a side effect every time it runs; that's expected (it's a subset of M2.1) and was left in place. `macos/` was restored each time it drifted, since macOS is out of scope |
+| M0.3 | Commit this plan (`IOS_PLAN.md`) to `ios_build` | Plan is tracked on the branch | 0.25 h | Done (2026-09-12) — `f85b25c` |
+| M0.4 | Publish `ios_build` to `origin` | Branch is visible on the remote for contributors | 0.25 h | Not started — holding until Rahul's tester session signs off |
 
 **Exit criteria:** `ios_build` is on the remote, contains this plan, and has no
 leftover generated iOS/macOS files.
@@ -290,10 +290,10 @@ leftover generated iOS/macOS files.
 
 | ID | Task | Acceptance criteria | Est. | Status |
 |---|---|---|---|---|
-| M1.1 | Audit the toolchain against §4.1 | `flutter doctor -v` shows no iOS errors other than a missing simulator | 0.5 h | Not started |
-| M1.2 | Install the iOS 26.x Simulator runtime ([§6.2](#62-simulator-runtime-m12m13)) | `xcrun simctl list runtimes` lists an iOS runtime | 2 h | Not started |
-| M1.3 | Provision simulator devices: a current iPhone and a compact one (e.g. iPhone SE) | Both appear in `xcrun simctl list devices available` | 0.5 h | Not started |
-| M1.4 | Configure a UTF-8 shell locale for CocoaPods | `pod --version` prints without an encoding warning | 0.25 h | Not started |
+| M1.1 | Audit the toolchain against §4.1 | `flutter doctor -v` shows no iOS errors other than a missing simulator | 0.5 h | Done (2026-09-12) — Xcode 26.6 (17F113), Flutter 3.44.4, CocoaPods 1.17.0 all matched §4.1 |
+| M1.2 | Install the iOS 26.x Simulator runtime ([§6.2](#62-simulator-runtime-m12m13)) | `xcrun simctl list runtimes` lists an iOS runtime | 2 h | Done (2026-09-13) — iOS 26.5 (23F77) installed. Two attempts failed first on "Insufficient space available" (needs 8.49 GB); succeeded after Rahul freed disk space |
+| M1.3 | Provision simulator devices: a current iPhone and a compact one (e.g. iPhone SE) | Both appear in `xcrun simctl list devices available` | 0.5 h | Done (2026-09-13) — Xcode's default device set already included iPhone 17 and iPhone 17e (this generation's compact/budget model), satisfying the requirement with no extra creation needed |
+| M1.4 | Configure a UTF-8 shell locale for CocoaPods | `pod --version` prints without an encoding warning | 0.25 h | Done (2026-09-12) — `pod --version` printed cleanly with no encoding warning |
 
 **Exit criteria:** `flutter devices` lists at least one iOS simulator.
 
@@ -323,11 +323,11 @@ Android is unaffected.
 
 | ID | Task | Acceptance criteria | Est. | Status |
 |---|---|---|---|---|
-| M3.1 | Add a platform capability flag (`smsInboxAvailable`) at the composition root ([§6.4](#64-platform-gating-m31m33)) | Flag is derived once in `main.dart` and passed down explicitly | 0.5 h | Not started |
-| M3.2 | Gate the launch SMS sweep on the flag | `SmsIntakeService.catchUp` is never called on iOS | 0.25 h | Not started |
-| M3.3 | Make the `MainScreen` destinations and pages conditional (`showSmsTab`) | iOS shows **Expenses** and **Analytics** only; `TestSmsScreen` is never built | 2 h | Not started |
-| M3.4 | Widget tests for both shell configurations ([§6.5](#65-widget-tests-m34)) | `test/ui/main_screen_test.dart` covers `showSmsTab` true and false | 3 h | Not started |
-| M3.5 | Android regression build | `flutter analyze` clean, `flutter test` green, `flutter build apk --debug` succeeds | 0.5 h | Not started |
+| M3.1 | Add a platform capability flag (`smsInboxAvailable`) at the composition root ([§6.4](#64-platform-gating-m31m33)) | Flag is derived once in `main.dart` and passed down explicitly | 0.5 h | Done (2026-09-12) — `38b7927` |
+| M3.2 | Gate the launch SMS sweep on the flag | `SmsIntakeService.catchUp` is never called on iOS | 0.25 h | Done (2026-09-12/13) — `38b7927` gates the call site in `main.dart`; `0b486c9` additionally guards inside `SmsIntakeService.catchUp` itself (`if (!Platform.isAndroid) return 0;`) so the pipeline refuses to run on iOS regardless of caller, not just via the call-site check |
+| M3.3 | Make the `MainScreen` destinations and pages conditional (`showSmsTab`) | iOS shows **Expenses** and **Analytics** only; `TestSmsScreen` is never built | 2 h | Done (2026-09-12) — `38b7927` |
+| M3.4 | Widget tests for both shell configurations ([§6.5](#65-widget-tests-m34)) | `test/ui/main_screen_test.dart` covers `showSmsTab` true and false | 3 h | Done (2026-09-12) — `38b7927` |
+| M3.5 | Android regression build | `flutter analyze` clean, `flutter test` green, `flutter build apk --debug` succeeds | 0.5 h | Done (2026-09-12/13) — verified after both `38b7927` and `0b486c9`: analyze clean, all 178 tests pass, `flutter build apk --debug` succeeds |
 
 **Exit criteria:** on the Simulator there are two tabs and no SMS or permission
 activity in the console. All checks pass.
