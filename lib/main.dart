@@ -38,7 +38,7 @@ Future<void> main() async {
     smsInboxAvailable: smsInboxAvailable,
   ));
   // After the UI is up, sweep the inbox for bank-transaction SMS.
-  if (smsInboxAvailable) SmsIntakeService.catchUp(repository);
+  SmsIntakeService.catchUp(repository, smsInboxAvailable: smsInboxAvailable);
 }
 
 class MyApp extends StatelessWidget {
