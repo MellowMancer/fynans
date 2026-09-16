@@ -4,8 +4,8 @@
 |---|---|
 | **Document** | iOS prototype: product scope, delivery milestones, and build guide |
 | **Version** | 2.0 (supersedes the Hive-era iOS plan) |
-| **Status** | Active. M0, M1, M3 done; M2/M4/M5 paused by choice — resuming later |
-| **Last updated** | 2026-09-13 |
+| **Status** | Active. M0, M1, M3 done; M2 in progress; M4/M5 not started |
+| **Last updated** | 2026-09-16 |
 | **Integration branch** | `ios_build` (cut from `main` @ `51eb16c`) |
 | **Target** | iOS Simulator (iOS 26.x runtime), deployment target iOS 13.0 |
 | **Estimated effort** | ~5 engineering days |
@@ -262,8 +262,8 @@ flutter run -d <simulator-id>
 |---|---|---|---|---|---|
 | **M0** | Project Setup | Clean integration branch with this plan committed and published | 0.25 d | — | Done (branch not yet pushed — M0.4 open) |
 | **M1** | Development Environment | iOS toolchain ready; simulator available | 0.5 d | M0 | Done |
-| **M2** | iOS Platform Bring-up | App builds and launches on the Simulator with encrypted storage | 1 d | M1 | Not started (paused by choice; blocked on disk space when last attempted) |
-| **M3** | Platform Adaptation | Manual-entry mode on iOS; SMS paths gated; tests added | 1 d | M0 | Done, on `ios/m3-platform-gating` (not yet merged/pushed) |
+| **M2** | iOS Platform Bring-up | App builds and launches on the Simulator with encrypted storage | 1 d | M1 | In progress (2026-09-16) — resumed after the M1 disk-space pause |
+| **M3** | Platform Adaptation | Manual-entry mode on iOS; SMS paths gated; tests added | 1 d | M0 | Done (2026-09-13/14) — merged to `ios_build` in `a111d8d`; not yet pushed (M0.4 open) |
 | **M4** | Quality Assurance | QA suite passes on iOS; Android regression verified | 1.5 d | M2, M3 | Not started (paused by choice) |
 | **M5** | Prototype Release | Merged to `main`, tagged, documented, demo-ready | 0.75 d | M4 | Not started (paused by choice) |
 
@@ -324,7 +324,7 @@ Android is unaffected.
 | ID | Task | Acceptance criteria | Est. | Status |
 |---|---|---|---|---|
 | M3.1 | Add a platform capability flag (`smsInboxAvailable`) at the composition root ([§6.4](#64-platform-gating-m31m33)) | Flag is derived once in `main.dart` and passed down explicitly | 0.5 h | Done (2026-09-12) — `38b7927` |
-| M3.2 | Gate the launch SMS sweep on the flag | `SmsIntakeService.catchUp` is never called on iOS | 0.25 h | Done (2026-09-12/13) — `38b7927` gates the call site in `main.dart`; `0b486c9` additionally guards inside `SmsIntakeService.catchUp` itself (`if (!Platform.isAndroid) return 0;`) so the pipeline refuses to run on iOS regardless of caller, not just via the call-site check |
+| M3.2 | Gate the launch SMS sweep on the flag | `SmsIntakeService.catchUp` is never called on iOS | 0.25 h | Done (2026-09-12/13) — `38b7927` gates the call site in `main.dart`; `0b486c9` additionally guarded inside `SmsIntakeService.catchUp` itself (`if (!Platform.isAndroid) return 0;`) so the pipeline refuses to run on iOS regardless of caller. `d304d01` then replaced that internal `Platform.isAndroid` read with a required `smsInboxAvailable` parameter threaded from the composition root, since the hidden platform read made this branch untestable — both branches are now covered by `test/services/sms_intake_service_test.dart` |
 | M3.3 | Make the `MainScreen` destinations and pages conditional (`showSmsTab`) | iOS shows **Expenses** and **Analytics** only; `TestSmsScreen` is never built | 2 h | Done (2026-09-12) — `38b7927` |
 | M3.4 | Widget tests for both shell configurations ([§6.5](#65-widget-tests-m34)) | `test/ui/main_screen_test.dart` covers `showSmsTab` true and false | 3 h | Done (2026-09-12) — `38b7927` |
 | M3.5 | Android regression build | `flutter analyze` clean, `flutter test` green, `flutter build apk --debug` succeeds | 0.5 h | Done (2026-09-12/13) — verified after both `38b7927` and `0b486c9`: analyze clean, all 178 tests pass, `flutter build apk --debug` succeeds |
