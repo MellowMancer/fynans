@@ -260,10 +260,10 @@ flutter run -d <simulator-id>
 
 | ID | Milestone | Outcome | Estimate | Depends on | Status |
 |---|---|---|---|---|---|
-| **M0** | Project Setup | Clean integration branch with this plan committed and published | 0.25 d | — | Done (branch not yet pushed — M0.4 open) |
+| **M0** | Project Setup | Clean integration branch with this plan committed and published | 0.25 d | — | Done (2026-09-16) — pushed to origin |
 | **M1** | Development Environment | iOS toolchain ready; simulator available | 0.5 d | M0 | Done |
 | **M2** | iOS Platform Bring-up | App builds and launches on the Simulator with encrypted storage | 1 d | M1 | Done (2026-09-16) — `dd1dbcb`; app builds and launches on iPhone 17 (iOS 26.5) with the DB encrypted at rest |
-| **M3** | Platform Adaptation | Manual-entry mode on iOS; SMS paths gated; tests added | 1 d | M0 | Done (2026-09-13/14) — merged to `ios_build` in `a111d8d`; not yet pushed (M0.4 open) |
+| **M3** | Platform Adaptation | Manual-entry mode on iOS; SMS paths gated; tests added | 1 d | M0 | Done (2026-09-13/14) — merged to `ios_build` in `a111d8d`, pushed to origin |
 | **M4** | Quality Assurance | QA suite passes on iOS; Android regression verified | 1.5 d | M2, M3 | Not started (paused by choice) |
 | **M5** | Prototype Release | Merged to `main`, tagged, documented, demo-ready | 0.75 d | M4 | Not started (paused by choice) |
 
@@ -279,7 +279,7 @@ parallel with M1 and M2. Only its simulator verification needs M2.
 | M0.1 | Create the integration branch `ios_build` from `main` | Branch exists at `main` @ `51eb16c` | 0.25 h | Done (2026-09-11) |
 | M0.2 | Reset iOS/macOS project files to the `main` baseline ([§6.1](#61-baseline-reset-m02)) | `git status` shows no changes under `ios/` or `macos/` | 0.5 h | Done (2026-09-12) — note: `flutter pub get` regenerates the `ios/` CocoaPods include lines as a side effect every time it runs; that's expected (it's a subset of M2.1) and was left in place. `macos/` was restored each time it drifted, since macOS is out of scope |
 | M0.3 | Commit this plan (`IOS_PLAN.md`) to `ios_build` | Plan is tracked on the branch | 0.25 h | Done (2026-09-12) — `f85b25c` |
-| M0.4 | Publish `ios_build` to `origin` | Branch is visible on the remote for contributors | 0.25 h | Not started — holding until Rahul's tester session signs off |
+| M0.4 | Publish `ios_build` to `origin` | Branch is visible on the remote for contributors | 0.25 h | Done (2026-09-16) — pushed after M2's tester sign-off (`a111d8d..5827035`) |
 
 **Exit criteria:** `ios_build` is on the remote, contains this plan, and has no
 leftover generated iOS/macOS files.
