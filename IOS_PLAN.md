@@ -4,7 +4,7 @@
 |---|---|
 | **Document** | iOS prototype: product scope, delivery milestones, and build guide |
 | **Version** | 2.0 (supersedes the Hive-era iOS plan) |
-| **Status** | Active. M0, M1, M3 done; M2 in progress; M4/M5 not started |
+| **Status** | Active. M0–M3 done; M4/M5 not started |
 | **Last updated** | 2026-09-16 |
 | **Integration branch** | `ios_build` (cut from `main` @ `51eb16c`) |
 | **Target** | iOS Simulator (iOS 26.x runtime), deployment target iOS 13.0 |
@@ -262,7 +262,7 @@ flutter run -d <simulator-id>
 |---|---|---|---|---|---|
 | **M0** | Project Setup | Clean integration branch with this plan committed and published | 0.25 d | — | Done (branch not yet pushed — M0.4 open) |
 | **M1** | Development Environment | iOS toolchain ready; simulator available | 0.5 d | M0 | Done |
-| **M2** | iOS Platform Bring-up | App builds and launches on the Simulator with encrypted storage | 1 d | M1 | In progress (2026-09-16) — resumed after the M1 disk-space pause |
+| **M2** | iOS Platform Bring-up | App builds and launches on the Simulator with encrypted storage | 1 d | M1 | Done (2026-09-16) — `dd1dbcb`; app builds and launches on iPhone 17 (iOS 26.5) with the DB encrypted at rest |
 | **M3** | Platform Adaptation | Manual-entry mode on iOS; SMS paths gated; tests added | 1 d | M0 | Done (2026-09-13/14) — merged to `ios_build` in `a111d8d`; not yet pushed (M0.4 open) |
 | **M4** | Quality Assurance | QA suite passes on iOS; Android regression verified | 1.5 d | M2, M3 | Not started (paused by choice) |
 | **M5** | Prototype Release | Merged to `main`, tagged, documented, demo-ready | 0.75 d | M4 | Not started (paused by choice) |
@@ -303,11 +303,11 @@ leftover generated iOS/macOS files.
 
 | ID | Task | Acceptance criteria | Est. | Status |
 |---|---|---|---|---|
-| M2.1 | Generate the iOS build integration (CocoaPods + SPM) with a simulator build ([§6.3](#63-ios-build-integration-m21m25)) | `flutter build ios --simulator --debug` succeeds | 2 h | Not started |
-| M2.2 | Pin the CocoaPods platform to iOS 13.0 in `ios/Podfile` | Rebuild succeeds with no deployment-target warnings from pods | 0.25 h | Not started |
-| M2.3 | First launch on the Simulator | App reaches the Expenses screen; no `DatabaseNotEncrypted` or `SqliteException` | 2 h | Not started |
-| M2.4 | Verify encryption at rest on iOS | The `fynans.db` header is not `SQLite format 3` | 0.5 h | Not started |
-| M2.5 | Review and commit the generated iOS project changes | Only the expected `ios/` files are committed; `flutter test` is green | 1 h | Not started |
+| M2.1 | Generate the iOS build integration (CocoaPods + SPM) with a simulator build ([§6.3](#63-ios-build-integration-m21m25)) | `flutter build ios --simulator --debug` succeeds | 2 h | Done (2026-09-16) — `dd1dbcb`; was partially started (`ios/Podfile` and the xcconfig include lines already existed from an earlier `flutter pub get`), this run produced `Podfile.lock`, the workspace Pods reference, the pbxproj CocoaPods phases, SPM's `FlutterGeneratedPluginSwiftPackage` (engaged automatically, no manual `flutter config` needed), and the 12.0 → 13.0 deployment-target migration. Needed freeing disk space first (8GB free before starting; used ~2.2GB) |
+| M2.2 | Pin the CocoaPods platform to iOS 13.0 in `ios/Podfile` | Rebuild succeeds with no deployment-target warnings from pods | 0.25 h | Done (2026-09-16) — `dd1dbcb`; uncommented `platform :ios, '13.0'`, rebuilt in 8.3s (cached), zero deployment-target warnings |
+| M2.3 | First launch on the Simulator | App reaches the Expenses screen; no `DatabaseNotEncrypted` or `SqliteException` | 2 h | Done (2026-09-16) — launched on iPhone 17 (iOS 26.5, `352EBDF1-118F-4BE0-A334-D6A1B7DD6BA7`); no `DatabaseNotEncrypted`, no `SqliteException`, no `MissingPluginException`. Confirmed exactly two tabs (Expenses, Analytics) — real proof M3's gating holds on an actual iOS build. Screenshot landed on the Analytics tab rather than Expenses (index 0 is the coded default, no persistence exists); harmless, doesn't affect any acceptance criterion since the DB opens in `main()` before any tab renders |
+| M2.4 | Verify encryption at rest on iOS | The `fynans.db` header is not `SQLite format 3` | 0.5 h | Done (2026-09-16) — header read `6718543ab0500dc9ac7fc6bee2fa22cc`, not plaintext SQLite. Also satisfies QA case TC-13 |
+| M2.5 | Review and commit the generated iOS project changes | Only the expected `ios/` files are committed; `flutter test` is green | 1 h | Done (2026-09-16) — `dd1dbcb`; only the 8 expected `ios/` paths committed (§6.3's table), `macos/` restored, `flutter analyze` clean, `flutter test` green (180 tests). Android APK build deliberately not re-run — no Dart changes in this commit, already green at M3.5, re-verified again at M4.4 |
 
 **Exit criteria:** the app runs on the Simulator with encrypted storage, and the
 iOS project integration is committed.
