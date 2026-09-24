@@ -4,7 +4,7 @@
 |---|---|
 | **Document** | iOS prototype: product scope, delivery milestones, and build guide |
 | **Version** | 2.0 (supersedes the Hive-era iOS plan) |
-| **Status** | Active. M0–M3 done; M4/M5 not started |
+| **Status** | Active. M0–M4 done; M5 not started |
 | **Last updated** | 2026-09-16 |
 | **Integration branch** | `ios_build` (cut from `main` @ `51eb16c`) |
 | **Target** | iOS Simulator (iOS 26.x runtime), deployment target iOS 13.0 |
@@ -117,6 +117,11 @@ swipe-back, bouncing scroll physics, and iOS text-selection handles.
 - **Placeholder app identity:** bundle identifier `com.example.fynans` and the
   default Flutter app icon.
 - **Single device:** no backup, restore or sync.
+- **No credit card tracking.** `feature/credit-cards` (cards, statement
+  parsing, limit tracking — see `CREDIT_CARD_PLAN.md`) is not merged into
+  `main` yet and isn't part of this branch. It'll be added to Fynans once
+  `feature/credit-cards` lands on `main`, as a follow-up on top of this
+  prototype rather than inside it.
 
 ---
 
@@ -221,7 +226,7 @@ pure Dart and platform-neutral.
 | macOS | 26.x | Required for iOS builds |
 | Xcode | 26.6 (17F113), iOS 26.5 SDK | Includes the command-line tools |
 | iOS Simulator runtime | 26.x | Separate download from Xcode (several GB). See M1.2 |
-| Flutter | 3.44.4 stable (Dart 3.12.2) | `flutter doctor -v` must pass for iOS |
+| Flutter | 3.44.4 stable (Dart 3.12.2) as originally verified; **3.47.4 (Dart 3.13.3) in actual use since 2026-09-17** | `flutter doctor -v` must pass for iOS. The 3.44.4 SDK was accidentally deleted while freeing disk space and reinstalled via `brew reinstall --cask flutter`, which has no easy pin to the old version. `flutter analyze` and `flutter test` (180/180) both pass clean under 3.47.4; the version bump auto-updated `analysis_options.yaml` (new `analyzer: exclude:` block for platform/build dirs) and `pubspec.lock` (5 dependency bumps). Pinning back to 3.44.4 is deferred — Rahul will handle it if/when needed |
 | CocoaPods | 1.17.0 | Homebrew or RubyGems |
 | Android SDK / JDK | As in `README.md` | Needed for Android regression builds |
 
@@ -264,7 +269,7 @@ flutter run -d <simulator-id>
 | **M1** | Development Environment | iOS toolchain ready; simulator available | 0.5 d | M0 | Done |
 | **M2** | iOS Platform Bring-up | App builds and launches on the Simulator with encrypted storage | 1 d | M1 | Done (2026-09-16) — `dd1dbcb`; app builds and launches on iPhone 17 (iOS 26.5) with the DB encrypted at rest |
 | **M3** | Platform Adaptation | Manual-entry mode on iOS; SMS paths gated; tests added | 1 d | M0 | Done (2026-09-13/14) — merged to `ios_build` in `a111d8d`, pushed to origin |
-| **M4** | Quality Assurance | QA suite passes on iOS; Android regression verified | 1.5 d | M2, M3 | Not started (paused by choice) |
+| **M4** | Quality Assurance | QA suite passes on iOS; Android regression verified | 1.5 d | M2, M3 | Done (2026-09-16) — no P1/P2/P3 defects; interactive QA (TC-02 to TC-16) verified directly by Rahul, cold-launch/build checks verified in this session |
 | **M5** | Prototype Release | Merged to `main`, tagged, documented, demo-ready | 0.75 d | M4 | Not started (paused by choice) |
 
 **Critical path:** M0 → M1 → M2 → M4 → M5. M3 is pure Dart and can run in
@@ -339,11 +344,11 @@ hasn't regressed.
 
 | ID | Task | Acceptance criteria | Est. | Status |
 |---|---|---|---|---|
-| M4.1 | Run the QA suite (§7.2) on the primary simulator | Every P1 case passes | 4 h | Not started |
-| M4.2 | Device-matrix and layout pass: compact device, notch/Dynamic Island, landscape, keyboard | TC-14 to TC-16 pass on both devices | 2 h | Not started |
-| M4.3 | Fix iOS-specific defects found in M4.1 and M4.2 | Each fix is its own commit with a regression note; open P1 count is zero | 4 h | Not started |
-| M4.4 | Android regression pass | TC-18 passes; SMS import verified on a device where available | 1 h | Not started |
-| M4.5 | Record known issues | Open P2/P3 defects listed in the release notes with severity | 1 h | Not started |
+| M4.1 | Run the QA suite (§7.2) on the primary simulator | Every P1 case passes | 4 h | Done (2026-09-16) — TC-01/TC-17 verified via a fresh cold-launch console + screenshot check (iPhone 17); the rest of the interactive suite (TC-02 to TC-12) run and verified directly by Rahul, not automatable in this environment (no iOS UI automation tool available — no `idb`, no Appium, `simctl` has no tap/touch command) |
+| M4.2 | Device-matrix and layout pass: compact device, notch/Dynamic Island, landscape, keyboard | TC-14 to TC-16 pass on both devices | 2 h | Done (2026-09-16) — verified directly by Rahul (requires the same interactive automation this environment doesn't have) |
+| M4.3 | Fix iOS-specific defects found in M4.1 and M4.2 | Each fix is its own commit with a regression note; open P1 count is zero | 4 h | Done (2026-09-16) — no defects found |
+| M4.4 | Android regression pass | TC-18 passes; SMS import verified on a device where available | 1 h | Done (2026-09-16) — `flutter build apk --debug` succeeded (after a disk-space reclaim mid-build, see note below), `flutter analyze` clean. `flutter test` was interrupted when the disk filled completely (0 bytes free) partway through and wasn't re-run; SMS import on a physical Android device not verified here (no device attached to this environment) |
+| M4.5 | Record known issues | Open P2/P3 defects listed in the release notes with severity | 1 h | Done (2026-09-16) — none open |
 
 **Exit criteria:** all P1 cases pass on iOS, Android has no regressions, and
 known issues are documented.
@@ -357,7 +362,7 @@ known issues are documented.
 | M5.1 | Write release notes: features, limitations, known issues, run instructions | Release notes published with the PR | 1 h | Not started |
 | M5.2 | Capture demo assets: screenshots of Expenses, Add, Analytics, in light and dark | Assets attached to the PR or release | 1 h | Not started |
 | M5.3 | Refresh developer docs: add iOS setup to `README.md`; correct the stale Hive references in `README.md` and `CLAUDE.md` | Docs match the Drift + SQLCipher architecture and include iOS instructions | 2 h | Not started |
-| M5.4 | Open a pull request from `ios_build` to `main`, review and merge ([§9](#9-risks--mitigations), R4) | PR approved; CI or local checks green; merged | 2 h | Not started |
+| M5.4 | Open a pull request from `ios_build` to `main`, review and merge ([§9](#9-risks--mitigations), R4) | PR approved; CI or local checks green; merged | 2 h | In progress (2026-09-25) — [PR #19](https://github.com/MellowMancer/fynans/pull/19) opened, ahead of M5.1–M5.3 by Rahul's choice; awaiting review/merge |
 | M5.5 | Tag the release `ios-prototype-v0.1.0` | Tag pushed to `origin` | 0.25 h | Not started |
 
 **Exit criteria:** the prototype is on `main`, tagged, with release notes and
@@ -682,11 +687,61 @@ aren't part of this delivery.
 | F1 | Device build & app identity | Production bundle identifier, app icon and launch screen from brand assets, and signing (Xcode Personal Team for internal devices) to install on physical iPhones |
 | F2 | Assisted SMS intake: paste-to-parse | An "Add from SMS" screen that sends pasted text through the existing `SmsParserService` → `TransactionSmsIngestor` pipeline. Introduces an intake port in `lib/ports/` that replaces the M3 capability flag |
 | F3 | Share Extension | An iOS share target so a bank SMS can be shared from Messages into Fynans, handed off through an App Group |
-| F4 | Credit cards on iOS | Once `feature/credit-cards` merges into `main`: manual card entries work on iOS, and the card SMS scan is gated off iOS |
+| F4 | Credit cards on iOS ([detail](#111-f4-detail--credit-cards-on-ios)) | Once `feature/credit-cards` merges into `main`: manual card entries work on iOS, and the card SMS scan is gated off iOS |
 | F5 | Transaction editing (cross-platform) | Edit an existing transaction in place. Today users delete and re-add |
 | F6 | Distribution readiness | Apple Developer Program, TestFlight, App Store privacy manifest review, `permission_handler` permission macros (to avoid missing purpose-string rejections), export-compliance declaration (SQLCipher), UIScene lifecycle migration |
 | F7 | Data lifecycle policy | Keychain accessibility class (e.g. `…ThisDeviceOnly`), inclusion of `Documents/` in device backups, and backup/restore behaviour |
 | F8 | Automatic import without SMS (research) | Evaluate India's Account Aggregator framework (e.g. Setu, Finbox) for automatic transaction import on iOS |
+
+### 11.1 F4 detail — Credit cards on iOS
+
+**Not scheduled.** Blocked on `feature/credit-cards` (PR #17) merging into
+`main` after review. This section exists so the work is planned once that
+happens, not so it starts now — the tasks below are informed by reading the
+actual branch (`origin/feature/credit-cards` vs `main`: 69 files,
++8189/-161), not the feature in the abstract.
+
+**Why this isn't a small addition.** The branch was cut from `main` before M3
+existed, so it carries **zero platform gating** — it reintroduces the
+pre-M3, unconditional shape of the two files M3 changed. Merging it into
+`main` (which will already have M3 and M2's iOS work) is a real merge, not a
+fast-forward, and re-applying the gate is manual work, not something Git
+resolves for you:
+
+- `lib/main.dart` — reverts to an unconditional
+  `SmsIntakeService.catchUp(repository)`, now wrapped as
+  `purgePhantomCardStatementTransactions(repository).then((_) =>
+  SmsIntakeService.catchUp(repository, cardRepository,
+  detectedCardRepository, statementRepository))`. No `Platform.isAndroid`,
+  no `smsInboxAvailable` — that flag doesn't exist on this branch at all.
+- `lib/ui/main_screen.dart` — back to the old hardcoded 4-item
+  `_destinations`/`_pages` (adds a `CARDS` tab as the 4th entry), not the
+  `_expenses`/`_analytics`/`_smsDev`-plus-conditionals shape M3 introduced.
+- `lib/adapters/sms/sms_intake_service.dart` — `catchUp`'s signature grows
+  three new required positional params (`CardRepository`,
+  `DetectedCardRepository`, `CardStatementRepository`) plus an optional
+  `onProgress` callback. This must be reconciled with the
+  `smsInboxAvailable`-parameter version already on `main` (from `d304d01`)
+  — not a revert to either side, a genuine merge of both changes.
+
+**A third SMS entry point, not just two.** `lib/adapters/blocs/add_card/add_card_cubit.dart`'s
+`AddCardCubit.save()` calls `SmsIntakeService.catchUp(...)` directly, right
+after saving a new card, to backfill that card's transaction history
+immediately rather than waiting for the next launch. This call site doesn't
+exist anywhere in the current `ios_build`/`main` — it's new, and it needs
+the same `smsInboxAvailable` gating as the other two (main.dart's launch
+sweep, and the already-iOS-excluded `TestSmsScreen`), or it will crash the
+same way M3 was written to prevent.
+
+| ID | Task | Notes |
+|---|---|---|
+| F4.1 | Resolve the `main.dart`/`main_screen.dart`/`sms_intake_service.dart` merge, re-threading `smsInboxAvailable` through the new card-aware `catchUp` signature | Whichever branch merges second does this — agree merge order before starting (same as risk R4) |
+| F4.2 | Gate `AddCardCubit`'s post-save SMS sweep the same way | Either thread `smsInboxAvailable` into `AddCardCubit`'s constructor (matches the existing pattern), or have `SmsIntakeService.catchUp` itself refuse to run on iOS regardless of caller (the `d304d01` approach) — prefer the latter, since it already covers every caller including this new one without repeating the check at each call site |
+| F4.3 | Add the `CARDS` tab to `MainScreen`'s now-conditional `_destinations`/`_pages` arrays | The Cards tab itself should stay **unconditional** — manual card entry (`AddCardScreen`) doesn't touch SMS and works fine on iOS. Only the SMS-sourced pieces inside it need gating (next item) |
+| F4.4 | Verify `detected_cards_banner.dart` degrades gracefully on iOS | It's populated only from SMS-sighted `DetectedCard` records; on iOS nothing ever writes one, so the banner should simply stay empty — confirm this with a test rather than assuming, the way M3.4 did for the SMS tab |
+| F4.5 | Extend `test/services/sms_intake_service_test.dart`'s two-branch pattern to cover the card-aware signature | Same shape: `smsInboxAvailable: false` short-circuits before touching any repository or platform channel; `true` reaches the pipeline |
+| F4.6 | Confirm no new iOS build work is needed | `pubspec.yaml` is unchanged on this branch — no new plugins, so M2's CocoaPods/SPM integration doesn't need touching. The new Drift tables (`card_repository`, `detected_card_repository`, `card_statement_repository`) ride the same SQLCipher-encrypted database already verified in M2.4 |
+| F4.7 | Android regression | `flutter build apk --debug`, confirm card SMS detection still works on Android exactly as before |
 
 ---
 
