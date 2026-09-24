@@ -10,8 +10,19 @@ class SmsIntakeService {
   ///
   /// Takes the repository rather than reaching for one: the ingestor used to
   /// default to a concrete implementation, which is the kind of hidden
-  /// construction that makes the storage layer hard to swap.
-  static Future<int> catchUp(TransactionRepository repository) async {
+  /// construction that makes the storage layer hard to swap. [smsInboxAvailable]
+  /// follows the same rule: the caller (the composition root, which already
+  /// computes this once) passes it in rather than this method re-deriving it
+  /// from `Platform.isAndroid` itself -- that would be a hidden dependency
+  /// with no test override, making this branch unreachable from a unit test.
+  static Future<int> catchUp(
+    TransactionRepository repository, {
+    required bool smsInboxAvailable,
+  }) async {
+    // Only Android lets an app read the SMS inbox, and flutter_sms_inbox has
+    // no iOS implementation, so reaching it there throws at runtime.
+    if (!smsInboxAvailable) return 0;
+
     final ingestor = TransactionSmsIngestor(repository: repository);
     final List<InboxSms> messages = await ReadSmsService().getAllSms();
     var imported = 0;
