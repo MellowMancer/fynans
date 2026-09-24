@@ -362,7 +362,7 @@ known issues are documented.
 | M5.1 | Write release notes: features, limitations, known issues, run instructions | Release notes published with the PR | 1 h | Not started |
 | M5.2 | Capture demo assets: screenshots of Expenses, Add, Analytics, in light and dark | Assets attached to the PR or release | 1 h | Not started |
 | M5.3 | Refresh developer docs: add iOS setup to `README.md`; correct the stale Hive references in `README.md` and `CLAUDE.md` | Docs match the Drift + SQLCipher architecture and include iOS instructions | 2 h | Not started |
-| M5.4 | Open a pull request from `ios_build` to `main`, review and merge ([§9](#9-risks--mitigations), R4) | PR approved; CI or local checks green; merged | 2 h | In progress (2026-09-25) — [PR #19](https://github.com/MellowMancer/fynans/pull/19) opened, ahead of M5.1–M5.3 by Rahul's choice; awaiting review/merge |
+| M5.4 | Open a pull request from `ios_build` to `main`, review and merge ([§9](#9-risks--mitigations), R4) | PR approved; CI or local checks green; merged | 2 h | In progress (2026-09-25) — [PR #20](https://github.com/MellowMancer/fynans/pull/20) opened, ahead of M5.1–M5.3 by Rahul's choice; awaiting review/merge |
 | M5.5 | Tag the release `ios-prototype-v0.1.0` | Tag pushed to `origin` | 0.25 h | Not started |
 
 **Exit criteria:** the prototype is on `main`, tagged, with release notes and
