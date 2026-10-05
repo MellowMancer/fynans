@@ -26,7 +26,34 @@ abstract class TransactionRepository {
     required DateRange range,
     TransactionFilter? filter,
   });
+
+  /// Live transactions for [cardId], newest first, all-time — not date-scoped.
+  /// A card's available limit is a running balance since the card was added,
+  /// not a monthly figure, so [listenToTransactionsInRange] can't serve this.
+  Stream<List<Transaction>> listenToTransactionsForCard(int cardId);
+
   Future<List<String>> getAllGroups();
   Future<List<String>> getAllUniqueTags();
   Future<List<String>> getAllParties();
+
+  /// Detaches every transaction currently linked to [cardId] — used when a
+  /// card is deleted, so its transactions re-enter the main list rather than
+  /// being lost.
+  Future<void> unlinkCard(int cardId);
+
+  /// Re-attaches [cardId] to the transaction with [smsId], but only if that
+  /// transaction currently has no card. Returns true if a row was updated.
+  ///
+  /// Needed because `importTransaction`'s dedup is keyed on smsId: if a card
+  /// is deleted (unlinking, not deleting, its transactions — see
+  /// [unlinkCard]) and later re-added, re-scanning the same SMS computes the
+  /// same smsId and `importTransaction` no-ops on the existing row — nothing
+  /// else in the pipeline ever revisits an already-imported row to update its
+  /// cardId. This is that missing step, called from
+  /// `TransactionSmsIngestor` when import is skipped for a matched card SMS.
+  Future<bool> relinkTransactionToCard({
+    required String smsId,
+    required int cardId,
+    double? cardAvailableLimit,
+  });
 }

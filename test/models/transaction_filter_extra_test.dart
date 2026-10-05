@@ -9,6 +9,7 @@ Transaction _txn({
   List<String> tags = const [],
   List<String> group = const [],
   String party = 'Cafe',
+  int? cardId,
 }) =>
     Transaction()
       ..amount = amount
@@ -16,7 +17,8 @@ Transaction _txn({
       ..tags = List.of(tags)
       ..group = List.of(group)
       ..party = party
-      ..isCredit = isCredit;
+      ..isCredit = isCredit
+      ..cardId = cardId;
 
 void main() {
   group('direction filter', () {
@@ -66,7 +68,8 @@ void main() {
     expect(f.matches(_txn(tags: ['food'], amount: 60)), isTrue);
     expect(f.matches(_txn(tags: ['food'], amount: 10)), isFalse);
     expect(f.matches(_txn(tags: ['travel'], amount: 60)), isFalse);
-    expect(f.matches(_txn(tags: ['food'], amount: 60, isCredit: true)), isFalse);
+    expect(
+        f.matches(_txn(tags: ['food'], amount: 60, isCredit: true)), isFalse);
     expect(f.activeCount, 3);
   });
 
@@ -163,6 +166,61 @@ void main() {
         const TransactionFilter(tags: {'a', 'b'}).hashCode,
         const TransactionFilter(tags: {'b', 'a'}).hashCode,
       );
+    });
+  });
+
+  group('CardScope', () {
+    test('excludeCards is the default and excludes card transactions', () {
+      const f = TransactionFilter();
+      expect(f.cardScope, CardScope.excludeCards);
+      expect(f.matches(_txn()), isTrue);
+      expect(f.matches(_txn(cardId: 1)), isFalse);
+    });
+
+    test('.empty() carries the same default scope', () {
+      expect(const TransactionFilter.empty().cardScope, CardScope.excludeCards);
+    });
+
+    test('onlyCards keeps only card transactions', () {
+      const f = TransactionFilter(cardScope: CardScope.onlyCards);
+      expect(f.matches(_txn()), isFalse);
+      expect(f.matches(_txn(cardId: 1)), isTrue);
+    });
+
+    test('any keeps both', () {
+      const f = TransactionFilter(cardScope: CardScope.any);
+      expect(f.matches(_txn()), isTrue);
+      expect(f.matches(_txn(cardId: 1)), isTrue);
+    });
+
+    test('the default scope does not count as an active filter', () {
+      expect(const TransactionFilter().isEmpty, isTrue);
+      expect(const TransactionFilter().activeCount, 0);
+    });
+
+    test('a non-default scope counts as one active filter', () {
+      const f = TransactionFilter(cardScope: CardScope.onlyCards);
+      expect(f.isEmpty, isFalse);
+      expect(f.activeCount, 1);
+    });
+
+    test('cardScope participates in equality and hashCode', () {
+      expect(
+        const TransactionFilter(cardScope: CardScope.onlyCards),
+        isNot(const TransactionFilter(cardScope: CardScope.any)),
+      );
+      expect(
+        const TransactionFilter(cardScope: CardScope.onlyCards).hashCode,
+        isNot(const TransactionFilter(cardScope: CardScope.any).hashCode),
+      );
+    });
+
+    test('copyWith can change the scope independently of other criteria', () {
+      const f = TransactionFilter(tags: {'food'});
+      final updated = f.copyWith(cardScope: CardScope.onlyCards);
+
+      expect(updated.tags, {'food'});
+      expect(updated.cardScope, CardScope.onlyCards);
     });
   });
 }

@@ -10,6 +10,7 @@ Transaction txn({
   List<String> tags = const [],
   List<String> group = const [],
   String party = 'x',
+  int? cardId,
 }) =>
     Transaction()
       ..amount = amount
@@ -18,7 +19,8 @@ Transaction txn({
       ..group = List<String>.from(group)
       ..party = party
       ..isCredit = false
-      ..smsId = smsId;
+      ..smsId = smsId
+      ..cardId = cardId;
 
 /// The behaviour every [TransactionRepository] must exhibit, run against each
 /// implementation.
@@ -53,8 +55,8 @@ void runTransactionRepositoryContract(
         final stored = (await inJuly()).single;
 
         // A detached instance carrying the same id must delete the row.
-        await repo.deleteTransaction(txn(date: DateTime(2026, 7, 10))
-          ..id = stored.id);
+        await repo.deleteTransaction(
+            txn(date: DateTime(2026, 7, 10))..id = stored.id);
 
         expect(await inJuly(), isEmpty);
       });
@@ -170,7 +172,8 @@ void runTransactionRepositoryContract(
         // which deadlocked every caller that awaited it.
         await sub.cancel().timeout(
               const Duration(seconds: 2),
-              onTimeout: () => fail('cancel() did not complete — stream leaked'),
+              onTimeout: () =>
+                  fail('cancel() did not complete — stream leaked'),
             );
       });
 
@@ -194,5 +197,13 @@ void runTransactionRepositoryContract(
       });
     });
 
+    // CardScope/listenToTransactionsForCard/unlinkCard are deliberately not
+    // covered here: this contract only builds a TransactionRepository, and
+    // with `PRAGMA foreign_keys = ON` a cardId has to reference a real row in
+    // the Cards table or Drift rejects the insert — a card-aware fixture
+    // needs a CardRepository too. See
+    // drift_transaction_repository_card_test.dart (Drift, with real seeded
+    // cards) and fake_transaction_repository_test.dart's CardScope group
+    // (the fake, which has no such constraint to satisfy).
   });
 }

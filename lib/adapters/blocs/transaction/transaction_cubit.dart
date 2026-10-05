@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
+import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/use_cases/summarise_transactions.dart';
 import 'transaction_state.dart';
@@ -30,14 +31,19 @@ class TransactionCubit extends Cubit<TransactionState> {
     await _subscription?.cancel();
 
     emit(TransactionLoadInProgress());
-    _subscription =
-        _repository
-            .listenToTransactionsInRange(range: DateRange.month(month))
-            .listen(
+    _subscription = _repository
+        .listenToTransactionsInRange(
+      range: DateRange.month(month),
+      // Excludes card spends — they're surfaced under their card, not
+      // in the main list.
+      filter: const TransactionFilter.empty(),
+    )
+        .listen(
       (transactions) {
         if (isClosed || generation != _generation) return;
         final summary = summariseTransactions(transactions);
-        emit(TransactionLoadSuccess(summary: summary, transactions: transactions));
+        emit(TransactionLoadSuccess(
+            summary: summary, transactions: transactions));
       },
       onError: (Object error) {
         if (isClosed || generation != _generation) return;
