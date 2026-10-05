@@ -1,12 +1,12 @@
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 
 /// Matches a card SMS to a registered card by last digits, disambiguating by
 /// issuer against the sender ID when more than one card shares those digits.
 ///
 /// Returns null on no match *or* on ambiguity — a wrong match would silently
 /// corrupt two balances, so guessing is never the safe choice here.
-CreditCard? matchCard(
-  List<CreditCard> cards, {
+PaymentCard? matchCard(
+  List<PaymentCard> cards, {
   required String? last4,
   required String sender,
 }) {

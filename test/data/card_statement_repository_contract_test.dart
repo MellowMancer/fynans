@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/data/app_database.dart';
 import 'package:fynans/adapters/data/drift_card_repository.dart';
 import 'package:fynans/adapters/data/drift_card_statement_repository.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 
 import '../fakes/fake_card_statement_repository.dart';
 import 'card_statement_repository_contract.dart';
@@ -31,13 +31,17 @@ void main() {
     // drift_transaction_repository_card_test.dart already established for
     // Transaction.cardId.
     final cards = DriftCardRepository(db);
-    await cards.saveCard(CreditCard()
+    await cards.saveCard(PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000);
-    await cards.saveCard(CreditCard()
+    await cards.saveCard(PaymentCard()
       ..issuer = 'SBI Card'
       ..last4 = '5678'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000);
     return DriftCardStatementRepository(db);
   });

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:fynans/entities/payment_card.dart';
 
 part 'app_database.g.dart';
 
@@ -63,15 +64,23 @@ class Transactions extends Table {
 class Cards extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get issuer => text()();
+  TextColumn get type => textEnum<CardType>()();
+  TextColumn get status => textEnum<CardStatus>()();
 
   /// 2-4 digits, stored as text so a leading zero survives.
   TextColumn get last4 => text()();
-  RealColumn get creditLimit => real()();
+
+  /// Bank Acct Last 4 digits. Only for Debit Cards
+  TextColumn get accountLast4 => text().nullable()();
+
+  /// The Credit Limit for any credit card. Only for Credit Cards
+  RealColumn get creditLimit => real().nullable()();
   TextColumn get nickname => text().nullable()();
+  DateTimeColumn get closedOn => dateTime().nullable()();
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {issuer, last4},
+        {issuer, type, last4},
       ];
 }
 
@@ -123,7 +132,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 2;
 
   /// Stores DateTime as ISO-8601 text rather than Drift's default unix
   /// *seconds*, which truncates. SMS timestamps carry sub-second precision and
@@ -137,38 +146,16 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
-          // Every query is date-scoped and ordered by date.
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_transactions_date '
-            'ON transactions (date)',
-          );
+          await _createIndexes();
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.createTable(cards);
+            await m.createTable(detectedCards);
+            await m.createTable(cardStatements);
             await m.addColumn(transactions, transactions.cardId);
             await m.addColumn(transactions, transactions.cardAvailableLimit);
-            await customStatement(
-              'CREATE INDEX IF NOT EXISTS idx_transactions_card_id '
-              'ON transactions (card_id)',
-            );
-            // idx_transactions_date was previously created only in onCreate,
-            // so no existing installation actually has it — fold the fix in
-            // here rather than leaving every upgrading user without it.
-            await customStatement(
-              'CREATE INDEX IF NOT EXISTS idx_transactions_date '
-              'ON transactions (date)',
-            );
-          }
-          if (from < 3) {
-            await m.createTable(detectedCards);
-          }
-          if (from < 4) {
-            await m.createTable(cardStatements);
-            await customStatement(
-              'CREATE INDEX IF NOT EXISTS idx_card_statements_card_id '
-              'ON card_statements (card_id)',
-            );
+            await _createIndexes();
           }
         },
         beforeOpen: (details) async {
@@ -179,4 +166,21 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('PRAGMA foreign_keys = ON');
         },
       );
+
+  /// Every index in the schema. `IF NOT EXISTS` makes each statement safe on
+  /// a version 1 database, which already has `idx_transactions_date`.
+  static const _indexStatements = [
+    // Every query is date-scoped and ordered by date.
+    'CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions (date)',
+    'CREATE INDEX IF NOT EXISTS idx_transactions_card_id '
+        'ON transactions (card_id)',
+    'CREATE INDEX IF NOT EXISTS idx_card_statements_card_id '
+        'ON card_statements (card_id)',
+  ];
+
+  Future<void> _createIndexes() async {
+    for (final statement in _indexStatements) {
+      await customStatement(statement);
+    }
+  }
 }

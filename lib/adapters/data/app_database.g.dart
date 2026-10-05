@@ -22,26 +22,57 @@ class $CardsTable extends Cards with TableInfo<$CardsTable, CardRow> {
   late final GeneratedColumn<String> issuer = GeneratedColumn<String>(
       'issuer', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  late final GeneratedColumnWithTypeConverter<CardType, String> type =
+      GeneratedColumn<String>('type', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<CardType>($CardsTable.$convertertype);
+  @override
+  late final GeneratedColumnWithTypeConverter<CardStatus, String> status =
+      GeneratedColumn<String>('status', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<CardStatus>($CardsTable.$converterstatus);
   static const VerificationMeta _last4Meta = const VerificationMeta('last4');
   @override
   late final GeneratedColumn<String> last4 = GeneratedColumn<String>(
       'last4', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _accountLast4Meta =
+      const VerificationMeta('accountLast4');
+  @override
+  late final GeneratedColumn<String> accountLast4 = GeneratedColumn<String>(
+      'account_last4', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _creditLimitMeta =
       const VerificationMeta('creditLimit');
   @override
   late final GeneratedColumn<double> creditLimit = GeneratedColumn<double>(
-      'credit_limit', aliasedName, false,
-      type: DriftSqlType.double, requiredDuringInsert: true);
+      'credit_limit', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _nicknameMeta =
       const VerificationMeta('nickname');
   @override
   late final GeneratedColumn<String> nickname = GeneratedColumn<String>(
       'nickname', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _closedOnMeta =
+      const VerificationMeta('closedOn');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, issuer, last4, creditLimit, nickname];
+  late final GeneratedColumn<DateTime> closedOn = GeneratedColumn<DateTime>(
+      'closed_on', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        issuer,
+        type,
+        status,
+        last4,
+        accountLast4,
+        creditLimit,
+        nickname,
+        closedOn
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -67,17 +98,25 @@ class $CardsTable extends Cards with TableInfo<$CardsTable, CardRow> {
     } else if (isInserting) {
       context.missing(_last4Meta);
     }
+    if (data.containsKey('account_last4')) {
+      context.handle(
+          _accountLast4Meta,
+          accountLast4.isAcceptableOrUnknown(
+              data['account_last4']!, _accountLast4Meta));
+    }
     if (data.containsKey('credit_limit')) {
       context.handle(
           _creditLimitMeta,
           creditLimit.isAcceptableOrUnknown(
               data['credit_limit']!, _creditLimitMeta));
-    } else if (isInserting) {
-      context.missing(_creditLimitMeta);
     }
     if (data.containsKey('nickname')) {
       context.handle(_nicknameMeta,
           nickname.isAcceptableOrUnknown(data['nickname']!, _nicknameMeta));
+    }
+    if (data.containsKey('closed_on')) {
+      context.handle(_closedOnMeta,
+          closedOn.isAcceptableOrUnknown(data['closed_on']!, _closedOnMeta));
     }
     return context;
   }
@@ -86,7 +125,7 @@ class $CardsTable extends Cards with TableInfo<$CardsTable, CardRow> {
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
   List<Set<GeneratedColumn>> get uniqueKeys => [
-        {issuer, last4},
+        {issuer, type, last4},
       ];
   @override
   CardRow map(Map<String, dynamic> data, {String? tablePrefix}) {
@@ -96,12 +135,20 @@ class $CardsTable extends Cards with TableInfo<$CardsTable, CardRow> {
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       issuer: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}issuer'])!,
+      type: $CardsTable.$convertertype.fromSql(attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!),
+      status: $CardsTable.$converterstatus.fromSql(attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!),
       last4: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}last4'])!,
+      accountLast4: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}account_last4']),
       creditLimit: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}credit_limit'])!,
+          .read(DriftSqlType.double, data['${effectivePrefix}credit_limit']),
       nickname: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}nickname']),
+      closedOn: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}closed_on']),
     );
   }
 
@@ -109,31 +156,63 @@ class $CardsTable extends Cards with TableInfo<$CardsTable, CardRow> {
   $CardsTable createAlias(String alias) {
     return $CardsTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<CardType, String, String> $convertertype =
+      const EnumNameConverter<CardType>(CardType.values);
+  static JsonTypeConverter2<CardStatus, String, String> $converterstatus =
+      const EnumNameConverter<CardStatus>(CardStatus.values);
 }
 
 class CardRow extends DataClass implements Insertable<CardRow> {
   final int id;
   final String issuer;
+  final CardType type;
+  final CardStatus status;
 
   /// 2-4 digits, stored as text so a leading zero survives.
   final String last4;
-  final double creditLimit;
+
+  /// Bank Acct Last 4 digits. Only for Debit Cards
+  final String? accountLast4;
+
+  /// The Transaction Limit for any credit card. Only for Credit Cards
+  final double? creditLimit;
   final String? nickname;
+  final DateTime? closedOn;
   const CardRow(
       {required this.id,
       required this.issuer,
+      required this.type,
+      required this.status,
       required this.last4,
-      required this.creditLimit,
-      this.nickname});
+      this.accountLast4,
+      this.creditLimit,
+      this.nickname,
+      this.closedOn});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['issuer'] = Variable<String>(issuer);
+    {
+      map['type'] = Variable<String>($CardsTable.$convertertype.toSql(type));
+    }
+    {
+      map['status'] =
+          Variable<String>($CardsTable.$converterstatus.toSql(status));
+    }
     map['last4'] = Variable<String>(last4);
-    map['credit_limit'] = Variable<double>(creditLimit);
+    if (!nullToAbsent || accountLast4 != null) {
+      map['account_last4'] = Variable<String>(accountLast4);
+    }
+    if (!nullToAbsent || creditLimit != null) {
+      map['credit_limit'] = Variable<double>(creditLimit);
+    }
     if (!nullToAbsent || nickname != null) {
       map['nickname'] = Variable<String>(nickname);
+    }
+    if (!nullToAbsent || closedOn != null) {
+      map['closed_on'] = Variable<DateTime>(closedOn);
     }
     return map;
   }
@@ -142,11 +221,21 @@ class CardRow extends DataClass implements Insertable<CardRow> {
     return CardsCompanion(
       id: Value(id),
       issuer: Value(issuer),
+      type: Value(type),
+      status: Value(status),
       last4: Value(last4),
-      creditLimit: Value(creditLimit),
+      accountLast4: accountLast4 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountLast4),
+      creditLimit: creditLimit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(creditLimit),
       nickname: nickname == null && nullToAbsent
           ? const Value.absent()
           : Value(nickname),
+      closedOn: closedOn == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closedOn),
     );
   }
 
@@ -156,9 +245,15 @@ class CardRow extends DataClass implements Insertable<CardRow> {
     return CardRow(
       id: serializer.fromJson<int>(json['id']),
       issuer: serializer.fromJson<String>(json['issuer']),
+      type: $CardsTable.$convertertype
+          .fromJson(serializer.fromJson<String>(json['type'])),
+      status: $CardsTable.$converterstatus
+          .fromJson(serializer.fromJson<String>(json['status'])),
       last4: serializer.fromJson<String>(json['last4']),
-      creditLimit: serializer.fromJson<double>(json['creditLimit']),
+      accountLast4: serializer.fromJson<String?>(json['accountLast4']),
+      creditLimit: serializer.fromJson<double?>(json['creditLimit']),
       nickname: serializer.fromJson<String?>(json['nickname']),
+      closedOn: serializer.fromJson<DateTime?>(json['closedOn']),
     );
   }
   @override
@@ -167,33 +262,54 @@ class CardRow extends DataClass implements Insertable<CardRow> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'issuer': serializer.toJson<String>(issuer),
+      'type':
+          serializer.toJson<String>($CardsTable.$convertertype.toJson(type)),
+      'status': serializer
+          .toJson<String>($CardsTable.$converterstatus.toJson(status)),
       'last4': serializer.toJson<String>(last4),
-      'creditLimit': serializer.toJson<double>(creditLimit),
+      'accountLast4': serializer.toJson<String?>(accountLast4),
+      'creditLimit': serializer.toJson<double?>(creditLimit),
       'nickname': serializer.toJson<String?>(nickname),
+      'closedOn': serializer.toJson<DateTime?>(closedOn),
     };
   }
 
   CardRow copyWith(
           {int? id,
           String? issuer,
+          CardType? type,
+          CardStatus? status,
           String? last4,
-          double? creditLimit,
-          Value<String?> nickname = const Value.absent()}) =>
+          Value<String?> accountLast4 = const Value.absent(),
+          Value<double?> creditLimit = const Value.absent(),
+          Value<String?> nickname = const Value.absent(),
+          Value<DateTime?> closedOn = const Value.absent()}) =>
       CardRow(
         id: id ?? this.id,
         issuer: issuer ?? this.issuer,
+        type: type ?? this.type,
+        status: status ?? this.status,
         last4: last4 ?? this.last4,
-        creditLimit: creditLimit ?? this.creditLimit,
+        accountLast4:
+            accountLast4.present ? accountLast4.value : this.accountLast4,
+        creditLimit: creditLimit.present ? creditLimit.value : this.creditLimit,
         nickname: nickname.present ? nickname.value : this.nickname,
+        closedOn: closedOn.present ? closedOn.value : this.closedOn,
       );
   CardRow copyWithCompanion(CardsCompanion data) {
     return CardRow(
       id: data.id.present ? data.id.value : this.id,
       issuer: data.issuer.present ? data.issuer.value : this.issuer,
+      type: data.type.present ? data.type.value : this.type,
+      status: data.status.present ? data.status.value : this.status,
       last4: data.last4.present ? data.last4.value : this.last4,
+      accountLast4: data.accountLast4.present
+          ? data.accountLast4.value
+          : this.accountLast4,
       creditLimit:
           data.creditLimit.present ? data.creditLimit.value : this.creditLimit,
       nickname: data.nickname.present ? data.nickname.value : this.nickname,
+      closedOn: data.closedOn.present ? data.closedOn.value : this.closedOn,
     );
   }
 
@@ -202,76 +318,114 @@ class CardRow extends DataClass implements Insertable<CardRow> {
     return (StringBuffer('CardRow(')
           ..write('id: $id, ')
           ..write('issuer: $issuer, ')
+          ..write('type: $type, ')
+          ..write('status: $status, ')
           ..write('last4: $last4, ')
+          ..write('accountLast4: $accountLast4, ')
           ..write('creditLimit: $creditLimit, ')
-          ..write('nickname: $nickname')
+          ..write('nickname: $nickname, ')
+          ..write('closedOn: $closedOn')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, issuer, last4, creditLimit, nickname);
+  int get hashCode => Object.hash(id, issuer, type, status, last4, accountLast4,
+      creditLimit, nickname, closedOn);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is CardRow &&
           other.id == this.id &&
           other.issuer == this.issuer &&
+          other.type == this.type &&
+          other.status == this.status &&
           other.last4 == this.last4 &&
+          other.accountLast4 == this.accountLast4 &&
           other.creditLimit == this.creditLimit &&
-          other.nickname == this.nickname);
+          other.nickname == this.nickname &&
+          other.closedOn == this.closedOn);
 }
 
 class CardsCompanion extends UpdateCompanion<CardRow> {
   final Value<int> id;
   final Value<String> issuer;
+  final Value<CardType> type;
+  final Value<CardStatus> status;
   final Value<String> last4;
-  final Value<double> creditLimit;
+  final Value<String?> accountLast4;
+  final Value<double?> creditLimit;
   final Value<String?> nickname;
+  final Value<DateTime?> closedOn;
   const CardsCompanion({
     this.id = const Value.absent(),
     this.issuer = const Value.absent(),
+    this.type = const Value.absent(),
+    this.status = const Value.absent(),
     this.last4 = const Value.absent(),
+    this.accountLast4 = const Value.absent(),
     this.creditLimit = const Value.absent(),
     this.nickname = const Value.absent(),
+    this.closedOn = const Value.absent(),
   });
   CardsCompanion.insert({
     this.id = const Value.absent(),
     required String issuer,
+    required CardType type,
+    required CardStatus status,
     required String last4,
-    required double creditLimit,
+    this.accountLast4 = const Value.absent(),
+    this.creditLimit = const Value.absent(),
     this.nickname = const Value.absent(),
+    this.closedOn = const Value.absent(),
   })  : issuer = Value(issuer),
-        last4 = Value(last4),
-        creditLimit = Value(creditLimit);
+        type = Value(type),
+        status = Value(status),
+        last4 = Value(last4);
   static Insertable<CardRow> custom({
     Expression<int>? id,
     Expression<String>? issuer,
+    Expression<String>? type,
+    Expression<String>? status,
     Expression<String>? last4,
+    Expression<String>? accountLast4,
     Expression<double>? creditLimit,
     Expression<String>? nickname,
+    Expression<DateTime>? closedOn,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (issuer != null) 'issuer': issuer,
+      if (type != null) 'type': type,
+      if (status != null) 'status': status,
       if (last4 != null) 'last4': last4,
+      if (accountLast4 != null) 'account_last4': accountLast4,
       if (creditLimit != null) 'credit_limit': creditLimit,
       if (nickname != null) 'nickname': nickname,
+      if (closedOn != null) 'closed_on': closedOn,
     });
   }
 
   CardsCompanion copyWith(
       {Value<int>? id,
       Value<String>? issuer,
+      Value<CardType>? type,
+      Value<CardStatus>? status,
       Value<String>? last4,
-      Value<double>? creditLimit,
-      Value<String?>? nickname}) {
+      Value<String?>? accountLast4,
+      Value<double?>? creditLimit,
+      Value<String?>? nickname,
+      Value<DateTime?>? closedOn}) {
     return CardsCompanion(
       id: id ?? this.id,
       issuer: issuer ?? this.issuer,
+      type: type ?? this.type,
+      status: status ?? this.status,
       last4: last4 ?? this.last4,
+      accountLast4: accountLast4 ?? this.accountLast4,
       creditLimit: creditLimit ?? this.creditLimit,
       nickname: nickname ?? this.nickname,
+      closedOn: closedOn ?? this.closedOn,
     );
   }
 
@@ -284,14 +438,28 @@ class CardsCompanion extends UpdateCompanion<CardRow> {
     if (issuer.present) {
       map['issuer'] = Variable<String>(issuer.value);
     }
+    if (type.present) {
+      map['type'] =
+          Variable<String>($CardsTable.$convertertype.toSql(type.value));
+    }
+    if (status.present) {
+      map['status'] =
+          Variable<String>($CardsTable.$converterstatus.toSql(status.value));
+    }
     if (last4.present) {
       map['last4'] = Variable<String>(last4.value);
+    }
+    if (accountLast4.present) {
+      map['account_last4'] = Variable<String>(accountLast4.value);
     }
     if (creditLimit.present) {
       map['credit_limit'] = Variable<double>(creditLimit.value);
     }
     if (nickname.present) {
       map['nickname'] = Variable<String>(nickname.value);
+    }
+    if (closedOn.present) {
+      map['closed_on'] = Variable<DateTime>(closedOn.value);
     }
     return map;
   }
@@ -301,9 +469,13 @@ class CardsCompanion extends UpdateCompanion<CardRow> {
     return (StringBuffer('CardsCompanion(')
           ..write('id: $id, ')
           ..write('issuer: $issuer, ')
+          ..write('type: $type, ')
+          ..write('status: $status, ')
           ..write('last4: $last4, ')
+          ..write('accountLast4: $accountLast4, ')
           ..write('creditLimit: $creditLimit, ')
-          ..write('nickname: $nickname')
+          ..write('nickname: $nickname, ')
+          ..write('closedOn: $closedOn')
           ..write(')'))
         .toString();
   }
@@ -1794,16 +1966,24 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$CardsTableCreateCompanionBuilder = CardsCompanion Function({
   Value<int> id,
   required String issuer,
+  required CardType type,
+  required CardStatus status,
   required String last4,
-  required double creditLimit,
+  Value<String?> accountLast4,
+  Value<double?> creditLimit,
   Value<String?> nickname,
+  Value<DateTime?> closedOn,
 });
 typedef $$CardsTableUpdateCompanionBuilder = CardsCompanion Function({
   Value<int> id,
   Value<String> issuer,
+  Value<CardType> type,
+  Value<CardStatus> status,
   Value<String> last4,
-  Value<double> creditLimit,
+  Value<String?> accountLast4,
+  Value<double?> creditLimit,
   Value<String?> nickname,
+  Value<DateTime?> closedOn,
 });
 
 final class $$CardsTableReferences
@@ -1853,14 +2033,30 @@ class $$CardsTableFilterComposer extends Composer<_$AppDatabase, $CardsTable> {
   ColumnFilters<String> get issuer => $composableBuilder(
       column: $table.issuer, builder: (column) => ColumnFilters(column));
 
+  ColumnWithTypeConverterFilters<CardType, CardType, String> get type =>
+      $composableBuilder(
+          column: $table.type,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnWithTypeConverterFilters<CardStatus, CardStatus, String> get status =>
+      $composableBuilder(
+          column: $table.status,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
   ColumnFilters<String> get last4 => $composableBuilder(
       column: $table.last4, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get accountLast4 => $composableBuilder(
+      column: $table.accountLast4, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get creditLimit => $composableBuilder(
       column: $table.creditLimit, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get nickname => $composableBuilder(
       column: $table.nickname, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get closedOn => $composableBuilder(
+      column: $table.closedOn, builder: (column) => ColumnFilters(column));
 
   Expression<bool> transactionsRefs(
       Expression<bool> Function($$TransactionsTableFilterComposer f) f) {
@@ -1920,14 +2116,27 @@ class $$CardsTableOrderingComposer
   ColumnOrderings<String> get issuer => $composableBuilder(
       column: $table.issuer, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get last4 => $composableBuilder(
       column: $table.last4, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get accountLast4 => $composableBuilder(
+      column: $table.accountLast4,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get creditLimit => $composableBuilder(
       column: $table.creditLimit, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get nickname => $composableBuilder(
       column: $table.nickname, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get closedOn => $composableBuilder(
+      column: $table.closedOn, builder: (column) => ColumnOrderings(column));
 }
 
 class $$CardsTableAnnotationComposer
@@ -1945,14 +2154,26 @@ class $$CardsTableAnnotationComposer
   GeneratedColumn<String> get issuer =>
       $composableBuilder(column: $table.issuer, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<CardType, String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<CardStatus, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
   GeneratedColumn<String> get last4 =>
       $composableBuilder(column: $table.last4, builder: (column) => column);
+
+  GeneratedColumn<String> get accountLast4 => $composableBuilder(
+      column: $table.accountLast4, builder: (column) => column);
 
   GeneratedColumn<double> get creditLimit => $composableBuilder(
       column: $table.creditLimit, builder: (column) => column);
 
   GeneratedColumn<String> get nickname =>
       $composableBuilder(column: $table.nickname, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get closedOn =>
+      $composableBuilder(column: $table.closedOn, builder: (column) => column);
 
   Expression<T> transactionsRefs<T extends Object>(
       Expression<T> Function($$TransactionsTableAnnotationComposer a) f) {
@@ -2022,30 +2243,46 @@ class $$CardsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<String> issuer = const Value.absent(),
+            Value<CardType> type = const Value.absent(),
+            Value<CardStatus> status = const Value.absent(),
             Value<String> last4 = const Value.absent(),
-            Value<double> creditLimit = const Value.absent(),
+            Value<String?> accountLast4 = const Value.absent(),
+            Value<double?> creditLimit = const Value.absent(),
             Value<String?> nickname = const Value.absent(),
+            Value<DateTime?> closedOn = const Value.absent(),
           }) =>
               CardsCompanion(
             id: id,
             issuer: issuer,
+            type: type,
+            status: status,
             last4: last4,
+            accountLast4: accountLast4,
             creditLimit: creditLimit,
             nickname: nickname,
+            closedOn: closedOn,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String issuer,
+            required CardType type,
+            required CardStatus status,
             required String last4,
-            required double creditLimit,
+            Value<String?> accountLast4 = const Value.absent(),
+            Value<double?> creditLimit = const Value.absent(),
             Value<String?> nickname = const Value.absent(),
+            Value<DateTime?> closedOn = const Value.absent(),
           }) =>
               CardsCompanion.insert(
             id: id,
             issuer: issuer,
+            type: type,
+            status: status,
             last4: last4,
+            accountLast4: accountLast4,
             creditLimit: creditLimit,
             nickname: nickname,
+            closedOn: closedOn,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>

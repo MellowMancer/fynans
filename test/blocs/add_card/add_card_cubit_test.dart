@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/blocs/add_card/add_card_cubit.dart';
 import 'package:fynans/adapters/blocs/add_card/add_card_state.dart';
 import 'package:fynans/entities/detected_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 
 import '../../fakes/fake_card_repository.dart';
 import '../../fakes/fake_card_statement_repository.dart';
@@ -61,6 +62,8 @@ void main() {
       expect(saved.single.last4, '1234');
       expect(saved.single.creditLimit, 50000);
       expect(saved.single.nickname, 'Travel card');
+      expect(saved.single.type, CardType.credit);
+      expect(saved.single.status, CardStatus.active);
     });
 
     test('a blank issuer is rejected before saving or sweeping', () async {

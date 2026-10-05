@@ -1,6 +1,6 @@
 import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/card_summary.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 
 /// Folds [card]'s transactions into a [CardSummary].
@@ -20,11 +20,23 @@ import 'package:fynans/entities/transaction.dart';
 /// than the card's whole lifetime. The unanchored all-time fold below that
 /// is the last resort — a card with neither an SMS-reported limit nor a
 /// statement yet (e.g. just added, or added manually).
+///
+/// [card] must be a credit card with a credit limit. Any other card throws
+/// an [ArgumentError]: a debit card has no limit to fold against.
 CardSummary summariseCard(
-  CreditCard card,
+  PaymentCard card,
   List<Transaction> transactions, {
   CardStatement? latestStatement,
 }) {
+  final creditLimit = card.creditLimit;
+  if (card.type != CardType.credit || creditLimit == null) {
+    throw ArgumentError.value(
+      card.last4,
+      'card',
+      'summariseCard needs a credit card with a credit limit',
+    );
+  }
+
   double? reportedAvailable;
   DateTime? asOf;
   for (final t in transactions) {
@@ -39,8 +51,8 @@ CardSummary summariseCard(
   final double available;
   final totalDue = latestStatement?.totalDue;
   if (reportedAvailable != null) {
-    available = reportedAvailable.clamp(0.0, card.creditLimit);
-    spent = (card.creditLimit - available).clamp(0.0, card.creditLimit);
+    available = reportedAvailable.clamp(0.0, creditLimit);
+    spent = (creditLimit - available).clamp(0.0, creditLimit);
   } else if (totalDue != null) {
     final statementDate = latestStatement!.statementDate;
     var delta = 0.0;
@@ -48,16 +60,16 @@ CardSummary summariseCard(
       if (!t.date.isAfter(statementDate)) continue;
       delta += t.isCredit ? -t.amount : t.amount;
     }
-    spent = (totalDue + delta).clamp(0.0, card.creditLimit);
-    available = (card.creditLimit - spent).clamp(0.0, card.creditLimit);
+    spent = (totalDue + delta).clamp(0.0, creditLimit);
+    available = (creditLimit - spent).clamp(0.0, creditLimit);
     asOf = statementDate;
   } else {
     double foldedSpent = 0;
     for (final t in transactions) {
       foldedSpent += t.isCredit ? -t.amount : t.amount;
     }
-    spent = foldedSpent.clamp(0.0, card.creditLimit);
-    available = (card.creditLimit - spent).clamp(0.0, card.creditLimit);
+    spent = foldedSpent.clamp(0.0, creditLimit);
+    available = (creditLimit - spent).clamp(0.0, creditLimit);
     asOf = null;
   }
 
@@ -65,7 +77,7 @@ CardSummary summariseCard(
     card: card,
     spent: spent,
     available: available,
-    utilization: card.creditLimit == 0 ? 0 : spent / card.creditLimit,
+    utilization: creditLimit == 0 ? 0 : spent / creditLimit,
     asOf: asOf,
   );
 }

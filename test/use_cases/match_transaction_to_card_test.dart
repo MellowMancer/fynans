@@ -1,16 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/use_cases/match_transaction_to_card.dart';
 
-CreditCard _card({
+PaymentCard _card({
   int? id,
   required String issuer,
   required String last4,
 }) =>
-    CreditCard()
+    PaymentCard()
       ..id = id
       ..issuer = issuer
       ..last4 = last4
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
 
 void main() {

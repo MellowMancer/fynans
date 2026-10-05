@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
@@ -82,9 +82,11 @@ void main() {
     final cardDate = DateTime(2026, 1, 15);
 
     test('matched card SMS routes to the card, out of the main list', () async {
-      final card = CreditCard()
+      final card = PaymentCard()
         ..issuer = 'SBI Card'
         ..last4 = '1234'
+        ..type = CardType.credit
+        ..status = CardStatus.active
         ..creditLimit = 5000;
       cardRepository.seed([card]);
       ingestor = TransactionSmsIngestor(
@@ -129,7 +131,8 @@ void main() {
     test('an unmatched card SMS records a sighting instead of vanishing',
         () async {
       // No card seeded.
-      await ingestor.ingest(sender: cardSender, body: spendBody, date: cardDate);
+      await ingestor.ingest(
+          sender: cardSender, body: spendBody, date: cardDate);
 
       final pending = await detectedCardRepository.watchPending().first;
       expect(pending, hasLength(1));
@@ -146,9 +149,11 @@ void main() {
       );
     });
 
-    test('repeated sightings of the same unmatched card bump the count, '
+    test(
+        'repeated sightings of the same unmatched card bump the count, '
         'not create duplicates', () async {
-      await ingestor.ingest(sender: cardSender, body: spendBody, date: cardDate);
+      await ingestor.ingest(
+          sender: cardSender, body: spendBody, date: cardDate);
       await ingestor.ingest(
           sender: cardSender,
           body: spendBody,
@@ -160,7 +165,8 @@ void main() {
     });
 
     test('a dismissed sighting is not resurrected by a new SMS', () async {
-      await ingestor.ingest(sender: cardSender, body: spendBody, date: cardDate);
+      await ingestor.ingest(
+          sender: cardSender, body: spendBody, date: cardDate);
       final first = (await detectedCardRepository.watchPending().first).single;
       await detectedCardRepository.dismiss(first);
 
@@ -174,9 +180,11 @@ void main() {
     });
 
     test('a matched card SMS does not record a sighting', () async {
-      final card = CreditCard()
+      final card = PaymentCard()
         ..issuer = 'SBI Card'
         ..last4 = '1234'
+        ..type = CardType.credit
+        ..status = CardStatus.active
         ..creditLimit = 5000;
       cardRepository.seed([card]);
       ingestor = TransactionSmsIngestor(
@@ -186,7 +194,8 @@ void main() {
         statementRepository: statementRepository,
       );
 
-      await ingestor.ingest(sender: cardSender, body: spendBody, date: cardDate);
+      await ingestor.ingest(
+          sender: cardSender, body: spendBody, date: cardDate);
 
       expect(await detectedCardRepository.watchPending().first, isEmpty);
     });
@@ -198,9 +207,11 @@ void main() {
       // delete left them stuck cardId-less forever, because
       // importTransaction's dedup-by-smsId silently no-ops on a re-scan —
       // nothing re-visited an already-imported row to update its cardId.
-      final original = CreditCard()
+      final original = PaymentCard()
         ..issuer = 'SBI Card'
         ..last4 = '1234'
+        ..type = CardType.credit
+        ..status = CardStatus.active
         ..creditLimit = 5000;
       cardRepository.seed([original]);
 
@@ -224,9 +235,11 @@ void main() {
 
       // 3. Re-add the same card (new id, same issuer/last4) and re-sweep,
       // exactly like AddCardCubit does after a successful save.
-      final readded = CreditCard()
+      final readded = PaymentCard()
         ..issuer = 'SBI Card'
         ..last4 = '1234'
+        ..type = CardType.credit
+        ..status = CardStatus.active
         ..creditLimit = 5000;
       await cardRepository.saveCard(readded);
       expect(readded.id, isNot(original.id));

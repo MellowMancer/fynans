@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/ports/card_repository.dart';
 
 /// In-memory [CardRepository] for use in tests.
 class FakeCardRepository implements CardRepository {
-  final List<CreditCard> _cards = [];
+  final List<PaymentCard> _cards = [];
 
   int _nextId = 0;
 
@@ -13,7 +13,7 @@ class FakeCardRepository implements CardRepository {
   Future<void> dispose() => _changes.close();
 
   /// Replaces all stored cards with the given list.
-  void seed(List<CreditCard> cards) {
+  void seed(List<PaymentCard> cards) {
     _cards
       ..clear()
       ..addAll(cards.map((c) => c..id ??= ++_nextId));
@@ -21,7 +21,7 @@ class FakeCardRepository implements CardRepository {
   }
 
   @override
-  Future<void> saveCard(CreditCard card) async {
+  Future<void> saveCard(PaymentCard card) async {
     // Mirrors the Drift schema's unique (issuer, last4) index exactly — a
     // plain SQLite index is case-sensitive, so this must be too, or the fake
     // would reject (or allow) things the real repository doesn't.
@@ -37,7 +37,7 @@ class FakeCardRepository implements CardRepository {
   }
 
   @override
-  Future<void> deleteCard(CreditCard card) async {
+  Future<void> deleteCard(PaymentCard card) async {
     final id = card.id;
     if (id == null) {
       throw StateError('Cannot delete a card that was never saved.');
@@ -47,11 +47,11 @@ class FakeCardRepository implements CardRepository {
   }
 
   @override
-  Stream<List<CreditCard>> watchCards() {
-    late final StreamController<List<CreditCard>> controller;
+  Stream<List<PaymentCard>> watchCards() {
+    late final StreamController<List<PaymentCard>> controller;
     StreamSubscription<void>? watcher;
 
-    controller = StreamController<List<CreditCard>>(
+    controller = StreamController<List<PaymentCard>>(
       onListen: () {
         controller.add(List.of(_cards));
         watcher =
@@ -66,7 +66,7 @@ class FakeCardRepository implements CardRepository {
   }
 
   @override
-  Future<List<CreditCard>> fetchCards() async => List.of(_cards);
+  Future<List<PaymentCard>> fetchCards() async => List.of(_cards);
 
   void _notify() {
     if (!_changes.isClosed) _changes.add(null);

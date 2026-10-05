@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/entities/card_statement.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
@@ -24,13 +24,13 @@ class CardsCubit extends Cubit<CardsState> {
   final CardRepository _cardRepository;
   final CardStatementRepository _statementRepository;
 
-  StreamSubscription<List<CreditCard>>? _cardsSubscription;
+  StreamSubscription<List<PaymentCard>>? _cardsSubscription;
   final Map<int, StreamSubscription<List<Transaction>>> _txnSubscriptions = {};
   final Map<int, List<Transaction>> _transactionsByCard = {};
   final Map<int, StreamSubscription<CardStatement?>> _statementSubscriptions =
       {};
   final Map<int, CardStatement?> _statementByCard = {};
-  List<CreditCard> _cards = const [];
+  List<PaymentCard> _cards = const [];
 
   /// Bumped per [loadCards] call so a late event from a superseded
   /// subscription set can be discarded instead of overwriting current state.
@@ -56,7 +56,7 @@ class CardsCubit extends Cubit<CardsState> {
     );
   }
 
-  void _onCardsChanged(List<CreditCard> cards, int generation) {
+  void _onCardsChanged(List<PaymentCard> cards, int generation) {
     _cards = cards;
     final currentIds = cards.map((c) => c.id).whereType<int>().toSet();
 

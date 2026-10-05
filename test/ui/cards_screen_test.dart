@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/detected_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
@@ -73,9 +73,11 @@ void main() {
   testWidgets('a registered card renders its tile with issuer and last4',
       (tester) async {
     cardRepository.seed([
-      CreditCard()
+      PaymentCard()
         ..issuer = 'HDFC'
         ..last4 = '1234'
+        ..type = CardType.credit
+        ..status = CardStatus.active
         ..creditLimit = 50000,
     ]);
 
@@ -89,9 +91,11 @@ void main() {
   testWidgets(
       'a card with a matched transaction shows spent, not available equal to full limit',
       (tester) async {
-    final card = CreditCard()
+    final card = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
     cardRepository.seed([card]);
     transactionRepository.seed([
@@ -113,9 +117,11 @@ void main() {
 
   testWidgets('the add-card FAB opens AddCardScreen', (tester) async {
     cardRepository.seed([
-      CreditCard()
+      PaymentCard()
         ..issuer = 'HDFC'
         ..last4 = '1234'
+        ..type = CardType.credit
+        ..status = CardStatus.active
         ..creditLimit = 50000,
     ]);
 
@@ -128,9 +134,11 @@ void main() {
   });
 
   testWidgets('tapping a card tile opens its detail screen', (tester) async {
-    final card = CreditCard()
+    final card = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
     cardRepository.seed([card]);
 
