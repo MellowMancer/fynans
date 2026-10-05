@@ -1,12 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/card_statement.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/summarise_card.dart';
 
-CreditCard _card({double creditLimit = 50000}) => CreditCard()
+PaymentCard _card({double creditLimit = 50000}) => PaymentCard()
   ..issuer = 'HDFC'
   ..last4 = '1234'
+  ..type = CardType.credit
+  ..status = CardStatus.active
   ..creditLimit = creditLimit;
 
 Transaction _spend(double amount, DateTime date, {double? availableLimit}) =>
@@ -142,8 +144,7 @@ void main() {
         _spend(500, DateTime(2026, 1, 5)), // before the statement — excluded
         _spend(1000, DateTime(2026, 1, 25)), // after — counted
       ];
-      final statement =
-          _statement(DateTime(2026, 1, 20), totalDue: 15000);
+      final statement = _statement(DateTime(2026, 1, 20), totalDue: 15000);
 
       final result = summariseCard(
         _card(creditLimit: 50000),
@@ -210,8 +211,7 @@ void main() {
       expect(result.asOf, isNull);
     });
 
-    test('no statement at all behaves exactly as before this feature',
-        () {
+    test('no statement at all behaves exactly as before this feature', () {
       final transactions = [_spend(1000, DateTime(2026, 1, 25))];
 
       final result = summariseCard(_card(creditLimit: 50000), transactions);

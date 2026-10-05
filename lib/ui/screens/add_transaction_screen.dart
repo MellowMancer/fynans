@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_state.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
@@ -25,7 +25,7 @@ const int _kBackdateYears = 1;
 class AddTransactionScreen extends StatelessWidget {
   const AddTransactionScreen({super.key, this.card});
 
-  final CreditCard? card;
+  final PaymentCard? card;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +41,7 @@ class AddTransactionScreen extends StatelessWidget {
 class _AddTransactionForm extends StatefulWidget {
   const _AddTransactionForm({this.card});
 
-  final CreditCard? card;
+  final PaymentCard? card;
 
   @override
   State<_AddTransactionForm> createState() => _AddTransactionFormState();

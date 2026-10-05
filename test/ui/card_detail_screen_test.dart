@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/blocs/cards/cards_cubit.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
@@ -28,15 +28,17 @@ void main() {
   late FakeTransactionRepository transactionRepository;
   late FakeCardRepository cardRepository;
   late FakeCardStatementRepository statementRepository;
-  late CreditCard card;
+  late PaymentCard card;
 
   setUp(() {
     transactionRepository = FakeTransactionRepository();
     cardRepository = FakeCardRepository();
     statementRepository = FakeCardStatementRepository();
-    card = CreditCard()
+    card = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
     cardRepository.seed([card]);
   });

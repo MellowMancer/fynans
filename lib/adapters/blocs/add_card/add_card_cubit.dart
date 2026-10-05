@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/detected_card.dart';
 import 'package:fynans/ports/card_repository.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
@@ -62,9 +62,11 @@ class AddCardCubit extends Cubit<AddCardState> {
     }
 
     final trimmedNickname = nickname?.trim();
-    final card = CreditCard()
+    final card = PaymentCard()
       ..issuer = trimmedIssuer
       ..last4 = trimmedLast4
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = limit
       ..nickname = (trimmedNickname != null && trimmedNickname.isNotEmpty)
           ? trimmedNickname
@@ -73,8 +75,8 @@ class AddCardCubit extends Cubit<AddCardState> {
     try {
       await _cardRepository.saveCard(card);
     } catch (error) {
-      // Most likely cause: the unique (issuer, last4) index — this card is
-      // already registered.
+      // Most likely cause: the unique (issuer, type, last4) index — this card
+      // is already registered.
       emit(state.copyWith(
           status: AddCardStatus.failure, message: error.toString()));
       return;

@@ -1,16 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/ports/card_repository.dart';
 
-CreditCard card({
+PaymentCard card({
   String issuer = 'HDFC',
   String last4 = '1234',
   double creditLimit = 50000,
   String? nickname,
 }) =>
-    CreditCard()
+    PaymentCard()
       ..issuer = issuer
       ..last4 = last4
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = creditLimit
       ..nickname = nickname;
 

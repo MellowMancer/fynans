@@ -1,5 +1,5 @@
 import 'package:meta/meta.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 
 /// Derived spend/limit figures for one [card]. Nothing here is stored —
 /// computed fresh by `summariseCard` from the card and its transactions.
@@ -13,7 +13,7 @@ class CardSummary {
     this.asOf,
   });
 
-  final CreditCard card;
+  final PaymentCard card;
   final double spent;
   final double available;
 

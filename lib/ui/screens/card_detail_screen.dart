@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/cards/cards_cubit.dart';
 import 'package:fynans/adapters/blocs/cards/cards_state.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
@@ -72,7 +72,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, CreditCard card, int count) async {
+      BuildContext context, PaymentCard card, int count) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -108,7 +108,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
 
     // Unlink first: if delete succeeded but unlink failed, the transactions
     // would be orphaned under a card_id that no longer exists.
-    await transactionRepository.unlinkCard(id);
+    // await transactionRepository.unlinkCard(id);
     await cardRepository.deleteCard(card);
     if (context.mounted) Navigator.pop(context);
   }

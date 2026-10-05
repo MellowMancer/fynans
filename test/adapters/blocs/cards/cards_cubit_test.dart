@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/blocs/cards/cards_cubit.dart';
 import 'package:fynans/adapters/blocs/cards/cards_state.dart';
 import 'package:fynans/entities/card_statement.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 
 import '../../../fakes/fake_card_repository.dart';
 import '../../../fakes/fake_card_statement_repository.dart';
@@ -33,10 +33,12 @@ void main() {
     await statementRepository.dispose();
   });
 
-  CreditCard seedCard() {
-    final card = CreditCard()
+  PaymentCard seedCard() {
+    final card = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
     cardRepository.seed([card]);
     return card;

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:fynans/entities/card_statement.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
@@ -23,7 +23,7 @@ class TransactionSmsIngestor {
   /// Fetched once and reused for this instance's lifetime, not per [ingest]
   /// call — `SmsIntakeService.catchUp` creates one ingestor and calls
   /// [ingest] up to 1000 times per launch sweep.
-  Future<List<CreditCard>>? _cardsFuture;
+  Future<List<PaymentCard>>? _cardsFuture;
 
   TransactionSmsIngestor({
     required TransactionRepository repository,
@@ -36,8 +36,7 @@ class TransactionSmsIngestor {
         _detectedCardRepository = detectedCardRepository,
         _statementRepository = statementRepository;
 
-  Future<List<CreditCard>> _cards() =>
-      _cardsFuture ??= _cardRepository.fetchCards();
+  Future<List<PaymentCard>> _cards() => _cardsFuture ??= _cardRepository.fetchCards();
 
   /// Returns true if a new transaction was saved. A recognized statement SMS
   /// returns false too — it saves a [CardStatement], never a [Transaction] —

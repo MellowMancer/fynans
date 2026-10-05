@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/data/app_database.dart';
 import 'package:fynans/adapters/data/drift_card_repository.dart';
 import 'package:fynans/adapters/data/drift_transaction_repository.dart';
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 
@@ -31,9 +31,11 @@ void main() {
   tearDown(() => db.close());
 
   Future<int> seedCard({String issuer = 'HDFC', String last4 = '1234'}) async {
-    final card = CreditCard()
+    final card = PaymentCard()
       ..issuer = issuer
       ..last4 = last4
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
     await cards.saveCard(card);
     return card.id!;
@@ -135,9 +137,11 @@ void main() {
   test(
       'a card cannot be deleted out from under a foreign-key reference'
       ' without unlinking first', () async {
-    final card = CreditCard()
+    final card = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
     await cards.saveCard(card);
     await transactions
@@ -155,9 +159,11 @@ void main() {
   test(
       'relinkTransactionToCard re-attaches a row stranded by delete+re-add, '
       'reproducing the reported bug end to end', () async {
-    final original = CreditCard()
+    final original = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
     await cards.saveCard(original);
     await transactions.saveTransaction(
@@ -169,9 +175,11 @@ void main() {
     await cards.deleteCard(original);
 
     // Re-add the same card — a new row, new id.
-    final readded = CreditCard()
+    final readded = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
+      ..type = CardType.credit
+      ..status = CardStatus.active
       ..creditLimit = 50000;
     await cards.saveCard(readded);
     expect(readded.id, isNot(original.id));

@@ -1,13 +1,13 @@
-import 'package:fynans/entities/credit_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 
 /// Abstract seam between the domain/presentation layer and wherever
-/// [CreditCard]s are persisted.
+/// [PaymentCard]s are persisted.
 abstract class CardRepository {
   /// Cards are immutable after creation — there is no update, only
   /// save/delete.
-  Future<void> saveCard(CreditCard card);
-  Future<void> deleteCard(CreditCard card);
+  Future<void> saveCard(PaymentCard card);
+  Future<void> deleteCard(PaymentCard card);
 
-  Stream<List<CreditCard>> watchCards();
-  Future<List<CreditCard>> fetchCards();
+  Stream<List<PaymentCard>> watchCards();
+  Future<List<PaymentCard>> fetchCards();
 }
