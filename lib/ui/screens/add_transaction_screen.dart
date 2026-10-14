@@ -87,7 +87,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
     _noteController.text = t.note ?? '';
     _selectedDate = t.date;
     _selectedTags.addAll(t.tags);
-    _creditFlag = t.isCredit;
+    _creditFlag = t.isInflow;
   }
 
   @override
@@ -123,7 +123,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           party: _partyController.text,
           group: _groupController.text,
           tags: List.of(_selectedTags),
-          isCredit: _creditFlag,
+          isInflow: _creditFlag,
           note: _noteController.text,
           date: _selectedDate,
           existing: widget.editing,
@@ -395,13 +395,13 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
               ),
               _Section(
                 // "Sender" for inflows, "Recipient" for outflows.
-                label: Fmt.partyLabel(isCredit: _creditFlag),
+                label: Fmt.partyLabel(isInflow: _creditFlag),
                 child: _SuggestingField(
                   controller: _partyController,
                   suggestions: state.parties,
                   hintText: _creditFlag ? 'Who paid you?' : 'Who did you pay?',
                   validator: (value) => (value == null || value.trim().isEmpty)
-                      ? 'Enter a ${Fmt.partyLabel(isCredit: _creditFlag).toLowerCase()}'
+                      ? 'Enter a ${Fmt.partyLabel(isInflow: _creditFlag).toLowerCase()}'
                       : null,
                 ),
               ),

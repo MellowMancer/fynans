@@ -21,7 +21,7 @@ Transaction _txn({
   return Transaction()
     ..amount = amount
     ..date = date
-    ..isCredit = isCredit
+    ..isInflow = isCredit
     ..tags = List.of(tags)
     ..group = List.of(group)
     ..party = party

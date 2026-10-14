@@ -17,7 +17,7 @@ Transaction _txn({
       ..tags = List.of(tags)
       ..group = List.of(group)
       ..party = party
-      ..isCredit = isCredit
+      ..isInflow = isCredit
       ..cardId = cardId;
 
 void main() {

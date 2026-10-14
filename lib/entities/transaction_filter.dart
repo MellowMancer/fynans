@@ -83,9 +83,9 @@ class TransactionFilter {
     if (!_matchesAny(parties, [t.party])) return false;
     switch (direction) {
       case DirectionFilter.inflow:
-        if (!t.isCredit) return false;
+        if (!t.isInflow) return false;
       case DirectionFilter.outflow:
-        if (t.isCredit) return false;
+        if (t.isInflow) return false;
       case DirectionFilter.any:
         break;
     }

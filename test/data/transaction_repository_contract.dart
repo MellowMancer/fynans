@@ -18,7 +18,7 @@ Transaction txn({
       ..tags = List<String>.from(tags)
       ..group = List<String>.from(group)
       ..party = party
-      ..isCredit = false
+      ..isInflow = false
       ..smsId = smsId
       ..cardId = cardId;
 
@@ -77,14 +77,14 @@ void runTransactionRepositoryContract(
         await repo.updateTransaction(
             txn(date: DateTime(2026, 7, 11), amount: 250, party: 'after')
               ..id = saved.id
-              ..isCredit = true);
+              ..isInflow = true);
 
         final stored = (await inJuly()).single;
         expect(stored.id, saved.id);
         expect(stored.party, 'after');
         expect(stored.amount, 250);
         expect(stored.date, DateTime(2026, 7, 11));
-        expect(stored.isCredit, isTrue);
+        expect(stored.isInflow, isTrue);
       });
 
       test('updating an unsaved record throws', () {

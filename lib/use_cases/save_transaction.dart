@@ -42,7 +42,7 @@ class SaveTransaction {
     required String party,
     required String group,
     required List<String> tags,
-    required bool isCredit,
+    required bool isInflow,
     required DateTime date,
     String? note,
     Transaction? existing,
@@ -63,7 +63,7 @@ class SaveTransaction {
 
     final trimmedParty = party.trim();
     final resolvedParty =
-        isCredit && trimmedParty.isEmpty ? kDefaultCreditParty : trimmedParty;
+        isInflow && trimmedParty.isEmpty ? kDefaultCreditParty : trimmedParty;
 
     final transaction = Transaction()
       ..id = existing?.id
@@ -72,7 +72,7 @@ class SaveTransaction {
       ..tags = List.of(tags)
       ..group = groups
       ..party = resolvedParty
-      ..isCredit = isCredit
+      ..isInflow = isInflow
       ..note = (note != null && note.isNotEmpty) ? note : null
       ..smsId = existing?.smsId
       ..smsBody = existing?.smsBody

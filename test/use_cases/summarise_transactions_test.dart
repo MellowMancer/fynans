@@ -14,7 +14,7 @@ Transaction makeDebit({
     ..tags = List<String>.from(tags)
     ..group = List<String>.from(group)
     ..party = 'test'
-    ..isCredit = false;
+    ..isInflow = false;
 }
 
 Transaction makeCredit({required double amount}) {
@@ -24,7 +24,7 @@ Transaction makeCredit({required double amount}) {
     ..tags = []
     ..group = []
     ..party = 'test'
-    ..isCredit = true;
+    ..isInflow = true;
 }
 
 void main() {
@@ -46,7 +46,7 @@ void main() {
         makeDebit(amount: 100, tags: ['transport']),
         makeDebit(amount: 500, tags: ['rent']),
         makeDebit(amount: 300, tags: ['food']),
-        makeDebit(amount: 50,  tags: ['entertainment']),
+        makeDebit(amount: 50, tags: ['entertainment']),
       ], topN: 2);
       expect(result.topTags.keys.toList(), ['rent', 'food']);
       expect(result.topTags.containsKey('transport'), isFalse);

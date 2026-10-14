@@ -18,7 +18,7 @@ Transaction _spend(double amount, DateTime date, {double? availableLimit}) =>
       ..tags = []
       ..group = []
       ..party = 'Merchant'
-      ..isCredit = false
+      ..isInflow = false
       ..cardId = 1
       ..cardAvailableLimit = availableLimit;
 
@@ -29,7 +29,7 @@ Transaction _credit(double amount, DateTime date, {double? availableLimit}) =>
       ..tags = []
       ..group = []
       ..party = 'Merchant'
-      ..isCredit = true
+      ..isInflow = true
       ..cardId = 1
       ..cardAvailableLimit = availableLimit;
 

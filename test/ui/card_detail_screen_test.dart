@@ -21,7 +21,7 @@ Transaction spend(double amount, DateTime date, int cardId) => Transaction()
   ..tags = []
   ..group = []
   ..party = 'Merchant'
-  ..isCredit = false
+  ..isInflow = false
   ..cardId = cardId;
 
 void main() {

@@ -13,7 +13,7 @@ MonthlySummary summariseTransactions(
   final Map<String, double> groupSpending = {};
 
   for (final transaction in transactions) {
-    if (transaction.isCredit) {
+    if (transaction.isInflow) {
       income += transaction.amount;
     } else {
       expenses += transaction.amount;

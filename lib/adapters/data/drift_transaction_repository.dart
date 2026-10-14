@@ -153,7 +153,7 @@ class DriftTransactionRepository implements TransactionRepository {
         amount: t.amount,
         date: t.date,
         party: t.party,
-        isCredit: Value(t.isCredit),
+        isCredit: Value(t.isInflow),
         note: Value(t.note),
         smsId: Value(t.smsId),
         smsBody: Value(t.smsBody),
@@ -168,7 +168,7 @@ class DriftTransactionRepository implements TransactionRepository {
     ..amount = row.amount
     ..date = row.date
     ..party = row.party
-    ..isCredit = row.isCredit
+    ..isInflow = row.isCredit
     ..note = row.note
     ..smsId = row.smsId
     ..smsBody = row.smsBody

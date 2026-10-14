@@ -15,7 +15,7 @@ Transaction _txn({
   return Transaction()
     ..amount = amount
     ..date = date
-    ..isCredit = isCredit
+    ..isInflow = isCredit
     ..tags = List.of(tags)
     ..group = const []
     ..party = 'Test'
@@ -36,7 +36,11 @@ void main() {
 
     test('emits [InProgress, Success] with computed analytics', () async {
       repo.seed([
-        _txn(amount: 120, date: DateTime(2026, 7, 5), isCredit: false, tags: ['food']),
+        _txn(
+            amount: 120,
+            date: DateTime(2026, 7, 5),
+            isCredit: false,
+            tags: ['food']),
         _txn(amount: 500, date: DateTime(2026, 7, 6), isCredit: true),
       ]);
 
@@ -47,7 +51,8 @@ void main() {
           isA<AnalyticsLoadSuccess>()
               .having((s) => s.analytics.totalOutflow, 'totalOutflow', 120)
               .having((s) => s.analytics.totalInflow, 'totalInflow', 500)
-              .having((s) => s.analytics.tagSlices.first.label, 'topTag', 'food'),
+              .having(
+                  (s) => s.analytics.tagSlices.first.label, 'topTag', 'food'),
         ]),
       );
 

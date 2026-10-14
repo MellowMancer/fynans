@@ -23,7 +23,7 @@ void main() {
       ..date = DateTime(2026, 7, 14, 9, 30)
       ..tags = ['food']
       ..party = 'Cafe'
-      ..isCredit = false
+      ..isInflow = false
       ..smsId = smsId
       ..smsBody = smsId == null ? null : 'Sent Rs 410.00 From HDFC Bank';
     await repo.saveTransaction(t);
@@ -35,7 +35,7 @@ void main() {
         party: 'Bakery',
         group: 'Trip',
         tags: const ['shopping'],
-        isCredit: true,
+        isInflow: true,
         date: DateTime(2026, 7, 20),
         note: 'fixed',
         existing: existing,
@@ -53,7 +53,7 @@ void main() {
     expect(stored.party, 'Bakery');
     expect(stored.group, ['Trip']);
     expect(stored.tags, ['shopping']);
-    expect(stored.isCredit, isTrue);
+    expect(stored.isInflow, isTrue);
     expect(stored.note, 'fixed');
   });
 

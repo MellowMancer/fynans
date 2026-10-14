@@ -41,8 +41,8 @@ void main() {
     });
 
     test('party is labelled by direction', () {
-      expect(Fmt.partyLabel(isCredit: true), 'Sender');
-      expect(Fmt.partyLabel(isCredit: false), 'Recipient');
+      expect(Fmt.partyLabel(isInflow: true), 'Sender');
+      expect(Fmt.partyLabel(isInflow: false), 'Recipient');
     });
 
     test('money renders the currency symbol and sign', () {
@@ -131,7 +131,6 @@ void main() {
       expect(find.text('541511'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
-
   });
 
   group('ParsedSmsCard', () {
@@ -174,7 +173,7 @@ void main() {
       ..tags = ['food']
       ..group = <String>[]
       ..party = 'Corner Cafe'
-      ..isCredit = false
+      ..isInflow = false
       ..note = null
       ..smsId = smsId
       ..smsBody = smsBody;
@@ -184,7 +183,8 @@ void main() {
     testWidgets('shows the SMS for an auto-imported transaction',
         (tester) async {
       await tester.pumpWidget(
-        _host(TransactionListItem(transaction: txn(smsId: 'abc123', smsBody: body))),
+        _host(TransactionListItem(
+            transaction: txn(smsId: 'abc123', smsBody: body))),
       );
 
       await tester.tap(find.text('Corner Cafe').first);
@@ -209,7 +209,7 @@ void main() {
     });
 
     testWidgets('inflow labels the counterparty as sender', (tester) async {
-      final credit = txn()..isCredit = true;
+      final credit = txn()..isInflow = true;
       await tester.pumpWidget(_host(TransactionListItem(transaction: credit)));
 
       await tester.tap(find.text('Corner Cafe').first);
@@ -347,7 +347,8 @@ void _dateRangeSelectorTests() {
       );
       expect(Fmt.range(DateRange.day(DateTime(2026, 7, 15))), '15 Jul 2026');
       expect(
-        Fmt.range(DateRange.spanning(DateTime(2026, 4, 1), DateTime(2027, 3, 31))),
+        Fmt.range(
+            DateRange.spanning(DateTime(2026, 4, 1), DateTime(2027, 3, 31))),
         '1 Apr 2026 – 31 Mar 2027',
       );
     });

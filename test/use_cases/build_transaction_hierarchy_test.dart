@@ -14,7 +14,7 @@ Transaction _txn({
   return Transaction()
     ..amount = amount
     ..date = date
-    ..isCredit = isCredit
+    ..isInflow = isCredit
     ..tags = List.of(tags)
     ..group = List.of(group)
     ..party = party
@@ -37,9 +37,21 @@ void main() {
 
     test('groups by two levels (group then party)', () {
       final txns = [
-        _txn(amount: 100, date: DateTime(2026, 7, 1), group: ['Food'], party: 'A'),
-        _txn(amount: 50, date: DateTime(2026, 7, 2), group: ['Food'], party: 'B'),
-        _txn(amount: 30, date: DateTime(2026, 7, 3), group: ['Travel'], party: 'A'),
+        _txn(
+            amount: 100,
+            date: DateTime(2026, 7, 1),
+            group: ['Food'],
+            party: 'A'),
+        _txn(
+            amount: 50,
+            date: DateTime(2026, 7, 2),
+            group: ['Food'],
+            party: 'B'),
+        _txn(
+            amount: 30,
+            date: DateTime(2026, 7, 3),
+            group: ['Travel'],
+            party: 'A'),
       ];
 
       final nodes = build(txns, [GroupingOption.group, GroupingOption.party]);
@@ -76,9 +88,21 @@ void main() {
 
     test('sorts sibling nodes by descending total', () {
       final txns = [
-        _txn(amount: 10, date: DateTime(2026, 7, 1), isCredit: true, group: ['Small']),
-        _txn(amount: 500, date: DateTime(2026, 7, 2), isCredit: true, group: ['Big']),
-        _txn(amount: 100, date: DateTime(2026, 7, 3), isCredit: true, group: ['Mid']),
+        _txn(
+            amount: 10,
+            date: DateTime(2026, 7, 1),
+            isCredit: true,
+            group: ['Small']),
+        _txn(
+            amount: 500,
+            date: DateTime(2026, 7, 2),
+            isCredit: true,
+            group: ['Big']),
+        _txn(
+            amount: 100,
+            date: DateTime(2026, 7, 3),
+            isCredit: true,
+            group: ['Mid']),
       ];
 
       final nodes = build(txns, [GroupingOption.group]);
@@ -98,7 +122,7 @@ void _dayWeekGroupingTests() {
     ..tags = <String>[]
     ..group = <String>[]
     ..party = 'x'
-    ..isCredit = false;
+    ..isInflow = false;
 
   const build = BuildTransactionHierarchy();
 
@@ -108,7 +132,9 @@ void _dayWeekGroupingTests() {
         txn(DateTime(2026, 7, 15, 9)),
         txn(DateTime(2026, 7, 15, 22)),
         txn(DateTime(2026, 7, 16, 1)),
-      ], [GroupingOption.day]);
+      ], [
+        GroupingOption.day
+      ]);
 
       expect(nodes, hasLength(2));
       expect(
@@ -125,7 +151,9 @@ void _dayWeekGroupingTests() {
         txn(DateTime(2026, 7, 13)),
         txn(DateTime(2026, 7, 19, 23)),
         txn(DateTime(2026, 7, 20)),
-      ], [GroupingOption.week]);
+      ], [
+        GroupingOption.week
+      ]);
 
       expect(nodes, hasLength(2));
       final firstWeek = nodes.firstWhere((n) => n.name.contains('19 Jul'));
@@ -142,6 +170,5 @@ void _dayWeekGroupingTests() {
       // Mon 27 Jul .. Sun 2 Aug
       expect(nodes.single.name, '27 Jul – 2 Aug 2026');
     });
-
   });
 }

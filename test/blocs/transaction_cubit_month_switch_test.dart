@@ -11,7 +11,7 @@ Transaction _txn(double amount, DateTime date) => Transaction()
   ..tags = <String>[]
   ..group = <String>[]
   ..party = 'x'
-  ..isCredit = false;
+  ..isInflow = false;
 
 void main() {
   test('switching month re-subscribes and emits the new month', () async {

@@ -105,7 +105,7 @@ void main() {
         ..tags = []
         ..group = []
         ..party = 'Merchant'
-        ..isCredit = false
+        ..isInflow = false
         ..cardId = card.id,
     ]);
 

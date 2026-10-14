@@ -112,7 +112,7 @@ void main() {
           await repository.listenToTransactionsForCard(card.id!).first;
       expect(cardTxns, hasLength(1));
       expect(cardTxns.first.cardAvailableLimit, 1235.00);
-      expect(cardTxns.first.isCredit, isFalse);
+      expect(cardTxns.first.isInflow, isFalse);
     });
 
     test(

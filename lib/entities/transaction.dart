@@ -15,7 +15,7 @@ class Transaction {
 
   late String party;
 
-  bool isCredit = false;
+  bool isInflow = false;
 
   String? note;
 

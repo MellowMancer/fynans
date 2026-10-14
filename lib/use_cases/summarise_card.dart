@@ -58,7 +58,7 @@ CardSummary summariseCard(
     var delta = 0.0;
     for (final t in transactions) {
       if (!t.date.isAfter(statementDate)) continue;
-      delta += t.isCredit ? -t.amount : t.amount;
+      delta += t.isInflow ? -t.amount : t.amount;
     }
     spent = (totalDue + delta).clamp(0.0, creditLimit);
     available = (creditLimit - spent).clamp(0.0, creditLimit);
@@ -66,7 +66,7 @@ CardSummary summariseCard(
   } else {
     double foldedSpent = 0;
     for (final t in transactions) {
-      foldedSpent += t.isCredit ? -t.amount : t.amount;
+      foldedSpent += t.isInflow ? -t.amount : t.amount;
     }
     spent = foldedSpent.clamp(0.0, creditLimit);
     available = (creditLimit - spent).clamp(0.0, creditLimit);

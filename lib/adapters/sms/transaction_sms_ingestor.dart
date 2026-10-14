@@ -36,7 +36,8 @@ class TransactionSmsIngestor {
         _detectedCardRepository = detectedCardRepository,
         _statementRepository = statementRepository;
 
-  Future<List<PaymentCard>> _cards() => _cardsFuture ??= _cardRepository.fetchCards();
+  Future<List<PaymentCard>> _cards() =>
+      _cardsFuture ??= _cardRepository.fetchCards();
 
   /// Returns true if a new transaction was saved. A recognized statement SMS
   /// returns false too — it saves a [CardStatement], never a [Transaction] —
@@ -114,7 +115,7 @@ class TransactionSmsIngestor {
       cardAvailableLimit = details.availableLimit;
     }
 
-    final isCredit = details.type == TransactionType.credit;
+    final isInflow = details.type == TransactionType.credit;
     final party = (details.merchant?.trim().isNotEmpty ?? false)
         ? details.merchant!.trim()
         : sender;
@@ -126,7 +127,7 @@ class TransactionSmsIngestor {
     final t = Transaction()
       ..amount = details.amount
       ..date = details.date
-      ..isCredit = isCredit
+      ..isInflow = isInflow
       ..party = party
       ..tags = <String>[]
       ..group = <String>[]

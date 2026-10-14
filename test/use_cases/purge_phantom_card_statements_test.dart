@@ -19,7 +19,7 @@ Transaction cardTxn({
       ..tags = []
       ..group = []
       ..party = 'Merchant'
-      ..isCredit = false
+      ..isInflow = false
       ..cardId = cardId
       ..smsId = smsId
       ..smsBody = smsBody
@@ -80,7 +80,7 @@ void main() {
         ..tags = []
         ..group = []
         ..party = 'Bank'
-        ..isCredit = false
+        ..isInflow = false
         ..cardId = null
         ..smsId = 'abc123'
         ..smsBody = 'Total Due: Rs.5,000.00. Please pay by 15th.',
@@ -94,7 +94,8 @@ void main() {
 
   test('never touches a manual card entry (no smsId, no smsBody)', () async {
     repo.seed([
-      cardTxn(amount: 500, date: DateTime(2026, 7, 1), smsId: null, smsBody: null),
+      cardTxn(
+          amount: 500, date: DateTime(2026, 7, 1), smsId: null, smsBody: null),
     ]);
 
     final purged = await purgePhantomCardStatementTransactions(repo);

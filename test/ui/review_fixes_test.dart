@@ -14,7 +14,7 @@ Transaction _txn(DateTime date, {double amount = 10}) => Transaction()
   ..tags = <String>[]
   ..group = <String>[]
   ..party = 'x'
-  ..isCredit = false;
+  ..isInflow = false;
 
 void main() {
   group('time buckets are chronological, not ranked by total', () {
@@ -22,10 +22,12 @@ void main() {
 
     test('days list newest first regardless of amount', () {
       final nodes = build([
-        _txn(DateTime(2026, 7, 3), amount: 900),   // biggest, oldest
-        _txn(DateTime(2026, 7, 19), amount: 5),    // smallest, newest
+        _txn(DateTime(2026, 7, 3), amount: 900), // biggest, oldest
+        _txn(DateTime(2026, 7, 19), amount: 5), // smallest, newest
         _txn(DateTime(2026, 7, 8), amount: 100),
-      ], [GroupingOption.day]);
+      ], [
+        GroupingOption.day
+      ]);
 
       expect(
         nodes.map((n) => n.name).toList(),
@@ -38,7 +40,9 @@ void main() {
         final nodes = build([
           _txn(DateTime(2026, 5, 4), amount: 900),
           _txn(DateTime(2026, 7, 20), amount: 5),
-        ], [option]);
+        ], [
+          option
+        ]);
         expect(nodes.first.name.contains('Jul'), isTrue,
             reason: '$option should put the newest bucket first');
       }

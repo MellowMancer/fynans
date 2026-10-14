@@ -48,7 +48,7 @@ class GetMonthlyAnalytics {
     final Map<String, double> spendingByTag = {};
 
     for (final t in transactions) {
-      if (t.isCredit) {
+      if (t.isInflow) {
         totalInflow += t.amount;
         continue;
       }
