@@ -309,6 +309,72 @@ void main() {
     });
   });
 
+  group('bank account SMS and debit cards', () {
+    const upiSpend =
+        'Sent Rs 410.00 From HDFC Bank A/C *1111\nTo Mr Mr John Doe\nOn '
+        '14/11/2026\nRef 111111111111';
+    final day = DateTime(2026, 11, 14);
+
+    PaymentCard card(CardType type, {String last4 = '9999', String? account}) =>
+        PaymentCard()
+          ..issuer = 'HDFC'
+          ..last4 = last4
+          ..type = type
+          ..status = CardStatus.active
+          ..accountLast4 = account
+          ..creditLimit = type == CardType.credit ? 50000 : null;
+
+    Future<Transaction> onlyRow() async => (await repository
+            .fetchTransactionsInRange(range: DateRange.month(day)))
+        .single;
+
+    test('links to the debit card that draws from the account', () async {
+      final debit = card(CardType.debit, account: '1111');
+      cardRepository.seed([debit]);
+
+      await ingestor.ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
+
+      final row = await onlyRow();
+      expect(row.cardId, debit.id);
+      expect(row.kind, TransactionKind.expense);
+    });
+
+    test('never links to a credit card, even with the same digits', () async {
+      // The database allows account digits on a credit card; the rule must
+      // still skip it.
+      cardRepository
+          .seed([card(CardType.credit, last4: '1111', account: '1111')]);
+
+      await ingestor.ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
+
+      expect((await onlyRow()).cardId, isNull);
+    });
+
+    test('stays unlinked if no debit card has the account digits', () async {
+      cardRepository.seed([card(CardType.debit, last4: '1111')]);
+
+      await ingestor.ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
+
+      expect((await onlyRow()).cardId, isNull);
+    });
+
+    test('an old row links when the debit card is added later', () async {
+      await ingestor.ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
+      final debit = card(CardType.debit, account: '1111');
+      cardRepository.seed([debit]);
+
+      final linked = await TransactionSmsIngestor(
+        repository: repository,
+        cardRepository: cardRepository,
+        detectedCardRepository: detectedCardRepository,
+        statementRepository: statementRepository,
+      ).ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
+
+      expect(linked, isTrue);
+      expect((await onlyRow()).cardId, debit.id);
+    });
+  });
+
   group('a card deleted during the sweep', () {
     final day = DateTime(2026, 1, 15);
     late PaymentCard card;

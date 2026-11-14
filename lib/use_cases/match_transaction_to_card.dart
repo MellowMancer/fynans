@@ -5,14 +5,22 @@ import 'package:fynans/entities/payment_card.dart';
 ///
 /// Returns null on no match *or* on ambiguity — a wrong match would silently
 /// corrupt two balances, so guessing is never the safe choice here.
+///
+/// [digitsOf] picks the card digits to compare: the card's own [PaymentCard.last4]
+/// by default, or for example the bank account digits of a debit card. A
+/// card for which [digitsOf] returns null never matches.
 PaymentCard? matchCard(
   List<PaymentCard> cards, {
   required String? last4,
   required String sender,
+  String? Function(PaymentCard card) digitsOf = _ownDigits,
 }) {
   if (last4 == null || last4.isEmpty) return null;
 
-  final candidates = cards.where((c) => _digitsMatch(last4, c.last4)).toList();
+  final candidates = cards.where((c) {
+    final digits = digitsOf(c);
+    return digits != null && _digitsMatch(last4, digits);
+  }).toList();
   if (candidates.isEmpty) return null;
   if (candidates.length == 1) return candidates.first;
 
@@ -20,6 +28,8 @@ PaymentCard? matchCard(
       candidates.where((c) => _issuerMatchesSender(c.issuer, sender)).toList();
   return byIssuer.length == 1 ? byIssuer.first : null;
 }
+
+String? _ownDigits(PaymentCard card) => card.last4;
 
 /// True when the shorter of the two digit strings is a suffix of the longer
 /// one — handles a card registered with only its last 2 digits (per

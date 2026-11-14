@@ -161,14 +161,22 @@ class TransactionSmsIngestor {
     return false;
   }
 
-  /// The registered card that a card SMS belongs to. An SMS that says
+  /// The registered card that an SMS belongs to. An SMS that says
   /// "credit card" only matches a credit card. A debit card SMS, or one that
   /// names a card only by its digits ("HDFC Bank Card 1234"), matches a card
-  /// of either type.
+  /// of either type. A bank account SMS matches the debit card that draws
+  /// from that account, by its account digits.
   Future<PaymentCard?> _cardFor(
       ParsedTransactionDetails details, String sender) async {
-    if (!details.isCreditCard && details.cardLast4 == null) return null;
     final cards = await _cards();
+    if (!details.isCreditCard && details.cardLast4 == null) {
+      return matchCard(
+        cards.where((c) => c.type == CardType.debit).toList(),
+        last4: details.accountNumber,
+        sender: sender,
+        digitsOf: (c) => c.accountLast4,
+      );
+    }
     final candidates = details.isCreditCard
         ? cards.where((c) => c.type == CardType.credit).toList()
         : cards;

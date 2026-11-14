@@ -238,6 +238,17 @@ void main() {
     });
   });
 
+  test('a bank account masked with one star is read as the account', () {
+    const body =
+        'Sent Rs 410.00 From HDFC Bank A/C *1111\nTo Mr Mr John Doe\nOn '
+        '14/11/2026\nRef 111111111111\nNot You?\nCall 1000000000000/SMS '
+        'BLOCK UPI to 10000000000';
+    final r = parse('AX-HDFCBK', body);
+    expect(r!.accountNumber, '1111');
+    expect(r.amount, 410.00);
+    expect(parser.isCardSms('AX-HDFCBK', body), isFalse);
+  });
+
   group('debit cards and cards of unknown type', () {
     test('a debit card spend names its card but is not a credit card SMS', () {
       final r = parse('HDFCBK',

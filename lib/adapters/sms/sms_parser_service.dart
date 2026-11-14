@@ -75,6 +75,12 @@ class SmsParserService {
     caseSensitive: false,
   );
 
+  /// A bank account masked with stars, as HDFC writes it: "A/C *1111".
+  static final _starMaskedAccountRegex = RegExp(
+    r'\b(?:a/c|acct|account)\b[\s.:\-]*(?:no\.?\s*)?\*+\s*(\d{3,4})',
+    caseSensitive: false,
+  );
+
   static final _upiIdRegex = RegExp(r'[\w.-]+@[\w.-]+');
   static final _dateRegex = RegExp(r'\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?');
 
@@ -179,7 +185,7 @@ class SmsParserService {
   // your credit card"). "Card account" is the card itself, so it is skipped.
   static final _bankAccountRegex = RegExp(
     r'(?<!card\s)\b(?:a/c|acct|account)\b[\s.:\-]*(?:no\.?\s*)?'
-    r'(?:[x*]{2,}\s*\d|ending\s*(?:with|in)?\s*\d)',
+    r'(?:[x*]{2,}\s*\d|\*\s*\d|ending\s*(?:with|in)?\s*\d)',
     caseSensitive: false,
   );
 
@@ -674,7 +680,8 @@ class SmsParserService {
   }
 
   String? _getAccountNumber(String lowerCaseBody) {
-    final match = _accountRegex.firstMatch(lowerCaseBody);
+    final match = _accountRegex.firstMatch(lowerCaseBody) ??
+        _starMaskedAccountRegex.firstMatch(lowerCaseBody);
     return match?.group(1)?.trim();
   }
 

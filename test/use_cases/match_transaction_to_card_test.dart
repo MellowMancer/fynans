@@ -86,5 +86,26 @@ void main() {
         expect(matchCard([a, b], last4: '1234', sender: 'HDFCCC'), isNull);
       });
     });
+
+    test('digitsOf compares other digits, and a card without them is skipped',
+        () {
+      final withAccount = PaymentCard()
+        ..issuer = 'HDFC'
+        ..last4 = '9999'
+        ..type = CardType.debit
+        ..status = CardStatus.active
+        ..accountLast4 = '1111';
+      final withoutAccount = PaymentCard()
+        ..issuer = 'HDFC'
+        ..last4 = '1111'
+        ..type = CardType.debit
+        ..status = CardStatus.active;
+
+      expect(
+        matchCard([withAccount, withoutAccount],
+            last4: '1111', sender: 'HDFCBK', digitsOf: (c) => c.accountLast4),
+        same(withAccount),
+      );
+    });
   });
 }
