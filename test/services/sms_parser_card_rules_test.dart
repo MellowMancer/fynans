@@ -148,4 +148,94 @@ void main() {
       isFalse,
     );
   });
+
+  group('finding 6: the card digits', () {
+    String? last4(String body) => parse('SBICRD', body)?.cardLast4;
+
+    test('a longer digit run gives its last four digits', () {
+      expect(last4('Rs.100.00 spent on your SBI Credit Card ending 51004.'),
+          '1004');
+      expect(
+          last4('Rs.100.00 spent on your SBI Credit Card ending with 123456.'),
+          '3456');
+      expect(last4('Rs.100.00 spent on your SBI Credit Card XX12345.'),
+          '2345');
+    });
+
+    test('star masks and "ending in" are read', () {
+      expect(last4('Rs.300.00 spent on your credit card ** 11007 at ZOMATO.'),
+          '1007');
+      expect(
+          last4('Rs.300.00 spent on your SBI Credit Card ending in 1234.'),
+          '1234');
+    });
+
+    test('a date after "ending" is not read as the card digits', () {
+      final statement = parser.parseCardStatement(
+        sender: 'SBICRD',
+        body: 'Your SBI Credit Card statement for the period ending 15/01/26 '
+            'is generated. Card no. XX1234. Total Due Rs.5,000. Due date '
+            '05/02/26.',
+        date: now,
+      );
+      expect(statement?.cardLast4, '1234');
+    });
+  });
+
+  group('finding 7: statement figures and due dates', () {
+    test('"Total Dues" and a numeric due date', () {
+      final st = parser.parseCardStatement(
+        sender: 'HDFCCC',
+        body: 'Your HDFC Bank Credit Card XX1234 statement: Total Dues '
+            'Rs.8,500.00. Payment Due Date 05/02/2026.',
+        date: now,
+      );
+      expect(st?.totalDue, 8500.00);
+      expect(st?.dueDate, DateTime(2026, 2, 5));
+    });
+
+    test('"Total Amt Due", "Min Amt Due" and a "15Jan26" due date', () {
+      final st = parser.parseCardStatement(
+        sender: 'SBICRD',
+        body: 'SBI Card ending 1234 e-statement: Total Amt Due Rs 5,259, Min '
+            'Amt Due Rs 263, Pay by 15Jan26.',
+        date: now,
+      );
+      expect(st?.totalDue, 5259);
+      expect(st?.minimumDue, 263);
+      expect(st?.dueDate, DateTime(2026, 1, 15));
+    });
+
+    test('"Total Amount Due of" and long month names', () {
+      for (final due in ['06-Sept-26', '06-September-2026']) {
+        final st = parser.parseCardStatement(
+          sender: 'ICICCC',
+          body: 'ICICI Bank Credit Card XX5678: Total Amount Due of '
+              'Rs.12,000.00. Payment Due Date $due.',
+          date: now,
+        );
+        expect(st?.totalDue, 12000, reason: due);
+        expect(st?.dueDate, DateTime(2026, 9, 6), reason: due);
+      }
+    });
+  });
+
+  group('finding 8: merchant names on card SMS', () {
+    test('a date is never the merchant', () {
+      final r = parse(
+          'ICICCC',
+          'INR 3,499.00 spent using ICICI Bank Card XX9012 on 12-Jan-26 on '
+              'FLIPKART. Avl Lmt INR 21,501.00.');
+      expect(r?.merchant, 'Flipkart');
+    });
+
+    test('the end of a sentence ends the merchant name', () {
+      final r = parse(
+          'SBICRD',
+          'Rs.750.00 spent on your SBI Credit Card ending 1234 at STARBUCKS. '
+              'Available limit Rs.29,250.');
+      expect(r?.merchant, 'Starbucks');
+    });
+  });
 }
+

@@ -78,6 +78,10 @@ class SmsParserService {
   static final _upiIdRegex = RegExp(r'[\w.-]+@[\w.-]+');
   static final _dateRegex = RegExp(r'\d{1,2}[-\/]\d{1,2}(?:[-\/]\d{2,4})?');
 
+  // A date with a month name, such as "12-jan-26" or "5 feb 2026".
+  static final _namedDateRegex =
+      RegExp(r'\d{1,2}[-/ ]?[a-z]{3,9}[-/ ]?\d{2,4}');
+
   static const List<String> _transactionKeywords = [
     'debited',
     'credited',
@@ -253,17 +257,22 @@ class SmsParserService {
     caseSensitive: false,
   );
 
-  // Card last-4 shapes _accountRegex can't reach: "ending 1234"/"ending with
-  // 1234", and unmasked forms like "Credit Card 1111" with no x's at all.
-  // dotAll defensively, in case a real message wraps one of these phrases
-  // across a line break differently than the corpus this was built against.
+  // Card digits in the shapes _accountRegex can't reach: "ending 1234",
+  // "ending in 1234", star masks ("card ** 1007") and unmasked forms like
+  // "Credit Card 1111". Each alternative captures the whole digit run, and a
+  // run followed by '/' or '-' is part of a date ("period ending 15/01/26"),
+  // so it is skipped. _getCardLast4 keeps the last four digits of the run.
+  // dotAll, because Axis splits these phrases across lines.
   static final _cardLast4Regex = RegExp(
-    r'(?:card\s*(?:no\.?)?\s*[:\-]?\s*x{2,}(\d{2,4}))'
-    r'|(?:ending\s*(?:with)?\s*(\d{2,4}))'
-    r'|(?:card\s+(\d{2,4})\b)',
+    r'(?:card\s*(?:no\.?)?\s*[:\-]?\s*[x*]{2,}\s*(\d{2,}))(?![\d/\-])'
+    r'|(?:ending\s*(?:with|in)?\s*[x*]*\s*(\d{2,}))(?![\d/\-])'
+    r'|(?:card\s+(\d{2,}))(?![\d/\-])',
     caseSensitive: false,
     dotAll: true,
   );
+
+  /// How many trailing digits identify a card.
+  static const int _cardDigits = 4;
 
   // "Your available limit is Rs.X" / "Avl Limit: INR X" / "Avl Lmt INR X" —
   // every major issuer prints this in the spend alert; treated as
@@ -278,15 +287,21 @@ class SmsParserService {
   // Statement-SMS-only regexes, run by parseCardStatement.
   static final _dueDateRegex = RegExp(
     r'(?:due\s*(?:date)?|pay\s*by)\s*(?:is|:|on)?\s*'
-    r'(\d{1,2}[-/][A-Za-z]{3,9}[-/]?\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
+    r'(\d{1,2}[-/ ]?[a-z]{3,9}[-/ ]?\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
     caseSensitive: false,
   );
+
+  // "Total Due", "Total Dues", "Total Amt Due", "Total Amount Due of".
   static final _totalDueRegex = RegExp(
-    r'total\s*(?:amount)?\s*due\s*(?:is|:)?\s*(?:rs\.?|inr)\s*([\d,]+\.?\d*)',
+    r'total\s*(?:amount|amt)?\.?\s*dues?\s*(?:of|is|:)?\s*'
+    r'(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*)',
     caseSensitive: false,
   );
+
+  // "Min Due", "Min Amt Due", "Minimum Amount Due".
   static final _minimumDueRegex = RegExp(
-    r'min(?:imum)?\s*(?:amount)?\s*due\s*(?:is|:)?\s*(?:rs\.?|inr)\s*([\d,]+\.?\d*)',
+    r'min(?:imum)?\.?\s*(?:amount|amt)?\.?\s*dues?\s*(?:of|is|:)?\s*'
+    r'(?:rs\.?|inr|₹)\s*([\d,]+\.?\d*)',
     caseSensitive: false,
   );
 
@@ -642,8 +657,10 @@ class SmsParserService {
   String? _getCardLast4(String lowerCaseBody) {
     final match = _cardLast4Regex.firstMatch(lowerCaseBody);
     final digits = match?.group(1) ?? match?.group(2) ?? match?.group(3);
-    if (digits != null) return digits;
-    return _getAccountNumber(lowerCaseBody);
+    if (digits == null) return _getAccountNumber(lowerCaseBody);
+    return digits.length > _cardDigits
+        ? digits.substring(digits.length - _cardDigits)
+        : digits;
   }
 
   /// The available credit limit as reported by a card SMS, if present.
@@ -668,31 +685,30 @@ class SmsParserService {
     return _parseFlexibleDate(raw);
   }
 
-  /// Tries the handful of date shapes real due-date SMS actually use (see the
-  /// §9 corpus in CREDIT_CARD_PLAN.md — "15Jan26", "06-Sep-25", "13/02/26").
-  /// Returns null rather than guessing when none of these formats recognize
-  /// the matched text.
+  /// Parses the due-date shapes that real statement SMS use: "15Jan26",
+  /// "06-Sep-25", "06 Sept 2026", "06-September-2026" and "13/02/26".
+  /// Returns null rather than guessing when no format recognises the text.
   DateTime? _parseFlexibleDate(String raw) {
-    // DateFormat's month-name matching expects title case ("Jan"), but this
-    // runs against an already-lowercased body.
-    final titleCased = raw.replaceAllMapped(
-      RegExp('[a-zA-Z]+'),
-      (m) => m[0]!.substring(0, 1).toUpperCase() + m[0]!.substring(1),
-    );
-    const formats = [
-      'ddMMMyy',
-      'dd-MMM-yy',
-      'dd/MMM/yy',
-      'dd-MMM-yyyy',
-      'dd/MMM/yyyy',
-      'dd-MM-yy',
-      'dd/MM/yy',
-      'dd-MM-yyyy',
-      'dd/MM/yyyy',
-    ];
+    // One separator for every shape, "Sept" as DateFormat's "Sep", and
+    // title-cased month names: DateFormat expects "Jan", and this runs
+    // against an already-lowercased body.
+    final normalised = raw
+        .replaceAll(RegExp(r'[-/ ]'), '-')
+        .replaceAll(RegExp('sept(?!ember)', caseSensitive: false), 'sep')
+        .replaceAllMapped(
+          RegExp('[a-zA-Z]+'),
+          (m) => m[0]!.substring(0, 1).toUpperCase() +
+              m[0]!.substring(1).toLowerCase(),
+        );
+    // 'yyyy' would read "26" as the year 26, so a two-digit year only gets
+    // the 'yy' formats.
+    final hasFullYear = RegExp(r'\d{4}$').hasMatch(normalised);
+    final formats = hasFullYear
+        ? const ['dMMMyyyy', 'd-MMM-yyyy', 'd-MMMM-yyyy', 'd-M-yyyy']
+        : const ['dMMMyy', 'd-MMM-yy', 'd-MMMM-yy', 'd-M-yy'];
     for (final pattern in formats) {
       try {
-        return DateFormat(pattern, 'en_US').parseStrict(titleCased);
+        return DateFormat(pattern, 'en_US').parseStrict(normalised);
       } on FormatException {
         continue;
       }
@@ -723,12 +739,15 @@ class SmsParserService {
       'in',
       'at',
       'txn',
-      'info'
+      'info',
+      'available',
+      'limit',
     ];
 
-    // Terminates on a keyword, on '(' ';' ',', or at end of string.
-    final terminators =
-        "(?=(\\s+(${terminatorKeywords.join('|')}))|\\s*\\(|\$|;|\\,)";
+    // Terminates on a keyword, on '(' ';' ',', at the end of a sentence
+    // (". "), or at end of string.
+    final terminators = "(?=(\\s+(${terminatorKeywords.join('|')}))"
+        "|\\s*\\(|\$|;|\\,|\\.\\s|\\.\$)";
 
     // --- FIX #2: Create a MODIFIABLE copy of the keyword lists ---
     List<String> keywords;
@@ -751,29 +770,34 @@ class SmsParserService {
         caseSensitive: false,
       );
 
-      final match = pattern.firstMatch(lowerCaseBody);
-      if (match != null && match.group(1) != null) {
-        // Clean up the extracted merchant string
-        String merchant =
-            match.group(1)!.trim().replaceAll(RegExp(r'\s+'), ' ');
-
-        // Validation checks to avoid matching amounts, dates, etc.
-        final lowerMerchant = merchant.toLowerCase();
-        if (merchant.length > 2 &&
-            !lowerMerchant.startsWith('rs') &&
-            !lowerMerchant.startsWith('inr') &&
-            !lowerMerchant.contains('card') &&
-            double.tryParse(merchant.replaceAll('.', '')) == null &&
-            _dateRegex.firstMatch(merchant) == null) {
-          // Capitalize each word and return the result
-          return merchant.split(' ').map((word) {
-            if (word.isEmpty) return '';
-            return '${word[0].toUpperCase()}${word.substring(1)}';
-          }).join(' ');
+      // Every match, not only the first: in "on 12-Jan-26 on FLIPKART" the
+      // first "on" finds the date, and the second one finds the merchant.
+      for (final match in pattern.allMatches(lowerCaseBody)) {
+        final merchant =
+            match.group(1)?.trim().replaceAll(RegExp(r'\s+'), ' ');
+        if (merchant != null && _isPlausibleMerchant(merchant)) {
+          return _titleCase(merchant);
         }
       }
     }
 
     return null; // No merchant found
   }
+
+  /// Rejects captures that are amounts, dates or card references.
+  bool _isPlausibleMerchant(String merchant) {
+    final lowerMerchant = merchant.toLowerCase();
+    return merchant.length > 2 &&
+        !lowerMerchant.startsWith('rs') &&
+        !lowerMerchant.startsWith('inr') &&
+        !lowerMerchant.contains('card') &&
+        double.tryParse(merchant.replaceAll('.', '')) == null &&
+        !_dateRegex.hasMatch(merchant) &&
+        !_namedDateRegex.hasMatch(lowerMerchant);
+  }
+
+  static String _titleCase(String text) => text.split(' ').map((word) {
+        if (word.isEmpty) return '';
+        return '${word[0].toUpperCase()}${word.substring(1)}';
+      }).join(' ');
 }
