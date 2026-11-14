@@ -50,11 +50,21 @@ class CardsCubit extends Cubit<CardsState> {
         if (isClosed || generation != _generation) return;
         _onCardsChanged(cards, generation);
       },
-      onError: (Object error) {
-        if (isClosed || generation != _generation) return;
-        emit(CardsLoadFailure(error.toString()));
-      },
+      onError: (Object _) => _fail(generation),
     );
+  }
+
+  /// The failure message. The page does not show the error text, because it
+  /// can contain SQL and card details.
+  static const loadFailedMessage = 'The cards could not be loaded. Try again.';
+
+  /// Shows the failure until the user retries with [loadCards]. The cubit
+  /// stops every query, so that a later event cannot replace the failure.
+  void _fail(int generation) {
+    if (isClosed || generation != _generation) return;
+    _generation++;
+    unawaited(_cancelAll());
+    emit(const CardsLoadFailure(loadFailedMessage));
   }
 
   void _onCardsChanged(List<PaymentCard> cards, int generation) {
@@ -79,19 +89,25 @@ class CardsCubit extends Cubit<CardsState> {
       if (id == null) continue;
       if (!_txnSubscriptions.containsKey(id)) {
         _txnSubscriptions[id] =
-            _repository.listenToTransactionsForCard(id).listen((transactions) {
-          if (isClosed || generation != _generation) return;
-          _transactionsByCard[id] = transactions;
-          _emitSummaries();
-        });
+            _repository.listenToTransactionsForCard(id).listen(
+          (transactions) {
+            if (isClosed || generation != _generation) return;
+            _transactionsByCard[id] = transactions;
+            _emitSummaries();
+          },
+          onError: (Object _) => _fail(generation),
+        );
       }
       if (!_statementSubscriptions.containsKey(id)) {
         _statementSubscriptions[id] =
-            _statementRepository.watchLatestStatement(id).listen((statement) {
-          if (isClosed || generation != _generation) return;
-          _statementByCard[id] = statement;
-          _emitSummaries();
-        });
+            _statementRepository.watchLatestStatement(id).listen(
+          (statement) {
+            if (isClosed || generation != _generation) return;
+            _statementByCard[id] = statement;
+            _emitSummaries();
+          },
+          onError: (Object _) => _fail(generation),
+        );
       }
     }
 

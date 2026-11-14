@@ -9,6 +9,21 @@ import '../../../fakes/fake_card_repository.dart';
 import '../../../fakes/fake_card_statement_repository.dart';
 import '../../../fakes/fake_transaction_repository.dart';
 
+/// Fails each card's transaction query with an error text that names a card,
+/// like a real database error can.
+class _FailingCardQueries extends FakeTransactionRepository {
+  @override
+  Stream<List<Transaction>> listenToTransactionsForCard(int cardId) =>
+      Stream.error(StateError('SQL error near card_id = $cardId, last4 1234'));
+}
+
+/// Fails each card's statement query, like [_FailingCardQueries].
+class _FailingStatementQueries extends FakeCardStatementRepository {
+  @override
+  Stream<CardStatement?> watchLatestStatement(int cardId) =>
+      Stream.error(StateError('SQL error near card_id = $cardId, last4 1234'));
+}
+
 /// Covers the third per-card subscription `CardsCubit` gained for the latest
 /// statement — the same generation-guarded cancel-then-resubscribe discipline
 /// as the pre-existing transactions subscription, exercised directly rather
@@ -44,6 +59,32 @@ void main() {
     cardRepository.seed([card]);
     return card;
   }
+
+  group('a failed card query', () {
+    Future<CardsState> loadWith(
+        FakeTransactionRepository transactions,
+        FakeCardStatementRepository statements) async {
+      final failing = CardsCubit(transactions, cardRepository, statements);
+      addTearDown(failing.close);
+      seedCard();
+      failing.loadCards();
+      await pumpEventQueue();
+      return failing.state;
+    }
+
+    final showsPlainFailure = isA<CardsLoadFailure>()
+        .having((s) => s.error, 'error', CardsCubit.loadFailedMessage);
+
+    test('of the transactions shows a plain failure', () async {
+      expect(await loadWith(_FailingCardQueries(), statementRepository),
+          showsPlainFailure);
+    });
+
+    test('of the statement shows a plain failure', () async {
+      expect(await loadWith(transactionRepository, _FailingStatementQueries()),
+          showsPlainFailure);
+    });
+  });
 
   test('a debit card gets a summary instead of crashing the page', () async {
     cardRepository.seed([
