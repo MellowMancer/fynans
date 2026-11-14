@@ -249,6 +249,36 @@ void main() {
     expect(parser.isCardSms('AX-HDFCBK', body), isFalse);
   });
 
+  group('refunds on any account or card', () {
+    test('a refund to a bank account is a refund', () {
+      final r = parse('AX-HDFCBK',
+          'Rs.500.00 credited to A/c XX1111 on 14-11-26. Refund from AMAZON.');
+      expect(r!.type, TransactionType.credit);
+      expect(r.isRefund, isTrue);
+    });
+
+    test('a reversal of a UPI payment is a refund', () {
+      final r = parse('AX-HDFCBK',
+          'Rs.410.00 credited to A/c XX1111. Reversal of UPI txn 601234.');
+      expect(r!.isRefund, isTrue);
+    });
+
+    test('a spend that mentions refunds is not a refund', () {
+      final r = parse('AX-HDFCBK',
+          'Rs.200.00 debited from A/c XX1111 to AMAZON. Refunds, if any, '
+              'reach in 5 days.');
+      expect(r!.type, TransactionType.debit);
+      expect(r.isRefund, isFalse);
+    });
+
+    test('a salary credit is not a refund', () {
+      final r = parse('AX-HDFCBK',
+          'Rs.40,000.00 credited to A/c XX1111 by NEFT. SALARY NOV.');
+      expect(r!.type, TransactionType.credit);
+      expect(r.isRefund, isFalse);
+    });
+  });
+
   group('debit cards and cards of unknown type', () {
     test('a debit card spend names its card but is not a credit card SMS', () {
       final r = parse('HDFCBK',

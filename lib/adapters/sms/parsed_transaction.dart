@@ -29,6 +29,10 @@ class ParsedTransactionDetails extends Equatable {
   /// as income or spending.
   final bool isRepayment;
 
+  /// True when this SMS reports money back for an earlier spend: a refund or
+  /// a reversal, on any account or card. A refund lowers the spending.
+  final bool isRefund;
+
   const ParsedTransactionDetails({
     required this.type,
     required this.amount,
@@ -40,6 +44,7 @@ class ParsedTransactionDetails extends Equatable {
     this.cardLast4,
     this.availableLimit,
     this.isRepayment = false,
+    this.isRefund = false,
   });
 
   @override
@@ -54,5 +59,6 @@ class ParsedTransactionDetails extends Equatable {
         cardLast4,
         availableLimit,
         isRepayment,
+        isRefund,
       ];
 }

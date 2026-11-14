@@ -377,6 +377,54 @@ void main() {
     });
   });
 
+  group('refunds outside a credit card', () {
+    final day = DateTime(2026, 11, 14);
+
+    Future<Transaction> onlyRow() async => (await repository
+            .fetchTransactionsInRange(range: DateRange.month(day)))
+        .single;
+
+    test('a refund to the bank account lowers the spending', () async {
+      await ingestor.ingest(
+          sender: 'AX-HDFCBK',
+          body: 'Rs.500.00 credited to A/c XX1111 on 14-11-26. Refund from '
+              'AMAZON.',
+          date: day);
+
+      final row = await onlyRow();
+      expect(row.kind, TransactionKind.refund);
+      expect(row.spendingEffect, -500);
+      expect(row.incomeEffect, 0);
+    });
+
+    test('a refund on a debit card is a refund on that card', () async {
+      final debit = PaymentCard()
+        ..issuer = 'HDFC'
+        ..last4 = '1234'
+        ..type = CardType.debit
+        ..status = CardStatus.active;
+      cardRepository.seed([debit]);
+
+      await ingestor.ingest(
+          sender: 'HDFCBK',
+          body: 'Refund of Rs.300.00 credited to HDFC Bank Debit Card XX1234.',
+          date: day);
+
+      final row = await onlyRow();
+      expect(row.cardId, debit.id);
+      expect(row.kind, TransactionKind.refund);
+    });
+
+    test('a salary credit stays income', () async {
+      await ingestor.ingest(
+          sender: 'AX-HDFCBK',
+          body: 'Rs.40,000.00 credited to A/c XX1111 by NEFT. SALARY NOV.',
+          date: day);
+
+      expect((await onlyRow()).kind, TransactionKind.income);
+    });
+  });
+
   group('a card deleted during the sweep', () {
     final day = DateTime(2026, 1, 15);
     late PaymentCard card;

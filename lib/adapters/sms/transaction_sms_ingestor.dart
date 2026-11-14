@@ -128,7 +128,9 @@ class TransactionSmsIngestor {
 
     final kind = details.isRepayment
         ? TransactionKind.repayment
-        : newTransactionKind(isInflow: isInflow, card: card);
+        : details.isRefund
+            ? TransactionKind.refund
+            : newTransactionKind(isInflow: isInflow, card: card);
 
     final t = Transaction()
       ..amount = details.amount

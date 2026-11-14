@@ -231,14 +231,14 @@ class SmsParserService {
     'withdrawn',
     'paid',
   ];
-  static const List<String> _cardRefundWords = [
+  static const List<String> _refundWords = [
     'refund',
     'reversal',
     'reversed',
   ];
   static const List<String> _cardActionWords = [
     ..._cardSpendWords,
-    ..._cardRefundWords,
+    ..._refundWords,
     'received',
     'credited',
   ];
@@ -250,7 +250,7 @@ class SmsParserService {
     'debited',
     'charged',
     'purchase',
-    ..._cardRefundWords,
+    ..._refundWords,
     'received',
     'credited',
   ];
@@ -452,6 +452,8 @@ class SmsParserService {
       availableLimit: availableLimit,
       isRepayment: _isRepayment(lowerCaseBody, transactionType,
           isCreditCard: isCreditCard),
+      isRefund: transactionType == TransactionType.credit &&
+          _containsAny(lowerCaseBody, _refundWords),
     );
   }
 
@@ -462,7 +464,7 @@ class SmsParserService {
     if (isCreditCard) {
       return type == TransactionType.credit &&
           lowerCaseBody.contains('payment') &&
-          !_containsAny(lowerCaseBody, _cardRefundWords);
+          !_containsAny(lowerCaseBody, _refundWords);
     }
     return type == TransactionType.debit &&
         _containsAny(lowerCaseBody, _creditCardBodyKeywords);
@@ -510,7 +512,7 @@ class SmsParserService {
   /// A card SMS's direction. "Credit card" appears in nearly every card SMS,
   /// so the generic credit keywords never decide it.
   TransactionType _cardDirection(String lowerCaseBody) {
-    if (_containsAny(lowerCaseBody, _cardRefundWords) ||
+    if (_containsAny(lowerCaseBody, _refundWords) ||
         _cardInflowRegex.hasMatch(lowerCaseBody)) {
       return TransactionType.credit;
     }
