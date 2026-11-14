@@ -235,13 +235,13 @@ void runTransactionRepositoryContract(
       });
     });
 
-    // CardScope/listenToTransactionsForCard are deliberately not
+    // Card visibility and listenToTransactionsForCard are deliberately not
     // covered here: this contract only builds a TransactionRepository, and
     // with `PRAGMA foreign_keys = ON` a cardId has to reference a real row in
     // the Cards table or Drift rejects the insert — a card-aware fixture
     // needs a CardRepository too. See
     // drift_transaction_repository_card_test.dart (Drift, with real seeded
-    // cards) and fake_transaction_repository_test.dart's CardScope group
-    // (the fake, which has no such constraint to satisfy).
+    // cards) and fake_transaction_repository_test.dart's card group (the
+    // fake, which has no such constraint to satisfy).
   });
 }

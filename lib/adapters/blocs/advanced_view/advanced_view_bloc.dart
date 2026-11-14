@@ -104,10 +104,6 @@ class AdvancedViewBloc extends Bloc<AdvancedViewEvent, AdvancedViewState> {
 
     _subscription = _repository
         .listenToTransactionsInRange(
-      // Always passed, even when the filter is otherwise empty: its
-      // default CardScope still has to exclude card spends from this
-      // view, so this can no longer collapse to null the way an
-      // unfiltered request would.
       range: currentState.range,
       filter: currentState.filter,
     )

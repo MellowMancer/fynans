@@ -53,7 +53,7 @@ void main() {
     expect(remaining, isEmpty);
   });
 
-  group('CardScope', () {
+  group('cards', () {
     test('the default filter keeps card transactions', () async {
       final repo = FakeTransactionRepository();
       await repo.saveTransaction(txn());
