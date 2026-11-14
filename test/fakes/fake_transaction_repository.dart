@@ -91,8 +91,10 @@ class FakeTransactionRepository implements TransactionRepository {
         emit();
         watcher = _changes.stream.listen((_) => emit());
       },
-      onCancel: () async {
-        await watcher?.cancel();
+      // Synchronous on purpose, like Drift: a caller that awaits cancel()
+      // (Stream.first does) must not wait on the inner subscription.
+      onCancel: () {
+        watcher?.cancel();
         watcher = null;
       },
     );
@@ -127,20 +129,14 @@ class FakeTransactionRepository implements TransactionRepository {
         emit();
         watcher = _changes.stream.listen((_) => emit());
       },
-      onCancel: () async {
-        await watcher?.cancel();
+      // Synchronous on purpose, like Drift: a caller that awaits cancel()
+      // (Stream.first does) must not wait on the inner subscription.
+      onCancel: () {
+        watcher?.cancel();
         watcher = null;
       },
     );
     return controller.stream;
-  }
-
-  @override
-  Future<void> unlinkCard(int cardId) async {
-    for (final t in _transactions.where((t) => t.cardId == cardId)) {
-      t.cardId = null;
-    }
-    _notify();
   }
 
   @override

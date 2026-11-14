@@ -86,22 +86,6 @@ void main() {
       expect(forCard1.every((t) => t.cardId == 1), isTrue);
     });
 
-    test('unlinkCard nulls cardId on every transaction for that card',
-        () async {
-      final repo = FakeTransactionRepository();
-      await repo.saveTransaction(txn()..cardId = 1);
-      await repo.saveTransaction(txn()..cardId = 1);
-      await repo.saveTransaction(txn()..cardId = 2);
-
-      await repo.unlinkCard(1);
-
-      final all = await repo.fetchTransactionsInRange(
-        range: DateRange.month(DateTime(2026, 8)),
-      );
-      expect(all.where((t) => t.cardId == 1), isEmpty);
-      expect(all.where((t) => t.cardId == 2), hasLength(1));
-    });
-
     test(
         'relinkTransactionToCard attaches cardId to an unlinked row matching '
         'the smsId', () async {

@@ -102,12 +102,6 @@ class DriftTransactionRepository implements TransactionRepository {
           .map((rows) => rows.map(_toEntity).toList());
 
   @override
-  Future<void> unlinkCard(int cardId) async {
-    await (_db.update(_db.transactions)..where((t) => t.cardId.equals(cardId)))
-        .write(const TransactionsCompanion(cardId: Value(null)));
-  }
-
-  @override
   Future<bool> relinkTransactionToCard({
     required String smsId,
     required int cardId,

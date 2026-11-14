@@ -101,12 +101,47 @@ void runCardRepositoryContract(
 
         expect(await repo.fetchCards(), hasLength(2));
       });
+
+      test('the same issuer + last4 is fine for a different card type',
+          () async {
+        await repo.saveCard(card(issuer: 'HDFC', last4: '1234'));
+        await repo.saveCard(card(issuer: 'HDFC', last4: '1234')
+          ..type = CardType.debit
+          ..creditLimit = null);
+
+        expect(await repo.fetchCards(), hasLength(2));
+      });
     });
 
-    group('watchCards', () {
+    group('retiring', () {
+      test('closeCard stores the closed status and the day', () async {
+        final saved = card();
+        await repo.saveCard(saved);
+
+        await repo.closeCard(saved, DateTime(2026, 7, 31));
+
+        final stored = (await repo.fetchCards()).single;
+        expect(stored.status, CardStatus.closed);
+        expect(stored.closedOn, DateTime(2026, 7, 31));
+      });
+
+      test('untrackCard stores the untracked status and no day', () async {
+        final saved = card();
+        await repo.saveCard(saved);
+
+        await repo.untrackCard(saved);
+
+        final stored = (await repo.fetchCards()).single;
+        expect(stored.status, CardStatus.untracked);
+        expect(stored.closedOn, isNull);
+      });
+    });
+
+    group('watchActiveCards', () {
       test('emits current state then again on a write', () async {
         final seen = <int>[];
-        final sub = repo.watchCards().listen((cards) => seen.add(cards.length));
+        final sub =
+            repo.watchActiveCards().listen((cards) => seen.add(cards.length));
 
         await pumpEventQueue();
         expect(seen, isNotEmpty, reason: 'first emission is the current state');
@@ -116,6 +151,24 @@ void runCardRepositoryContract(
 
         expect(seen.last, 1, reason: 'a write must re-emit');
         await sub.cancel();
+      });
+
+      test(
+          'closed and untracked cards leave the active list, but fetchCards '
+          'still returns them', () async {
+        final kept = card(last4: '1111');
+        final closed = card(last4: '2222');
+        final untracked = card(last4: '3333');
+        for (final c in [kept, closed, untracked]) {
+          await repo.saveCard(c);
+        }
+
+        await repo.closeCard(closed, DateTime(2026, 7, 31));
+        await repo.untrackCard(untracked);
+
+        final active = await repo.watchActiveCards().first;
+        expect(active.map((c) => c.last4), ['1111']);
+        expect(await repo.fetchCards(), hasLength(3));
       });
     });
   });

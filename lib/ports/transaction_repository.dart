@@ -40,21 +40,15 @@ abstract class TransactionRepository {
   Future<List<String>> getAllUniqueTags();
   Future<List<String>> getAllParties();
 
-  /// Detaches every transaction currently linked to [cardId] — used when a
-  /// card is deleted, so its transactions re-enter the main list rather than
-  /// being lost.
-  Future<void> unlinkCard(int cardId);
-
-  /// Re-attaches [cardId] to the transaction with [smsId], but only if that
-  /// transaction currently has no card. Returns true if a row was updated.
+  /// Attaches [cardId] to the transaction with [smsId], but only if that
+  /// transaction has no card. Returns true if a row was updated.
   ///
-  /// Needed because `importTransaction`'s dedup is keyed on smsId: if a card
-  /// is deleted (unlinking, not deleting, its transactions — see
-  /// [unlinkCard]) and later re-added, re-scanning the same SMS computes the
-  /// same smsId and `importTransaction` no-ops on the existing row — nothing
-  /// else in the pipeline ever revisits an already-imported row to update its
-  /// cardId. This is that missing step, called from
-  /// `TransactionSmsIngestor` when import is skipped for a matched card SMS.
+  /// Needed because `importTransaction`'s dedup is keyed on smsId. An SMS
+  /// can be imported as an ordinary transaction and only later be recognised
+  /// as a card SMS, for example after a parser update. The next sweep computes
+  /// the same smsId, so `importTransaction` does nothing. This method is the
+  /// step that links the existing row to its card. `TransactionSmsIngestor`
+  /// calls it when a matched card SMS is already on disk.
   Future<bool> relinkTransactionToCard({
     required String smsId,
     required int cardId,

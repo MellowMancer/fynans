@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/payment_card.dart';
+import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/adapters/sms/transaction_sms_ingestor.dart';
@@ -201,63 +202,38 @@ void main() {
     });
 
     test(
-        'deleting a card then re-adding it re-links its stranded history, '
-        'not just future SMS', () async {
-      // Regression: unlinking (not deleting) a card's transactions on
-      // delete left them stuck cardId-less forever, because
-      // importTransaction's dedup-by-smsId silently no-ops on a re-scan —
-      // nothing re-visited an already-imported row to update its cardId.
-      final original = PaymentCard()
+        'a card SMS already on disk without a card is linked to the card on '
+        'the next sweep', () async {
+      // As if the SMS was imported before the parser recognised it as a card
+      // SMS: the row has the same smsId, but no card.
+      repository.seed([
+        Transaction()
+          ..amount = 259
+          ..date = cardDate
+          ..tags = <String>[]
+          ..party = 'x'
+          ..isInflow = false
+          ..kind = TransactionKind.expense
+          ..smsId =
+              smsIdFor(sender: cardSender, body: spendBody, date: cardDate),
+      ]);
+      final card = PaymentCard()
         ..issuer = 'SBI Card'
         ..last4 = '1234'
         ..type = CardType.credit
         ..status = CardStatus.active
         ..creditLimit = 5000;
-      cardRepository.seed([original]);
+      cardRepository.seed([card]);
 
-      // 1. First sweep: the spend lands under the original card.
-      await ingestor.ingest(
-          sender: cardSender, body: spendBody, date: cardDate);
-      expect(
-        (await repository.listenToTransactionsForCard(original.id!).first),
-        hasLength(1),
-      );
-
-      // 2. Delete the card — unlinkCard, exactly as CardDetailScreen does.
-      await repository.unlinkCard(original.id!);
-      await cardRepository.deleteCard(original);
-      final strandedInMainList = await repository.fetchTransactionsInRange(
-        range: DateRange.month(cardDate),
-        filter: const TransactionFilter.empty(),
-      );
-      expect(strandedInMainList, hasLength(1),
-          reason: 'unlinked rows re-enter the main list, not deleted');
-
-      // 3. Re-add the same card (new id, same issuer/last4) and re-sweep,
-      // exactly like AddCardCubit does after a successful save.
-      final readded = PaymentCard()
-        ..issuer = 'SBI Card'
-        ..last4 = '1234'
-        ..type = CardType.credit
-        ..status = CardStatus.active
-        ..creditLimit = 5000;
-      await cardRepository.saveCard(readded);
-      expect(readded.id, isNot(original.id));
-      ingestor = TransactionSmsIngestor(
-        repository: repository,
-        cardRepository: cardRepository,
-        detectedCardRepository: detectedCardRepository,
-        statementRepository: statementRepository,
-      );
       final relinked = await ingestor.ingest(
           sender: cardSender, body: spendBody, date: cardDate);
 
       expect(relinked, isTrue,
-          reason: 'a re-link counts as this SMS being accounted for');
+          reason: 'a link counts as this SMS being accounted for');
       expect(
-        await repository.listenToTransactionsForCard(readded.id!).first,
+        await repository.listenToTransactionsForCard(card.id!).first,
         hasLength(1),
-        reason: 'the stranded transaction now belongs to the re-added card',
+        reason: 'the existing row now belongs to the card',
       );
       expect(
         await repository.fetchTransactionsInRange(
@@ -265,7 +241,7 @@ void main() {
           filter: const TransactionFilter.empty(),
         ),
         isEmpty,
-        reason: 're-linked, so it leaves the main list again',
+        reason: 'linked, so it leaves the main list',
       );
     });
   });

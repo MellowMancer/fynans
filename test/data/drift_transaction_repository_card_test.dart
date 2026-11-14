@@ -77,34 +77,6 @@ void main() {
     expect(forCard1.every((t) => t.cardId == card1), isTrue);
   });
 
-  test('unlinkCard nulls cardId on every transaction for that card', () async {
-    final card1 = await seedCard(issuer: 'HDFC', last4: '1234');
-    final card2 = await seedCard(issuer: 'SBI Card', last4: '5678');
-    await transactions
-        .saveTransaction(txn(date: DateTime(2026, 7, 1), cardId: card1));
-    await transactions
-        .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: card1));
-    await transactions
-        .saveTransaction(txn(date: DateTime(2026, 7, 3), cardId: card2));
-
-    await transactions.unlinkCard(card1);
-
-    final all = await transactions.fetchTransactionsInRange(
-      range: DateRange.month(DateTime(2026, 7)),
-    );
-    expect(all.where((t) => t.cardId == card1), isEmpty);
-    expect(all.where((t) => t.cardId == card2), hasLength(1));
-
-    // Unlinked rows (cardId now null) re-enter the main (default-filtered)
-    // list; card2's transaction stays excluded.
-    final mainList = await transactions.fetchTransactionsInRange(
-      range: DateRange.month(DateTime(2026, 7)),
-      filter: const TransactionFilter.empty(),
-    );
-    expect(mainList, hasLength(2));
-    expect(mainList.every((t) => t.cardId == null), isTrue);
-  });
-
   test('distinct helpers exclude card transactions', () async {
     final cardId = await seedCard();
     await transactions.saveTransaction(txn(
@@ -134,9 +106,8 @@ void main() {
     expect(stored.cardAvailableLimit, 48750.0);
   });
 
-  test(
-      'a card cannot be deleted out from under a foreign-key reference'
-      ' without unlinking first', () async {
+  test('the database refuses to delete a card that a transaction refers to',
+      () async {
     final card = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
@@ -147,56 +118,38 @@ void main() {
     await transactions
         .saveTransaction(txn(date: DateTime(2026, 7, 1), cardId: card.id));
 
-    // Deleting straight away would violate the FK — this is why
-    // CardDetailScreen unlinks before deleting.
-    expect(() => cards.deleteCard(card), throwsA(anything));
-
-    await transactions.unlinkCard(card.id!);
-    await cards.deleteCard(card);
-    expect(await cards.fetchCards(), isEmpty);
+    // The safety net under RemoveCard: even a bug that calls deleteCard on a
+    // card with history cannot strip the card from its transactions.
+    await expectLater(cards.deleteCard(card), throwsA(anything));
+    expect(await cards.fetchCards(), hasLength(1));
   });
 
   test(
-      'relinkTransactionToCard re-attaches a row stranded by delete+re-add, '
-      'reproducing the reported bug end to end', () async {
-    final original = PaymentCard()
+      'relinkTransactionToCard links a card SMS row that was imported '
+      'without a card', () async {
+    final card = PaymentCard()
       ..issuer = 'HDFC'
       ..last4 = '1234'
       ..type = CardType.credit
       ..status = CardStatus.active
       ..creditLimit = 50000;
-    await cards.saveCard(original);
-    await transactions.saveTransaction(
-      txn(date: DateTime(2026, 7, 1), cardId: original.id, smsId: 'sms-1'),
-    );
+    await cards.saveCard(card);
+    // As if the SMS was imported before the parser recognised it as a card
+    // SMS: the row has the smsId, but no card.
+    await transactions
+        .saveTransaction(txn(date: DateTime(2026, 7, 1), smsId: 'sms-1'));
 
-    // Delete: unlink then remove the card row, exactly as the app does.
-    await transactions.unlinkCard(original.id!);
-    await cards.deleteCard(original);
-
-    // Re-add the same card — a new row, new id.
-    final readded = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
-    await cards.saveCard(readded);
-    expect(readded.id, isNot(original.id));
-
-    // A re-scan hits the smsId collision; importTransaction alone would
-    // no-op here — relinkTransactionToCard is the step that fixes it.
     final relinked = await transactions.relinkTransactionToCard(
       smsId: 'sms-1',
-      cardId: readded.id!,
+      cardId: card.id!,
       cardAvailableLimit: 47500,
     );
 
     expect(relinked, isTrue);
-    final forReaddedCard =
-        await transactions.listenToTransactionsForCard(readded.id!).first;
-    expect(forReaddedCard, hasLength(1));
-    expect(forReaddedCard.single.cardAvailableLimit, 47500);
+    final forCard =
+        await transactions.listenToTransactionsForCard(card.id!).first;
+    expect(forCard, hasLength(1));
+    expect(forCard.single.cardAvailableLimit, 47500);
   });
 
   test(

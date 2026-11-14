@@ -44,7 +44,7 @@ class CardsCubit extends Cubit<CardsState> {
     await _cancelAll();
     emit(CardsLoadInProgress());
 
-    _cardsSubscription = _cardRepository.watchCards().listen(
+    _cardsSubscription = _cardRepository.watchActiveCards().listen(
       (cards) {
         if (isClosed || generation != _generation) return;
         _onCardsChanged(cards, generation);

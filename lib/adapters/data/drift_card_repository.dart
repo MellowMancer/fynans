@@ -20,16 +20,44 @@ class DriftCardRepository implements CardRepository {
 
   @override
   Future<void> deleteCard(PaymentCard card) async {
-    final id = card.id;
-    if (id == null) {
-      throw StateError('Cannot delete a card that was never saved.');
-    }
+    final id = _savedId(card);
     await (_db.delete(_db.cards)..where((c) => c.id.equals(id))).go();
   }
 
   @override
-  Stream<List<PaymentCard>> watchCards() =>
-      _db.select(_db.cards).watch().map((rows) => rows.map(_toEntity).toList());
+  Future<void> closeCard(PaymentCard card, DateTime day) => _setStatus(
+        card,
+        CardsCompanion(
+          status: const Value(CardStatus.closed),
+          closedOn: Value(day),
+        ),
+      );
+
+  @override
+  Future<void> untrackCard(PaymentCard card) => _setStatus(
+        card,
+        const CardsCompanion(
+          status: Value(CardStatus.untracked),
+          closedOn: Value(null),
+        ),
+      );
+
+  @override
+  Stream<List<PaymentCard>> watchActiveCards() => (_db.select(_db.cards)
+        ..where((c) => c.status.equalsValue(CardStatus.active)))
+      .watch()
+      .map((rows) => rows.map(_toEntity).toList());
+
+  Future<void> _setStatus(PaymentCard card, CardsCompanion change) async {
+    final id = _savedId(card);
+    await (_db.update(_db.cards)..where((c) => c.id.equals(id))).write(change);
+  }
+
+  int _savedId(PaymentCard card) {
+    final id = card.id;
+    if (id == null) throw StateError('This card was never saved.');
+    return id;
+  }
 
   @override
   Future<List<PaymentCard>> fetchCards() async =>

@@ -144,10 +144,9 @@ class TransactionSmsIngestor {
 
     // Already on disk under this smsId — the common case is just a repeat
     // scan (nothing to do). But if this is a matched card SMS, the existing
-    // row might be one that got unlinked when its card was deleted and is
-    // now sitting cardId-less in the main list; re-link it to the
-    // newly-(re)registered card rather than leaving it stranded forever,
-    // since importTransaction's insert-or-ignore has no way to do that itself.
+    // row may have been imported before the SMS was recognised as a card SMS,
+    // so it has no card. Link it to the card now, because
+    // importTransaction's insert-or-ignore has no way to do that itself.
     if (cardId != null) {
       return _repository.relinkTransactionToCard(
         smsId: smsId,

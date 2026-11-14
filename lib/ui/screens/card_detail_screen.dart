@@ -6,6 +6,7 @@ import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
+import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/screens/add_transaction_screen.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
@@ -18,6 +19,7 @@ import 'package:fynans/ui/widgets/month_year_wheel_picker.dart';
 import 'package:fynans/ui/widgets/payment_due_banner.dart';
 import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/ui/widgets/transaction_list_widgets.dart';
+import 'package:fynans/use_cases/remove_card.dart';
 import 'package:fynans/use_cases/summarise_transactions.dart';
 
 /// How far back the month picker reaches — matches Expenses' own pager.
@@ -71,18 +73,48 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     }
   }
 
-  Future<void> _confirmDelete(
-      BuildContext context, PaymentCard card, int count) async {
+  /// Asks [RemoveCard] how [card] can leave the list, then lets the user
+  /// confirm. The screen closes when the card is gone from the list.
+  Future<void> _removeCard(BuildContext context, PaymentCard card) async {
+    // Read everything that needs the context before the first await.
+    final removeCard = RemoveCard(
+      context.read<CardRepository>(),
+      context.read<TransactionRepository>(),
+      context.read<CardStatementRepository>(),
+    );
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    try {
+      final removal = await removeCard.removalFor(card);
+      if (!context.mounted) return;
+      final bool removed;
+      switch (removal) {
+        case CardRemoval.delete:
+          removed = await _confirmDelete(context, removeCard, card);
+        case CardRemoval.retire:
+          removed = await _chooseRetirement(context, removeCard, card);
+      }
+      if (removed) navigator.pop();
+    } catch (_) {
+      // Keep the message plain: the error text can contain SQL and card
+      // details.
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('The card could not be changed. Try again.'),
+        ),
+      );
+    }
+  }
+
+  /// Returns true if the user confirmed and the card was deleted.
+  Future<bool> _confirmDelete(
+      BuildContext context, RemoveCard removeCard, PaymentCard card) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('Delete ${card.issuer} •••• ${card.last4}?'),
-        content: Text(
-          count == 0
-              ? 'This card has no transactions yet.'
-              : 'Its $count transaction${count == 1 ? '' : 's'} will move back '
-                  'into your main Expenses list.',
-        ),
+        content: const Text('This card has no transactions and no statements.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -95,22 +127,63 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true) return false;
+    await removeCard.delete(card);
+    return true;
+  }
 
-    final id = card.id;
-    if (id == null) return;
+  /// Returns true if the user closed or untracked the card.
+  Future<bool> _chooseRetirement(
+      BuildContext context, RemoveCard removeCard, PaymentCard card) async {
+    final choice = await showDialog<CardStatus>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Remove ${card.issuer} •••• ${card.last4}?'),
+        content: const Text(
+          'This card has history, so it cannot be deleted.\n\n'
+          'Close card: keeps its transactions up to the closing day, and '
+          'hides later ones.\n\n'
+          'Untrack card: hides all of its transactions from your lists and '
+          'totals.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, CardStatus.untracked),
+            child: const Text('Untrack card'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, CardStatus.closed),
+            child: const Text('Close card'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted) return false;
 
-    // Read both before the next await — a BuildContext lookup is a
-    // synchronous tree walk, so doing it now (rather than after unlinkCard
-    // completes) avoids using context past a second await gap.
-    final transactionRepository = context.read<TransactionRepository>();
-    final cardRepository = context.read<CardRepository>();
-
-    // Unlink first: if delete succeeded but unlink failed, the transactions
-    // would be orphaned under a card_id that no longer exists.
-    // await transactionRepository.unlinkCard(id);
-    await cardRepository.deleteCard(card);
-    if (context.mounted) Navigator.pop(context);
+    switch (choice) {
+      case CardStatus.closed:
+        final now = DateTime.now();
+        final day = await showDatePicker(
+          context: context,
+          initialDate: now,
+          firstDate: DateTime(now.year - _kMonthsHistoryYears),
+          lastDate: now,
+          helpText: 'Closing day',
+        );
+        if (day == null) return false;
+        await removeCard.close(card, day);
+        return true;
+      case CardStatus.untracked:
+        await removeCard.untrack(card);
+        return true;
+      case CardStatus.active:
+      case null:
+        return false;
+    }
   }
 
   @override
@@ -143,12 +216,9 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     IconButton(
                       icon: Icon(Icons.delete_outline_rounded,
                           color: context.colors.danger),
-                      tooltip: 'Delete card',
-                      onPressed: () => _confirmDelete(
-                        context,
-                        entry.summary.card,
-                        entry.transactions.length,
-                      ),
+                      tooltip: 'Remove card',
+                      onPressed: () =>
+                          _removeCard(context, entry.summary.card),
                     ),
                     AppSpacing.hGapSm,
                   ],

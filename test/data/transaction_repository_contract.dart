@@ -235,7 +235,7 @@ void runTransactionRepositoryContract(
       });
     });
 
-    // CardScope/listenToTransactionsForCard/unlinkCard are deliberately not
+    // CardScope/listenToTransactionsForCard are deliberately not
     // covered here: this contract only builds a TransactionRepository, and
     // with `PRAGMA foreign_keys = ON` a cardId has to reference a real row in
     // the Cards table or Drift rejects the insert — a card-aware fixture
