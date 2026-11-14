@@ -5,21 +5,20 @@ import 'package:fynans/entities/transaction.dart';
 
 /// Folds [card]'s transactions into a [CardSummary].
 ///
-/// `available` is read from the most recent transaction whose SMS reported a
-/// limit (`Transaction.cardAvailableLimit`) when one exists — every major
-/// issuer prints this in the spend alert, and treating it as authoritative
-/// avoids the fold's two failure modes: a card that already carried a
-/// balance when added reads wrong from the first screen, and any dropped or
-/// mis-parsed SMS skews a purely-folded number with no way back to the
-/// truth.
+/// The fold starts from the newest known balance, then adds every card row
+/// after it: a spend raises what is owed, and money onto the card lowers it.
+/// The newest known balance is whichever is more recent:
 ///
-/// [latestStatement] is the fallback for issuers that never print an
-/// available limit in the spend alert at all (SBI Card is the known case):
-/// its `totalDue` anchors the fold at the last real statement instead of at
-/// zero-since-card-added, so drift is bounded to one billing cycle rather
-/// than the card's whole lifetime. The unanchored all-time fold below that
-/// is the last resort — a card with neither an SMS-reported limit nor a
-/// statement yet (e.g. just added, or added manually).
+/// * the last SMS that reported an available limit
+///   (`Transaction.cardAvailableLimit`), which every major issuer prints in
+///   its spend alerts; or
+/// * [latestStatement], whose `totalDue` was owed on its statement date. SBI
+///   Card never prints an available limit, so its statements are the only
+///   anchor.
+///
+/// Rows without a reported limit, such as manual entries, still count when
+/// they come after the anchor. With no anchor at all (a card that was just
+/// added), the fold starts from zero.
 ///
 /// [card] must be a credit card with a credit limit. Any other card throws
 /// an [ArgumentError]: a debit card has no limit to fold against.
@@ -37,47 +36,53 @@ CardSummary summariseCard(
     );
   }
 
-  double? reportedAvailable;
-  DateTime? asOf;
+  final anchor = _newestBalance(creditLimit, transactions, latestStatement);
+  var delta = 0.0;
   for (final t in transactions) {
-    if (t.cardAvailableLimit == null) continue;
-    if (asOf == null || t.date.isAfter(asOf)) {
-      reportedAvailable = t.cardAvailableLimit;
-      asOf = t.date;
-    }
+    if (identical(t, anchor.row)) continue;
+    final asOf = anchor.asOf;
+    if (asOf != null && !t.date.isAfter(asOf)) continue;
+    delta += t.isInflow ? -t.amount : t.amount;
   }
 
-  final double spent;
-  final double available;
-  final totalDue = latestStatement?.totalDue;
-  if (reportedAvailable != null) {
-    available = reportedAvailable.clamp(0.0, creditLimit);
-    spent = (creditLimit - available).clamp(0.0, creditLimit);
-  } else if (totalDue != null) {
-    final statementDate = latestStatement!.statementDate;
-    var delta = 0.0;
-    for (final t in transactions) {
-      if (!t.date.isAfter(statementDate)) continue;
-      delta += t.isInflow ? -t.amount : t.amount;
-    }
-    spent = (totalDue + delta).clamp(0.0, creditLimit);
-    available = (creditLimit - spent).clamp(0.0, creditLimit);
-    asOf = statementDate;
-  } else {
-    double foldedSpent = 0;
-    for (final t in transactions) {
-      foldedSpent += t.isInflow ? -t.amount : t.amount;
-    }
-    spent = foldedSpent.clamp(0.0, creditLimit);
-    available = (creditLimit - spent).clamp(0.0, creditLimit);
-    asOf = null;
-  }
+  final spent = (anchor.spent + delta).clamp(0.0, creditLimit);
+  final available = (creditLimit - spent).clamp(0.0, creditLimit);
 
   return CardSummary(
     card: card,
     spent: spent,
     available: available,
     utilization: creditLimit == 0 ? 0 : spent / creditLimit,
-    asOf: asOf,
+    asOf: anchor.asOf,
   );
+}
+
+/// What was owed at the newest known point, when that was, and the row that
+/// reported it (null for a statement or for no anchor).
+typedef _Anchor = ({double spent, DateTime? asOf, Transaction? row});
+
+_Anchor _newestBalance(
+  double creditLimit,
+  List<Transaction> transactions,
+  CardStatement? latestStatement,
+) {
+  Transaction? report;
+  for (final t in transactions) {
+    if (t.cardAvailableLimit == null) continue;
+    if (report == null || t.date.isAfter(report.date)) report = t;
+  }
+
+  final totalDue = latestStatement?.totalDue;
+  final statementIsNewer = latestStatement != null &&
+      totalDue != null &&
+      (report == null || latestStatement.statementDate.isAfter(report.date));
+
+  if (statementIsNewer) {
+    return (spent: totalDue, asOf: latestStatement.statementDate, row: null);
+  }
+  if (report != null) {
+    final reportedSpent = creditLimit - report.cardAvailableLimit!;
+    return (spent: reportedSpent, asOf: report.date, row: report);
+  }
+  return (spent: 0, asOf: null, row: null);
 }

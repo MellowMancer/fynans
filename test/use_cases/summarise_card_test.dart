@@ -179,8 +179,8 @@ void main() {
     });
 
     test(
-        'an SMS-reported available limit still wins over a statement anchor '
-        'when both exist', () {
+        'an SMS-reported available limit newer than the statement wins over '
+        'it', () {
       final transactions = [
         _spend(1000, DateTime(2026, 1, 25), availableLimit: 47000),
       ];
@@ -235,6 +235,43 @@ void main() {
 
       expect(result.spent, 50000);
       expect(result.available, 0);
+    });
+  });
+
+  group('finding 9: the newest known balance, plus everything after it', () {
+    test('a statement newer than the last limit report becomes the anchor',
+        () {
+      final result = summariseCard(
+        _card(creditLimit: 50000),
+        [
+          _credit(1644.55, DateTime(2026, 1, 5), availableLimit: 48355.45),
+          _spend(20000, DateTime(2026, 2, 20)),
+        ],
+        latestStatement: _statement(DateTime(2026, 2, 1), totalDue: 1644.55),
+      );
+
+      expect(result.spent, closeTo(21644.55, 0.001));
+      expect(result.asOf, DateTime(2026, 2, 1));
+    });
+
+    test('a manual spend after a limit report still counts', () {
+      final result = summariseCard(_card(creditLimit: 50000), [
+        _spend(1000, DateTime(2026, 1, 5), availableLimit: 48000),
+        _spend(500, DateTime(2026, 1, 10)),
+      ]);
+
+      expect(result.spent, 2500);
+      expect(result.available, 47500);
+      expect(result.asOf, DateTime(2026, 1, 5));
+    });
+
+    test('money back after a limit report lowers what is spent', () {
+      final result = summariseCard(_card(creditLimit: 50000), [
+        _spend(1000, DateTime(2026, 1, 5), availableLimit: 48000),
+        _credit(1000, DateTime(2026, 1, 12)),
+      ]);
+
+      expect(result.spent, 1000);
     });
   });
 }
