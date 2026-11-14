@@ -517,16 +517,18 @@ class SmsParserService {
   }
 
   double? _getAmount(String lowerCaseBody) {
-    const amountValue = r'([\d,]+\.?\d*)';
+    const amountValue = r'(?<amount>[\d,]+\.?\d*)';
     // The trailing unit (crore/lakh) must be a standalone word.
-    const amountUnit = r'(?:\s*(crore|lakh|lac|cr|l)\b)?';
+    const amountUnit = r'(?:\s*(?<unit>crore|lakh|lac|cr|l)\b)?';
+    // "Rs", "Rs.", "INR" or "₹", with an optional colon ("Rs:1,500.00").
+    const currency = r'(?:rs\.?|inr|₹)\s*:?\s*';
     final allTransactionKeywords = [
       ..._debitKeywords,
       ..._creditKeywords,
       ..._transferModeKeywords,
     ];
-    // Connector words (incl.
-    const connector = r'(?:(?:by|for|of|with|to|inr|rs\.?)\s*)*';
+    // Words that may sit between the verb and the amount ("debited for").
+    const connector = r'(?:(?:by|for|of|with|to)\s*)*';
 
     // Guard: a Rs/INR figure directly announced as a balance ("Avl Bal
     // Rs.9,999") must never be read as the transaction amount.
@@ -535,26 +537,34 @@ class SmsParserService {
 
     // Action-anchored first, so the amount ties to the verb rather than to the
     // first Rs figure — which is often the balance.
-    final patterns = [
-      RegExp(
-          '(?:${allTransactionKeywords.join('|')})\\s+$connector$amountValue$amountUnit',
+    final actionAnchored = RegExp(
+      '(?:${allTransactionKeywords.join('|')})\\s+$connector'
+      '(?<currency>$currency)?$amountValue$amountUnit',
+      caseSensitive: false,
+    );
+    for (final match in actionAnchored.allMatches(lowerCaseBody)) {
+      final amount = match.namedGroup('amount')!;
+      // "to" and "by" are also followed by account, phone and UPI reference
+      // numbers. Those have no currency marker and no decimal part.
+      final looksLikeMoney = match.namedGroup('currency') != null ||
+          RegExp(r'\.\d').hasMatch(amount);
+      if (!looksLikeMoney) continue;
+      final value = _cleanAmount(amount, match.namedGroup('unit'));
+      if (value != null) return value;
+    }
+
+    final currencyMarked = [
+      RegExp('$balanceGuard$currency$amountValue$amountUnit',
           caseSensitive: false),
-      RegExp('$balanceGuard(?:rs\\.?|inr)\\s*$amountValue$amountUnit',
-          caseSensitive: false),
-      RegExp('$balanceGuard$amountValue$amountUnit\\s*(?:rs\\.?|inr)',
+      RegExp('$balanceGuard$amountValue$amountUnit\\s*(?:rs\\.?|inr|₹)',
           caseSensitive: false),
     ];
-
-    for (final pattern in patterns) {
+    for (final pattern in currencyMarked) {
       final match = pattern.firstMatch(lowerCaseBody);
-      if (match != null) {
-        final amountString = match.group(1);
-        final unitString = match.group(2);
-        if (amountString != null) {
-          final amount = _cleanAmount(amountString, unitString);
-          if (amount != null) return amount;
-        }
-      }
+      if (match == null) continue;
+      final value =
+          _cleanAmount(match.namedGroup('amount')!, match.namedGroup('unit'));
+      if (value != null) return value;
     }
     return null;
   }
