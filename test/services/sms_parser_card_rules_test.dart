@@ -248,6 +248,22 @@ void main() {
       expect(r.cardLast4, '1234');
     });
 
+    test('a "Bank Card" SMS that reports an available limit is a credit card',
+        () {
+      final r = parse(
+          'AX-ICICIT-S',
+          'INR 1,000.00 spent using ICICI Bank Card XX0000 on 15-Nov-26 on '
+              'AMAZON. Avl Limit: INR 11,111.11. If not you, call 1000 1000/SMS '
+              'BLOCK 0000 to 1000000000');
+      expect(r, isNotNull);
+      expect(r!.isCreditCard, isTrue);
+      expect(r.type, TransactionType.debit);
+      expect(r.amount, 1000.00);
+      expect(r.merchant, 'Amazon');
+      expect(r.cardLast4, '0000');
+      expect(r.availableLimit, 11111.11);
+    });
+
     test('HDFC\'s "Txn ... On HDFC Bank Card" format is read, not dropped',
         () {
       final r = parse(

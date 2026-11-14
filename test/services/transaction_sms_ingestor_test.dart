@@ -436,6 +436,20 @@ void main() {
       expect(row.kind, TransactionKind.debt);
     });
 
+    test('an unmatched "Bank Card" SMS with a limit prompts for the card',
+        () async {
+      final saved = await ingestor.ingest(
+          sender: 'AX-ICICIT-S',
+          body: 'INR 1,000.00 spent using ICICI Bank Card XX0000 on 15-Nov-26 '
+              'on AMAZON. Avl Limit: INR 11,111.11.',
+          date: day);
+
+      expect(saved, isFalse, reason: 'a credit card spend waits for its card');
+      final pending = await detectedCardRepository.watchPending().first;
+      expect(pending.single.last4, '0000');
+      expect(pending.single.issuerGuess, 'ICICI');
+    });
+
     test('an explicit credit card SMS never matches a debit card', () async {
       cardRepository.seed([hdfcCard(CardType.debit)]);
 

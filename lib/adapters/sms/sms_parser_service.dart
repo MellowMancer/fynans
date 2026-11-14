@@ -307,11 +307,15 @@ class SmsParserService {
 
   /// Rule 0: does this SMS describe a credit card rather than a bank
   /// account? An SMS that names a bank account by its masked number is about
-  /// that account, even when it also mentions a credit card.
+  /// that account, even when it also mentions a credit card. Otherwise a
+  /// credit card sender, a credit card keyword or an available limit makes
+  /// it a credit card SMS.
   bool isCreditCardSms(String sender, String messageBody) {
     if (_bankAccountRegex.hasMatch(messageBody)) return false;
     return _containsToken(sender.toLowerCase(), _creditCardSenders) ||
-        _containsAny(messageBody.toLowerCase(), _creditCardBodyKeywords);
+        _containsAny(messageBody.toLowerCase(), _creditCardBodyKeywords) ||
+        // Only a credit card has a limit. A debit card reports a balance.
+        _availableLimitRegex.hasMatch(messageBody);
   }
 
   /// Extracts the due date, total due and minimum due from a card statement.
