@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
+import 'package:fynans/use_cases/payment_due_status.dart';
 import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 
@@ -10,22 +11,26 @@ import 'package:fynans/ui/widgets/common/common.dart';
 /// this card) or when the SMS was recognized as a statement but none of the
 /// three figures could be extracted from it.
 class PaymentDueBanner extends StatelessWidget {
-  const PaymentDueBanner({super.key, required this.statement});
+  const PaymentDueBanner({super.key, required this.statement, this.status});
 
   final CardStatement? statement;
 
-  /// success (not due soon) → accent (due within 5 days) → danger (overdue).
+  /// The payment status from `paymentDueStatus`. Null hides the pill.
+  final PaymentDueStatus? status;
+
+  /// success (paid, or not due soon) → accent (due soon) → danger (overdue).
   /// Same three-tone ramp `CardTile` uses for utilization — no `warning`
   /// token exists in `AppColors`.
-  AppPillTone _toneFor(DateTime dueDate) {
-    final today = DateTime.now();
-    final daysLeft = DateTime(dueDate.year, dueDate.month, dueDate.day)
-        .difference(DateTime(today.year, today.month, today.day))
-        .inDays;
-    if (daysLeft < 0) return AppPillTone.danger;
-    if (daysLeft <= 5) return AppPillTone.accent;
-    return AppPillTone.success;
-  }
+  static AppPill _pillFor(PaymentDueStatus status) => switch (status) {
+        PaymentDueStatus.paid =>
+          const AppPill('Paid', tone: AppPillTone.success),
+        PaymentDueStatus.overdue =>
+          const AppPill('Overdue', tone: AppPillTone.danger),
+        PaymentDueStatus.dueSoon =>
+          const AppPill('Due soon', tone: AppPillTone.accent),
+        PaymentDueStatus.upcoming =>
+          const AppPill('Due soon', tone: AppPillTone.success),
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +45,7 @@ class PaymentDueBanner extends StatelessWidget {
     return AppCard(
       label: 'Payment due',
       title: dueDate == null ? null : Fmt.fullDate(dueDate),
-      trailing: dueDate == null
-          ? null
-          : AppPill(
-              dueDate.isBefore(DateTime.now()) ? 'Overdue' : 'Due soon',
-              tone: _toneFor(dueDate),
-            ),
+      trailing: status == null ? null : _pillFor(status!),
       child: Row(
         children: [
           if (s.totalDue != null)

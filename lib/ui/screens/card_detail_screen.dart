@@ -22,6 +22,7 @@ import 'package:fynans/ui/widgets/remove_card_dialog.dart';
 import 'package:fynans/ui/widgets/retired_card_banner.dart';
 import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/ui/widgets/transaction_list_widgets.dart';
+import 'package:fynans/use_cases/payment_due_status.dart';
 import 'package:fynans/use_cases/remove_card.dart';
 import 'package:fynans/use_cases/summarise_transactions.dart';
 
@@ -172,8 +173,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
   }
 
   // Keep the message plain: the error text can contain SQL and card details.
-  void _showFailure(ScaffoldMessengerState messenger) =>
-      messenger.showSnackBar(
+  void _showFailure(ScaffoldMessengerState messenger) => messenger.showSnackBar(
         const SnackBar(
           content: Text('The card could not be changed. Try again.'),
         ),
@@ -238,8 +238,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     entry.transactions,
                   ),
                   onSelectMonth: _selectMonth,
-                  onRestore: () =>
-                      _restoreCard(context, entry.summary.card),
+                  onRestore: () => _restoreCard(context, entry.summary.card),
                 ),
         );
       },
@@ -282,9 +281,13 @@ class _CardDetailBody extends StatelessWidget {
           )
         else ...[
           CardTile(summary: entry.summary),
-          if (entry.latestStatement != null) ...[
+          if (entry.latestStatement case final statement?) ...[
             AppSpacing.gapMd,
-            PaymentDueBanner(statement: entry.latestStatement),
+            PaymentDueBanner(
+              statement: statement,
+              status: paymentDueStatus(statement, entry.transactions,
+                  today: DateTime.now()),
+            ),
           ],
         ],
         AppSpacing.gapXl,
