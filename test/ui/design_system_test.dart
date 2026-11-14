@@ -209,6 +209,20 @@ void main() {
       expect(find.text('SENDER'), findsNothing);
     });
 
+    testWidgets('a debt row names its kind on the second line',
+        (tester) async {
+      await tester.pumpWidget(_host(TransactionListItem(
+          transaction: txn()..kind = TransactionKind.debt)));
+
+      expect(find.textContaining('DEBT'), findsOneWidget);
+    });
+
+    testWidgets('an expense row does not name its kind', (tester) async {
+      await tester.pumpWidget(_host(TransactionListItem(transaction: txn())));
+
+      expect(find.textContaining('EXPENSE'), findsNothing);
+    });
+
     testWidgets('inflow labels the counterparty as sender', (tester) async {
       final credit = txn()..isInflow = true;
       await tester.pumpWidget(_host(TransactionListItem(transaction: credit)));

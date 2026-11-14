@@ -82,7 +82,8 @@ void main() {
         'Your available limit is Rs.1,235.00.';
     final cardDate = DateTime(2026, 1, 15);
 
-    test('matched card SMS routes to the card, out of the main list', () async {
+    test('a matched card SMS goes to its card as debt, and to the main list',
+        () async {
       final card = PaymentCard()
         ..issuer = 'SBI Card'
         ..last4 = '1234'
@@ -101,13 +102,13 @@ void main() {
           sender: cardSender, body: spendBody, date: cardDate);
       expect(saved, isTrue);
 
-      // Matches how the app's own screens read the main list — the default
-      // CardScope on an empty filter is what excludes card spends.
+      // Matches how the app's own screens read the main list.
       final mainList = await repository.fetchTransactionsInRange(
         range: DateRange.month(cardDate),
         filter: const TransactionFilter.empty(),
       );
-      expect(mainList, isEmpty);
+      expect(mainList, hasLength(1));
+      expect(mainList.single.kind, TransactionKind.debt);
 
       final cardTxns =
           await repository.listenToTransactionsForCard(card.id!).first;
@@ -235,14 +236,12 @@ void main() {
         hasLength(1),
         reason: 'the existing row now belongs to the card',
       );
-      expect(
-        await repository.fetchTransactionsInRange(
-          range: DateRange.month(cardDate),
-          filter: const TransactionFilter.empty(),
-        ),
-        isEmpty,
-        reason: 'linked, so it leaves the main list',
+      final mainList = await repository.fetchTransactionsInRange(
+        range: DateRange.month(cardDate),
+        filter: const TransactionFilter.empty(),
       );
+      expect(mainList.single.cardId, card.id,
+          reason: 'the row stays in the main list, now with its card');
     });
   });
 }

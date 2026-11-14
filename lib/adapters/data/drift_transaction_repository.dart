@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:fynans/adapters/data/app_database.dart';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ports/transaction_repository.dart';
@@ -72,23 +73,37 @@ class DriftTransactionRepository implements TransactionRepository {
   /// `id` breaks ties because `date` alone is not unique and the old Dart sort
   /// was unstable — with the row id now driving widget keys, an arbitrary
   /// order would be visible as list churn.
-  MultiSelectable<TransactionRow> _selectInRange(DateRange range) =>
-      _db.select(_db.transactions)
-        ..where((t) => t.date.isBetweenValues(range.start, range.end))
-        ..orderBy([
-          (t) => OrderingTerm.desc(t.date),
-          (t) => OrderingTerm.desc(t.id),
-        ]);
+  ///
+  /// The join reads each row's card, so that [_apply] can hide the rows of a
+  /// closed or untracked card. Drift re-emits a watched join when either
+  /// table changes, so closing or restoring a card updates every list.
+  JoinedSelectStatement<HasResultSet, dynamic> _selectInRange(
+      DateRange range) {
+    final t = _db.transactions;
+    return _db.select(t).join([
+      leftOuterJoin(_db.cards, _db.cards.id.equalsExp(t.cardId)),
+    ])
+      ..where(t.date.isBetweenValues(range.start, range.end))
+      ..orderBy([OrderingTerm.desc(t.date), OrderingTerm.desc(t.id)]);
+  }
 
-  /// Applies the filter in Dart deliberately: `TransactionFilter.matches` is
-  /// the single definition of the case- and trim-insensitive semantics, and a
-  /// SQL translation would be a second one, free to drift from it.
-  List<Transaction> _apply(
-          List<TransactionRow> rows, TransactionFilter? filter) =>
+  /// Applies the visibility rule and the filter in Dart deliberately:
+  /// `cardHides` and `TransactionFilter.matches` are the single definitions
+  /// of those rules, and a SQL translation would be a second one, free to
+  /// drift from them.
+  List<Transaction> _apply(List<TypedResult> rows, TransactionFilter? filter) =>
       rows
-          .map(_toEntity)
+          .where((row) => !_hiddenByCard(row))
+          .map((row) => _toEntity(row.readTable(_db.transactions)))
           .where((t) => filter == null || filter.matches(t))
           .toList();
+
+  bool _hiddenByCard(TypedResult row) {
+    final card = row.readTableOrNull(_db.cards);
+    if (card == null) return false;
+    final date = row.readTable(_db.transactions).date;
+    return cardHides(card.status, card.closedOn, date);
+  }
 
   @override
   Stream<List<Transaction>> listenToTransactionsForCard(int cardId) =>

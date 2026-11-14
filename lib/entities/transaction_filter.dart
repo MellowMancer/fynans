@@ -14,16 +14,13 @@ enum DirectionFilter {
   bool get isAny => this == DirectionFilter.any;
 }
 
-/// Which card scope to keep. Card spends live under their card, not in the
-/// main list — [excludeCards] is the default everywhere except the cards
-/// screens themselves. [onlyCards] is headroom for a future all-cards view;
-/// nothing in phase 1 sets it.
+/// Which rows to keep by card. Card spends show in the main list with every
+/// other row, so [any] is the default.
 enum CardScope {
-  excludeCards,
   onlyCards,
   any;
 
-  bool get isDefault => this == CardScope.excludeCards;
+  bool get isDefault => this == CardScope.any;
 }
 
 /// Immutable value object encapsulating all predicate logic for filtering a
@@ -53,7 +50,7 @@ class TransactionFilter {
     this.direction = DirectionFilter.any,
     this.minAmount,
     this.maxAmount,
-    this.cardScope = CardScope.excludeCards,
+    this.cardScope = CardScope.any,
   });
 
   const TransactionFilter.empty() : this();
@@ -90,8 +87,6 @@ class TransactionFilter {
         break;
     }
     switch (cardScope) {
-      case CardScope.excludeCards:
-        if (t.isCardTransaction) return false;
       case CardScope.onlyCards:
         if (!t.isCardTransaction) return false;
       case CardScope.any:

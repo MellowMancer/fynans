@@ -171,15 +171,15 @@ void main() {
   });
 
   group('CardScope', () {
-    test('excludeCards is the default and excludes card transactions', () {
+    test('any is the default, so card transactions are in the main list', () {
       const f = TransactionFilter();
-      expect(f.cardScope, CardScope.excludeCards);
+      expect(f.cardScope, CardScope.any);
       expect(f.matches(_txn()), isTrue);
-      expect(f.matches(_txn(cardId: 1)), isFalse);
+      expect(f.matches(_txn(cardId: 1)), isTrue);
     });
 
     test('.empty() carries the same default scope', () {
-      expect(const TransactionFilter.empty().cardScope, CardScope.excludeCards);
+      expect(const TransactionFilter.empty().cardScope, CardScope.any);
     });
 
     test('onlyCards keeps only card transactions', () {

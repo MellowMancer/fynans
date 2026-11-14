@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 
+import 'fake_card_repository.dart';
 import 'fake_transaction_repository.dart';
 
 /// The fake stands in for the real repository in most of the suite, so where
@@ -52,22 +54,39 @@ void main() {
   });
 
   group('CardScope', () {
-    test('default filter excludes card transactions; null filter does not',
-        () async {
+    test('the default filter keeps card transactions', () async {
       final repo = FakeTransactionRepository();
       await repo.saveTransaction(txn());
       await repo.saveTransaction(txn()..cardId = 1);
 
-      final excluded = await repo.fetchTransactionsInRange(
+      final rows = await repo.fetchTransactionsInRange(
         range: DateRange.month(DateTime(2026, 8)),
         filter: const TransactionFilter.empty(),
       );
-      expect(excluded, hasLength(1));
+      expect(rows, hasLength(2));
+    });
 
-      final unfiltered = await repo.fetchTransactionsInRange(
+    test('with a card repository, an untracked card hides its rows, like Drift',
+        () async {
+      final cards = FakeCardRepository();
+      final card = PaymentCard()
+        ..issuer = 'HDFC'
+        ..last4 = '1234'
+        ..type = CardType.credit
+        ..status = CardStatus.active
+        ..creditLimit = 50000;
+      await cards.saveCard(card);
+      final repo = FakeTransactionRepository(cards: cards);
+      await repo.saveTransaction(txn());
+      await repo.saveTransaction(txn()..cardId = card.id);
+
+      await cards.untrackCard(card);
+
+      final rows = await repo.fetchTransactionsInRange(
         range: DateRange.month(DateTime(2026, 8)),
       );
-      expect(unfiltered, hasLength(2));
+      expect(rows, hasLength(1));
+      expect(rows.single.cardId, isNull);
     });
 
     test('listenToTransactionsForCard returns only that card, all-time',

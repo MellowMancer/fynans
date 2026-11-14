@@ -127,7 +127,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           note: _noteController.text,
           date: _selectedDate,
           existing: widget.editing,
-          cardId: widget.card?.id,
+          card: widget.card,
         );
   }
 

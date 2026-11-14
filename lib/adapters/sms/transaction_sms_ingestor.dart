@@ -7,6 +7,7 @@ import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
+import 'package:fynans/use_cases/new_transaction_kind.dart';
 import 'package:fynans/adapters/sms/sms_parser_service.dart';
 import 'package:fynans/use_cases/guess_card_issuer.dart';
 import 'package:fynans/use_cases/match_transaction_to_card.dart';
@@ -88,10 +89,10 @@ class TransactionSmsIngestor {
       return false;
     }
 
-    int? cardId;
+    PaymentCard? card;
     double? cardAvailableLimit;
     if (details.isCreditCard) {
-      final card = matchCard(
+      card = matchCard(
         await _cards(),
         last4: details.cardLast4,
         sender: sender,
@@ -111,9 +112,9 @@ class TransactionSmsIngestor {
         }
         return false;
       }
-      cardId = card.id;
       cardAvailableLimit = details.availableLimit;
     }
+    final cardId = card?.id;
 
     final isInflow = details.type == TransactionType.credit;
     final party = (details.merchant?.trim().isNotEmpty ?? false)
@@ -128,7 +129,7 @@ class TransactionSmsIngestor {
       ..amount = details.amount
       ..date = details.date
       ..isInflow = isInflow
-      ..kind = isInflow ? TransactionKind.income : TransactionKind.expense
+      ..kind = newTransactionKind(isInflow: isInflow, card: card)
       ..party = party
       ..tags = <String>[]
       ..group = <String>[]

@@ -5,6 +5,7 @@ import 'package:fynans/adapters/data/drift_card_repository.dart';
 import 'package:fynans/adapters/data/drift_transaction_repository.dart';
 import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 
 import 'transaction_repository_contract.dart';
@@ -41,23 +42,87 @@ void main() {
     return card.id!;
   }
 
-  test('default filter excludes card transactions from the main list',
-      () async {
-    final cardId = await seedCard();
-    await transactions.saveTransaction(txn(date: DateTime(2026, 7, 1)));
-    await transactions
-        .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: cardId));
-
-    final excluded = await transactions.fetchTransactionsInRange(
-      range: DateRange.month(DateTime(2026, 7)),
-      filter: const TransactionFilter.empty(),
+  group('the main list and card visibility', () {
+    final julyAndAugust = DateRange(
+      start: DateTime(2026, 7, 1),
+      end: DateTime(2026, 8, 31, 23, 59, 59),
     );
-    expect(excluded, hasLength(1));
 
-    final unfiltered = await transactions.fetchTransactionsInRange(
-      range: DateRange.month(DateTime(2026, 7)),
-    );
-    expect(unfiltered, hasLength(2));
+    Future<List<Transaction>> mainList() =>
+        transactions.fetchTransactionsInRange(
+          range: julyAndAugust,
+          filter: const TransactionFilter.empty(),
+        );
+
+    test('card transactions are in the main list', () async {
+      final cardId = await seedCard();
+      await transactions.saveTransaction(txn(date: DateTime(2026, 7, 1)));
+      await transactions
+          .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: cardId));
+
+      expect(await mainList(), hasLength(2));
+    });
+
+    test('a closed card hides only its transactions after the closing date',
+        () async {
+      final card = PaymentCard()..id = await seedCard();
+      await transactions.saveTransaction(
+          txn(date: DateTime(2026, 7, 31, 23), cardId: card.id, party: 'kept'));
+      await transactions.saveTransaction(
+          txn(date: DateTime(2026, 8, 2), cardId: card.id, party: 'hidden'));
+      await transactions
+          .saveTransaction(txn(date: DateTime(2026, 8, 2), party: 'no card'));
+
+      await cards.closeCard(card, DateTime(2026, 7, 31));
+
+      expect((await mainList()).map((t) => t.party), ['no card', 'kept']);
+    });
+
+    test('an untracked card hides all of its transactions', () async {
+      final card = PaymentCard()..id = await seedCard();
+      await transactions
+          .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: card.id));
+      await transactions.saveTransaction(txn(date: DateTime(2026, 7, 3)));
+
+      await cards.untrackCard(card);
+
+      final rows = await mainList();
+      expect(rows, hasLength(1));
+      expect(rows.single.cardId, isNull);
+    });
+
+    test('the live list shows the rows again when the card is restored',
+        () async {
+      final card = PaymentCard()..id = await seedCard();
+      await transactions
+          .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: card.id));
+      await cards.untrackCard(card);
+
+      final lengths = transactions
+          .listenToTransactionsInRange(range: julyAndAugust)
+          .map((rows) => rows.length);
+      final expectation =
+          expectLater(lengths, emitsInOrder([0, emitsThrough(1)]));
+      await pumpEventQueue();
+
+      await cards.restoreCard(card);
+
+      await expectation;
+    });
+
+    test("the card's own list still shows the rows that its status hides",
+        () async {
+      final card = PaymentCard()..id = await seedCard();
+      await transactions
+          .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: card.id));
+
+      await cards.untrackCard(card);
+
+      expect(
+        await transactions.listenToTransactionsForCard(card.id!).first,
+        hasLength(1),
+      );
+    });
   });
 
   test('listenToTransactionsForCard is all-time and card-scoped', () async {

@@ -12,6 +12,10 @@ class FakeCardRepository implements CardRepository {
 
   Future<void> dispose() => _changes.close();
 
+  /// Fires after every change, so a fake transaction repository can re-apply
+  /// the visibility rule, as Drift's watched join does.
+  Stream<void> get changes => _changes.stream;
+
   /// Replaces all stored cards with the given list.
   void seed(List<PaymentCard> cards) {
     _cards

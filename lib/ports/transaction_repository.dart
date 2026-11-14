@@ -21,11 +21,16 @@ abstract class TransactionRepository {
   Future<bool> importTransaction(Transaction transaction);
 
   /// Live transactions inside [range], newest first.
+  ///
+  /// Leaves out every transaction that its card hides (see `cardHides`): all
+  /// rows of an untracked card, and the rows of a closed card after its
+  /// closing date. The stream re-emits when a card's status changes.
   Stream<List<Transaction>> listenToTransactionsInRange({
     required DateRange range,
     TransactionFilter? filter,
   });
 
+  /// The same rows as [listenToTransactionsInRange], read once.
   Future<List<Transaction>> fetchTransactionsInRange({
     required DateRange range,
     TransactionFilter? filter,
@@ -34,6 +39,8 @@ abstract class TransactionRepository {
   /// Live transactions for [cardId], newest first, all-time — not date-scoped.
   /// A card's available limit is a running balance since the card was added,
   /// not a monthly figure, so [listenToTransactionsInRange] can't serve this.
+  /// Includes the rows that the card's status hides, so that the card's own
+  /// screen can show them.
   Stream<List<Transaction>> listenToTransactionsForCard(int cardId);
 
   Future<List<String>> getAllGroups();

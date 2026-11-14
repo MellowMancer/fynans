@@ -1,6 +1,8 @@
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/use_cases/amount_parser.dart';
+import 'package:fynans/use_cases/new_transaction_kind.dart';
 
 /// Separator between group names in the raw CSV group field.
 const String kGroupSeparator = ',';
@@ -46,7 +48,7 @@ class SaveTransaction {
     required DateTime date,
     String? note,
     Transaction? existing,
-    int? cardId,
+    PaymentCard? card,
   }) async {
     final fromSms = existing != null && existing.isAutoImported;
     final amountResult = parseAmount(amount);
@@ -73,12 +75,16 @@ class SaveTransaction {
       ..group = groups
       ..party = resolvedParty
       ..isInflow = isInflow
-      ..kind = isInflow ? TransactionKind.income : TransactionKind.expense
+      // An edit has no card object, so it keeps the row's kind and only
+      // flips it if the user changed the direction.
+      ..kind = existing == null
+          ? newTransactionKind(isInflow: isInflow, card: card)
+          : editedKind(existing, isInflow: isInflow)
       ..note = (note != null && note.isNotEmpty) ? note : null
       ..smsId = existing?.smsId
       ..smsBody = existing?.smsBody
       // An edit keeps the row's own card and the limit that its SMS reported.
-      ..cardId = existing == null ? cardId : existing.cardId
+      ..cardId = existing == null ? card?.id : existing.cardId
       ..cardAvailableLimit = existing?.cardAvailableLimit;
 
     if (existing == null) {

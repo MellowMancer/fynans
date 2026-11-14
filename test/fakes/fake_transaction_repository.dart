@@ -1,11 +1,21 @@
 import 'dart:async';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 
+import 'fake_card_repository.dart';
+
 /// In-memory [TransactionRepository] for use in tests.
 class FakeTransactionRepository implements TransactionRepository {
+  /// [cards], when given, lets the range queries hide the rows of closed and
+  /// untracked cards, like the real repository. Without it, nothing is
+  /// hidden.
+  FakeTransactionRepository({this.cards});
+
+  final FakeCardRepository? cards;
+
   final List<Transaction> _transactions = [];
 
   /// Mirrors the real repository stamping a storage key onto saved records —
@@ -81,6 +91,7 @@ class FakeTransactionRepository implements TransactionRepository {
     subscribeCount++;
     late final StreamController<List<Transaction>> controller;
     StreamSubscription<void>? watcher;
+    StreamSubscription<void>? cardWatcher;
 
     Future<void> emit() async => controller.add(
           await fetchTransactionsInRange(range: range, filter: filter),
@@ -90,12 +101,15 @@ class FakeTransactionRepository implements TransactionRepository {
       onListen: () {
         emit();
         watcher = _changes.stream.listen((_) => emit());
+        cardWatcher = cards?.changes.listen((_) => emit());
       },
       // Synchronous on purpose, like Drift: a caller that awaits cancel()
       // (Stream.first does) must not wait on the inner subscription.
       onCancel: () {
         watcher?.cancel();
+        cardWatcher?.cancel();
         watcher = null;
+        cardWatcher = null;
       },
     );
     return controller.stream;
@@ -106,8 +120,13 @@ class FakeTransactionRepository implements TransactionRepository {
     required DateRange range,
     TransactionFilter? filter,
   }) async {
+    final cardsById = {
+      for (final c in await cards?.fetchCards() ?? const <PaymentCard>[])
+        c.id: c,
+    };
     return _transactions
         .where((t) => range.contains(t.date))
+        .where((t) => !(cardsById[t.cardId]?.hides(t) ?? false))
         .where((t) => filter == null || filter.matches(t))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));

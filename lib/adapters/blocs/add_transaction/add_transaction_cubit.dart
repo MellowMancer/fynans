@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/use_cases/save_transaction.dart';
@@ -39,7 +40,7 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
     required DateTime date,
     String? note,
     Transaction? existing,
-    int? cardId,
+    PaymentCard? card,
   }) async {
     emit(state.copyWith(status: SaveStatus.inProgress));
     try {
@@ -52,7 +53,7 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
         date: date,
         note: note,
         existing: existing,
-        cardId: cardId,
+        card: card,
       );
       if (!result.isSuccess) {
         emit(state.copyWith(status: SaveStatus.invalid, message: result.error));
