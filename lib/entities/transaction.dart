@@ -49,6 +49,20 @@ class Transaction {
   /// True when this is a card spend/payment rather than an ordinary bank
   /// transaction.
   bool get isCardTransaction => cardId != null;
+
+  /// This row's effect on the spending total: plus its amount for an expense
+  /// or a debt, minus its amount for a refund, and 0 for the other kinds.
+  double get spendingEffect => switch (kind) {
+        TransactionKind.expense || TransactionKind.debt => amount,
+        TransactionKind.refund => -amount,
+        TransactionKind.income ||
+        TransactionKind.repayment ||
+        TransactionKind.transfer =>
+          0,
+      };
+
+  /// This row's effect on the income total: its amount for income, else 0.
+  double get incomeEffect => kind == TransactionKind.income ? amount : 0;
 }
 
 /// How a [Transaction] counts in the totals.

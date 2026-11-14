@@ -1,5 +1,5 @@
 /// A single chart-ready spending slice: a tag (or the aggregated "Others"
-/// bucket) with its absolute amount and its share of total outflow (0-100).
+/// bucket) with its absolute amount and its share of total spending (0-100).
 class TagSlice {
   final String label;
   final double amount;
@@ -14,16 +14,20 @@ class TagSlice {
 
 /// Aggregated spending analytics for one month, ready for the analytics charts.
 class MonthlyAnalytics {
-  final double totalOutflow;
-  final double totalInflow;
+  /// Expense + debt - refund, as `Transaction.spendingEffect` defines it.
+  final double totalSpending;
+
+  /// The month's income, as `Transaction.incomeEffect` defines it.
+  final double totalIncome;
+
   // Key is the day of the month (1-31)
   final Map<int, double> dailySpending;
   // Chart-ready spending slices (top-N tags + an "Others" bucket).
   final List<TagSlice> tagSlices;
 
   MonthlyAnalytics({
-    required this.totalOutflow,
-    required this.totalInflow,
+    required this.totalSpending,
+    required this.totalIncome,
     required this.dailySpending,
     required this.tagSlices,
   });

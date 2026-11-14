@@ -50,8 +50,8 @@ void main() {
         emitsInOrder([
           isA<AnalyticsLoadInProgress>(),
           isA<AnalyticsLoadSuccess>()
-              .having((s) => s.analytics.totalOutflow, 'totalOutflow', 120)
-              .having((s) => s.analytics.totalInflow, 'totalInflow', 500)
+              .having((s) => s.analytics.totalSpending, 'totalSpending', 120)
+              .having((s) => s.analytics.totalIncome, 'totalIncome', 500)
               .having(
                   (s) => s.analytics.tagSlices.first.label, 'topTag', 'food'),
         ]),

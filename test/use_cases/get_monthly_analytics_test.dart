@@ -53,8 +53,8 @@ void main() {
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
 
-      expect(analytics.totalOutflow, 150);
-      expect(analytics.totalInflow, 500);
+      expect(analytics.totalSpending, 150);
+      expect(analytics.totalIncome, 500);
       expect(analytics.dailySpending[5], 150);
       expect(analytics.dailySpending.containsKey(30), isFalse);
     });
@@ -141,7 +141,7 @@ void main() {
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
 
-      expect(analytics.totalOutflow, 0);
+      expect(analytics.totalSpending, 0);
       expect(analytics.tagSlices, isEmpty);
       for (final slice in analytics.tagSlices) {
         expect(slice.percentage.isNaN, isFalse);

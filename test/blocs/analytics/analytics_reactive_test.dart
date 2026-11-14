@@ -26,13 +26,13 @@ void main() {
     // The Analytics tab is built before the SMS sweep has imported anything.
     await cubit.loadAnalytics(DateTime(2026, 7));
     await Future<void>.delayed(Duration.zero);
-    expect((cubit.state as AnalyticsLoadSuccess).analytics.totalOutflow, 0);
+    expect((cubit.state as AnalyticsLoadSuccess).analytics.totalSpending, 0);
 
     final updated = expectLater(
       cubit.stream,
       emitsThrough(
         isA<AnalyticsLoadSuccess>()
-            .having((s) => s.analytics.totalOutflow, 'totalOutflow', 250),
+            .having((s) => s.analytics.totalSpending, 'totalSpending', 250),
       ),
     );
 

@@ -264,11 +264,11 @@ void main() {
       expect(find.text('TOP TAGS'), findsOneWidget);
 
       // The split is behind a tap on the net figure now.
-      expect(find.text('INFLOW'), findsNothing);
+      expect(find.text('INCOME'), findsNothing);
       await tester.tap(find.text('NET FOR THIS PERIOD'));
       await tester.pumpAndSettle();
-      expect(find.text('INFLOW'), findsOneWidget);
-      expect(find.text('OUTFLOW'), findsOneWidget);
+      expect(find.text('INCOME'), findsOneWidget);
+      expect(find.text('SPENT'), findsOneWidget);
       // A RenderFlex overflow would surface here.
       expect(tester.takeException(), isNull);
     });

@@ -42,39 +42,40 @@ class GetMonthlyAnalytics {
 
   /// Pure fold of [transactions] into chart-ready analytics.
   MonthlyAnalytics aggregate(List<Transaction> transactions, int topN) {
-    double totalOutflow = 0;
-    double totalInflow = 0;
+    double totalSpending = 0;
+    double totalIncome = 0;
     final Map<int, double> dailySpending = {};
     final Map<String, double> spendingByTag = {};
 
     for (final t in transactions) {
-      if (t.isInflow) {
-        totalInflow += t.amount;
-        continue;
-      }
-      totalOutflow += t.amount;
-      dailySpending.update(t.date.day, (v) => v + t.amount,
-          ifAbsent: () => t.amount);
+      totalIncome += t.incomeEffect;
+      final spent = t.spendingEffect;
+      if (spent == 0) continue;
+
+      totalSpending += spent;
+      dailySpending.update(t.date.day, (v) => v + spent,
+          ifAbsent: () => spent);
       for (final tag in t.tags) {
-        spendingByTag.update(tag, (v) => v + t.amount,
-            ifAbsent: () => t.amount);
+        spendingByTag.update(tag, (v) => v + spent, ifAbsent: () => spent);
       }
     }
 
     return MonthlyAnalytics(
-      totalOutflow: totalOutflow,
-      totalInflow: totalInflow,
+      totalSpending: totalSpending,
+      totalIncome: totalIncome,
       dailySpending: dailySpending,
-      tagSlices: _buildTagSlices(spendingByTag, totalOutflow, topN),
+      tagSlices: _buildTagSlices(spendingByTag, totalSpending, topN),
     );
   }
 
   List<TagSlice> _buildTagSlices(
     Map<String, double> spendingByTag,
-    double totalOutflow,
+    double totalSpending,
     int topN,
   ) {
-    final sorted = spendingByTag.entries.toList()
+    // A pie slice must be positive. A refund can leave a tag at zero or
+    // below, and that tag is then not shown.
+    final sorted = spendingByTag.entries.where((e) => e.value > 0).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final buckets = sorted.take(topN).toList();
@@ -88,7 +89,8 @@ class GetMonthlyAnalytics {
         .map((e) => TagSlice(
               label: e.key,
               amount: e.value,
-              percentage: totalOutflow == 0 ? 0 : e.value / totalOutflow * 100,
+              percentage:
+                  totalSpending <= 0 ? 0 : e.value / totalSpending * 100,
             ))
         .toList();
   }

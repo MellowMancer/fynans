@@ -206,21 +206,21 @@ void main() {
         const SummaryBody(summary: summary),
       ));
 
-      expect(find.text('INFLOW'), findsNothing);
-      expect(find.text('OUTFLOW'), findsNothing);
+      expect(find.text('INCOME'), findsNothing);
+      expect(find.text('SPENT'), findsNothing);
       expect(find.text('NET FOR THIS PERIOD'), findsOneWidget);
 
       await tester.tap(find.text('NET FOR THIS PERIOD'));
       await tester.pumpAndSettle();
 
-      expect(find.text('INFLOW'), findsOneWidget);
-      expect(find.text('OUTFLOW'), findsOneWidget);
+      expect(find.text('INCOME'), findsOneWidget);
+      expect(find.text('SPENT'), findsOneWidget);
       // Expanding must still fit the fixed-height month pager.
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('NET FOR THIS PERIOD'));
       await tester.pumpAndSettle();
-      expect(find.text('INFLOW'), findsNothing);
+      expect(find.text('INCOME'), findsNothing);
     });
 
     testWidgets('can start expanded', (tester) async {
@@ -231,8 +231,8 @@ void main() {
         )),
       );
 
-      expect(find.text('INFLOW'), findsOneWidget);
-      expect(find.text('OUTFLOW'), findsOneWidget);
+      expect(find.text('INCOME'), findsOneWidget);
+      expect(find.text('SPENT'), findsOneWidget);
     });
   });
 }
