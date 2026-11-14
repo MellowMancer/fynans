@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:fynans/adapters/data/app_database.dart';
+import 'package:fynans/adapters/data/card_reference_guard.dart';
 import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
 
@@ -17,10 +18,13 @@ class DriftCardStatementRepository implements CardStatementRepository {
   Future<bool> importStatement(CardStatement statement) async {
     // The UNIQUE index on smsId decides this, not a prior read — same
     // reasoning as DriftTransactionRepository.importTransaction.
-    final id = await _db.into(_db.cardStatements).insertReturningOrNull(
-          _toRow(statement),
-          mode: InsertMode.insertOrIgnore,
-        );
+    final id = await guardCardReference(
+      statement.cardId,
+      () => _db.into(_db.cardStatements).insertReturningOrNull(
+            _toRow(statement),
+            mode: InsertMode.insertOrIgnore,
+          ),
+    );
     if (id == null) return false;
     statement.id = id.id;
     return true;

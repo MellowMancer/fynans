@@ -2,11 +2,14 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/data/app_database.dart';
 import 'package:fynans/adapters/data/drift_card_repository.dart';
+import 'package:fynans/adapters/data/drift_card_statement_repository.dart';
 import 'package:fynans/adapters/data/drift_transaction_repository.dart';
+import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
+import 'package:fynans/ports/missing_card_exception.dart';
 
 import 'transaction_repository_contract.dart';
 
@@ -122,6 +125,44 @@ void main() {
         await transactions.listenToTransactionsForCard(card.id!).first,
         hasLength(1),
       );
+    });
+  });
+
+  group('a write that names a missing card throws MissingCardException', () {
+    const missing = 99;
+    final throwsMissingCard = throwsA(isA<MissingCardException>()
+        .having((e) => e.cardId, 'cardId', missing));
+
+    test('importTransaction', () {
+      expect(
+          transactions.importTransaction(
+              txn(date: DateTime(2026, 7, 1), smsId: 'a', cardId: missing)),
+          throwsMissingCard);
+    });
+
+    test('relinkTransactionToCard', () async {
+      await transactions
+          .saveTransaction(txn(date: DateTime(2026, 7, 1), smsId: 'a'));
+
+      expect(transactions.relinkTransactionToCard(smsId: 'a', cardId: missing),
+          throwsMissingCard);
+    });
+
+    test('updateTransaction', () async {
+      final saved = txn(date: DateTime(2026, 7, 1));
+      await transactions.saveTransaction(saved);
+
+      expect(transactions.updateTransaction(saved..cardId = missing),
+          throwsMissingCard);
+    });
+
+    test('importStatement', () {
+      expect(
+          DriftCardStatementRepository(db).importStatement(CardStatement()
+            ..cardId = missing
+            ..statementDate = DateTime(2026, 7, 1)
+            ..smsId = 'a'),
+          throwsMissingCard);
     });
   });
 

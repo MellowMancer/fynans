@@ -5,6 +5,7 @@ import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
+import 'package:fynans/ports/missing_card_exception.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/sms/parsed_transaction.dart';
 import 'package:fynans/use_cases/new_transaction_kind.dart';
@@ -45,6 +46,21 @@ class TransactionSmsIngestor {
   /// so callers counting "transactions imported" (`SmsIntakeService.catchUp`)
   /// don't have to distinguish the two.
   Future<bool> ingest({
+    required String sender,
+    required String body,
+    required DateTime date,
+  }) async {
+    try {
+      return await _ingest(sender: sender, body: body, date: date);
+    } on MissingCardException {
+      // The user deleted the card after this sweep read the card list. Read
+      // the list again, and import the SMS as if the card was never added.
+      _cardsFuture = null;
+      return ingest(sender: sender, body: body, date: date);
+    }
+  }
+
+  Future<bool> _ingest({
     required String sender,
     required String body,
     required DateTime date,

@@ -1,9 +1,18 @@
 import 'dart:async';
 import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
+import 'package:fynans/ports/missing_card_exception.dart';
+
+import 'fake_card_repository.dart';
 
 /// In-memory [CardStatementRepository] for use in tests.
 class FakeCardStatementRepository implements CardStatementRepository {
+  /// [cards], when given, makes [importStatement] refuse a card id that
+  /// [cards] does not hold, like the foreign key.
+  FakeCardStatementRepository({this.cards});
+
+  final FakeCardRepository? cards;
+
   final List<CardStatement> _statements = [];
 
   int _nextId = 0;
@@ -20,6 +29,11 @@ class FakeCardStatementRepository implements CardStatementRepository {
 
   @override
   Future<bool> importStatement(CardStatement statement) async {
+    final known = cards;
+    if (known != null &&
+        !(await known.fetchCards()).any((c) => c.id == statement.cardId)) {
+      throw MissingCardException(statement.cardId);
+    }
     // Mirrors the Drift schema's unique smsId index — insert-or-ignore, same
     // reasoning as FakeCardRepository mirroring the unique (issuer, last4).
     final smsId = statement.smsId;

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:fynans/adapters/data/app_database.dart';
+import 'package:fynans/adapters/data/card_reference_guard.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
@@ -37,18 +38,24 @@ class DriftTransactionRepository implements TransactionRepository {
     if (id == null) {
       throw StateError('Cannot update a transaction that was never saved.');
     }
-    await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
-        .write(_toRow(transaction));
+    await guardCardReference(
+      transaction.cardId,
+      () => (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
+          .write(_toRow(transaction)),
+    );
   }
 
   @override
   Future<bool> importTransaction(Transaction transaction) async {
     // The UNIQUE index on smsId decides this, not a prior read — so two sweeps
     // racing cannot both insert the same message.
-    final id = await _db.into(_db.transactions).insertReturningOrNull(
-          _toRow(transaction),
-          mode: InsertMode.insertOrIgnore,
-        );
+    final id = await guardCardReference(
+      transaction.cardId,
+      () => _db.into(_db.transactions).insertReturningOrNull(
+            _toRow(transaction),
+            mode: InsertMode.insertOrIgnore,
+          ),
+    );
     if (id == null) return false;
     transaction.id = id.id;
     return true;
@@ -122,12 +129,15 @@ class DriftTransactionRepository implements TransactionRepository {
     required int cardId,
     double? cardAvailableLimit,
   }) async {
-    final updated = await (_db.update(_db.transactions)
-          ..where((t) => t.smsId.equals(smsId) & t.cardId.isNull()))
-        .write(TransactionsCompanion(
-      cardId: Value(cardId),
-      cardAvailableLimit: Value(cardAvailableLimit),
-    ));
+    final updated = await guardCardReference(
+      cardId,
+      () => (_db.update(_db.transactions)
+            ..where((t) => t.smsId.equals(smsId) & t.cardId.isNull()))
+          .write(TransactionsCompanion(
+        cardId: Value(cardId),
+        cardAvailableLimit: Value(cardAvailableLimit),
+      )),
+    );
     return updated > 0;
   }
 

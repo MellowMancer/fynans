@@ -3,6 +3,7 @@ import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
+import 'package:fynans/ports/missing_card_exception.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 
 import 'fake_card_repository.dart';
@@ -10,8 +11,9 @@ import 'fake_card_repository.dart';
 /// In-memory [TransactionRepository] for use in tests.
 class FakeTransactionRepository implements TransactionRepository {
   /// [cards], when given, lets the range queries hide the rows of closed and
-  /// untracked cards, like the real repository. Without it, nothing is
-  /// hidden.
+  /// untracked cards, like the real repository. The imports then also refuse
+  /// a card id that [cards] does not hold, like the foreign key. Without it,
+  /// nothing is hidden or refused.
   FakeTransactionRepository({this.cards});
 
   final FakeCardRepository? cards;
@@ -68,6 +70,7 @@ class FakeTransactionRepository implements TransactionRepository {
     if (id == null) {
       throw StateError('Cannot update a transaction that was never saved.');
     }
+    await _requireCard(transaction.cardId);
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index != -1) _transactions[index] = transaction;
     _notify();
@@ -75,6 +78,7 @@ class FakeTransactionRepository implements TransactionRepository {
 
   @override
   Future<bool> importTransaction(Transaction transaction) async {
+    await _requireCard(transaction.cardId);
     final smsId = transaction.smsId;
     if (smsId != null && _transactions.any((t) => t.smsId == smsId)) {
       return false;
@@ -164,6 +168,7 @@ class FakeTransactionRepository implements TransactionRepository {
     required int cardId,
     double? cardAvailableLimit,
   }) async {
+    await _requireCard(cardId);
     for (final t in _transactions) {
       if (t.smsId == smsId && t.cardId == null) {
         t.cardId = cardId;
@@ -194,6 +199,13 @@ class FakeTransactionRepository implements TransactionRepository {
           .where((value) => value.isNotEmpty)
           .toSet()
           .toList();
+
+  Future<void> _requireCard(int? cardId) async {
+    final known = cards;
+    if (cardId == null || known == null) return;
+    final ids = (await known.fetchCards()).map((c) => c.id);
+    if (!ids.contains(cardId)) throw MissingCardException(cardId);
+  }
 
   void _notify() {
     if (!_changes.isClosed) _changes.add(null);

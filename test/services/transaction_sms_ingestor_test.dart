@@ -309,6 +309,77 @@ void main() {
     });
   });
 
+  group('a card deleted during the sweep', () {
+    final day = DateTime(2026, 1, 15);
+    late PaymentCard card;
+
+    /// Links the fakes to the card list, as the foreign key links the tables,
+    /// then makes the ingestor read the card list once while the card exists.
+    /// The SMS names other digits, so the card gets no rows and can be deleted.
+    Future<void> sweepStartsWith(CardType type) async {
+      repository = FakeTransactionRepository(cards: cardRepository);
+      statementRepository = FakeCardStatementRepository(cards: cardRepository);
+      ingestor = TransactionSmsIngestor(
+        repository: repository,
+        cardRepository: cardRepository,
+        detectedCardRepository: detectedCardRepository,
+        statementRepository: statementRepository,
+      );
+      card = PaymentCard()
+        ..issuer = 'HDFC'
+        ..last4 = '1234'
+        ..type = type
+        ..status = CardStatus.active
+        ..creditLimit = type == CardType.credit ? 50000 : null;
+      cardRepository.seed([card]);
+      await ingestor.ingest(
+          sender: 'HDFCBK',
+          body: 'Rs.10.00 spent on HDFC Bank Debit Card XX9999 at TEA.',
+          date: day);
+      await cardRepository.deleteCard(card);
+    }
+
+    test('a debit card spend is saved without the card', () async {
+      await sweepStartsWith(CardType.debit);
+
+      final saved = await ingestor.ingest(
+          sender: 'HDFCBK',
+          body: 'Rs.500.00 spent on HDFC Bank Debit Card XX1234 at AMAZON.',
+          date: day);
+
+      expect(saved, isTrue);
+      final rows = await repository.fetchTransactionsInRange(
+          range: DateRange.month(day));
+      expect(rows.where((t) => t.amount == 500).single.cardId, isNull);
+    });
+
+    test('a credit card spend becomes a sighting', () async {
+      await sweepStartsWith(CardType.credit);
+
+      final saved = await ingestor.ingest(
+          sender: 'HDFCCC',
+          body: 'Rs.500.00 spent on HDFC Bank Credit Card XX1234 at AMAZON.',
+          date: day);
+
+      expect(saved, isFalse);
+      expect((await detectedCardRepository.watchPending().first).single.last4,
+          '1234');
+    });
+
+    test('a statement is dropped', () async {
+      await sweepStartsWith(CardType.credit);
+
+      final saved = await ingestor.ingest(
+          sender: 'HDFCCC',
+          body: 'Your HDFC Bank Credit Card XX1234 statement: Total Dues '
+              'Rs.8,500.00. Payment Due Date 05/02/2026.',
+          date: day);
+
+      expect(saved, isFalse);
+      expect(await statementRepository.fetchLatestStatement(card.id!), isNull);
+    });
+  });
+
   group('debit cards and cards of unknown type', () {
     const debitSpend =
         'Rs.500.00 spent on HDFC Bank Debit Card XX1234 at AMAZON.';

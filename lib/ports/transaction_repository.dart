@@ -9,7 +9,8 @@ abstract class TransactionRepository {
   Future<void> deleteTransaction(Transaction transaction);
 
   /// Writes every field of [transaction] over the stored row with the same
-  /// id. Throws a [StateError] if the transaction was never saved.
+  /// id. Throws a [StateError] if the transaction was never saved, and a
+  /// `MissingCardException` if its `cardId` names no card.
   Future<void> updateTransaction(Transaction transaction);
 
   /// Saves [transaction] unless one with the same `smsId` is already stored,
@@ -18,6 +19,9 @@ abstract class TransactionRepository {
   /// Check and write are one call so the SMS sweep stays idempotent without a
   /// read-then-write race. A null `smsId` always saves, since manual entries
   /// have no identity to collide on.
+  ///
+  /// Throws a `MissingCardException` if the transaction's `cardId` names no
+  /// card.
   Future<bool> importTransaction(Transaction transaction);
 
   /// Live transactions inside [range], newest first.
@@ -56,6 +60,8 @@ abstract class TransactionRepository {
   /// the same smsId, so `importTransaction` does nothing. This method is the
   /// step that links the existing row to its card. `TransactionSmsIngestor`
   /// calls it when a matched card SMS is already on disk.
+  ///
+  /// Throws a `MissingCardException` if [cardId] names no card.
   Future<bool> relinkTransactionToCard({
     required String smsId,
     required int cardId,

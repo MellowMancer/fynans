@@ -7,6 +7,9 @@ abstract class CardStatementRepository {
   /// `TransactionRepository.importTransaction`: the launch sweep re-scans the
   /// whole inbox, so re-importing an already-seen statement must be a no-op,
   /// not an error. Returns whether a new row was actually inserted.
+  ///
+  /// Throws a `MissingCardException` if the statement's `cardId` names no
+  /// card.
   Future<bool> importStatement(CardStatement statement);
 
   /// The most recent statement for [cardId], or null if none has been
