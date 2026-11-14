@@ -83,6 +83,8 @@ class _CardsView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
+        // No hero: MainScreen keeps every tab alive, so a shared tag clashes.
+        heroTag: null,
         onPressed: () => _openAddCard(context),
         tooltip: 'Add card',
         child: const Icon(Icons.add_rounded),
