@@ -32,9 +32,9 @@ void main() {
 
       // The post-save SMS sweep goes through a real platform plugin
       // (flutter_sms_inbox) with no channel handler in this test
-      // environment, so it fails and the cubit's own catch treats that as a
-      // 0-import success — the emission order under test is what matters
-      // here, not a real inbox count.
+      // environment, so the sweep fails. The card is saved, so the cubit
+      // still reports success, but with no count and a message that says
+      // when the SMS will import.
       final expectation = expectLater(
         cubit.stream,
         emitsInOrder([
@@ -44,7 +44,9 @@ void main() {
               .having((s) => s.status, 'status', AddCardStatus.sweepingSms),
           isA<AddCardState>()
               .having((s) => s.status, 'status', AddCardStatus.success)
-              .having((s) => s.importedCount, 'importedCount', isNotNull),
+              .having((s) => s.importedCount, 'importedCount', isNull)
+              .having((s) => s.message, 'message',
+                  AddCardCubit.sweepFailedMessage),
         ]),
       );
 
@@ -65,6 +67,26 @@ void main() {
       expect(saved.single.nickname, 'Travel card');
       expect(saved.single.type, CardType.credit);
       expect(saved.single.status, CardStatus.active);
+    });
+
+    test('leaving the screen during the sweep does not emit after close',
+        () async {
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
+      // Closes the cubit as the screen does when the user leaves it.
+      final closedDuringSweep = cubit.stream
+          .firstWhere((s) => s.status == AddCardStatus.sweepingSms)
+          .then((_) => cubit.close());
+
+      final save = cubit.save(
+          issuer: 'HDFC',
+          last4: '1234',
+          type: CardType.credit,
+          creditLimit: '50000');
+      await closedDuringSweep;
+
+      await expectLater(save, completes);
+      expect(await cardRepository.fetchCards(), hasLength(1));
     });
 
     test('a blank issuer is rejected before saving or sweeping', () async {

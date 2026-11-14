@@ -104,8 +104,9 @@ class AddCardCubit extends Cubit<AddCardState> {
     }
 
     emit(state.copyWith(status: AddCardStatus.sweepingSms));
+    int? imported;
     try {
-      final imported = await SmsIntakeService.catchUp(
+      imported = await SmsIntakeService.catchUp(
         _transactionRepository,
         _cardRepository,
         _detectedCardRepository,
@@ -119,15 +120,22 @@ class AddCardCubit extends Cubit<AddCardState> {
           ));
         },
       );
-      emit(state.copyWith(
-          status: AddCardStatus.success, importedCount: imported));
-    } catch (error) {
-      // The card itself is saved by this point — only the backfill sweep
-      // failed, so this is still a success from the user's point of view;
-      // the next app launch's own catchUp will pick up where this left off.
-      emit(state.copyWith(status: AddCardStatus.success, importedCount: 0));
+    } catch (_) {
+      // The card is saved, and only the sweep failed. The sweep at the next
+      // launch imports the SMS, so the null count tells the user that.
     }
+    // The user can leave the screen during the sweep, which closes the cubit.
+    if (isClosed) return;
+    emit(imported == null
+        ? state.copyWith(
+            status: AddCardStatus.success, message: sweepFailedMessage)
+        : state.copyWith(
+            status: AddCardStatus.success, importedCount: imported));
   }
+
+  /// The success message when the card is saved but the SMS sweep failed.
+  static const sweepFailedMessage =
+      'Card added. Its past SMS will import the next time you open the app.';
 
   /// Removes each pending sighting that the SMS sweep now matches to
   /// [card]. The sweep matches a credit card SMS only to a credit card, and

@@ -22,6 +22,7 @@ class AddCardState extends Equatable {
   final String? message;
 
   /// How many transactions the post-add SMS sweep imported, once [success].
+  /// Null if the sweep failed: then [message] tells the user.
   final int? importedCount;
 
   /// Progress through the [sweepingSms] sweep: messages scanned so far, and

@@ -90,9 +90,10 @@ class _AddCardFormState extends State<_AddCardForm> {
     switch (state.status) {
       case AddCardStatus.success:
         final count = state.importedCount ?? 0;
-        _showMessage(count > 0
-            ? 'Card added — $count transaction${count == 1 ? '' : 's'} found'
-            : 'Card added');
+        _showMessage(state.message ??
+            (count > 0
+                ? 'Card added — $count transaction${count == 1 ? '' : 's'} found'
+                : 'Card added'));
         Navigator.pop(context);
       case AddCardStatus.invalid:
       case AddCardStatus.failure:
