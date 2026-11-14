@@ -45,6 +45,22 @@ void main() {
     return card;
   }
 
+  test('a debit card gets a summary instead of crashing the page', () async {
+    cardRepository.seed([
+      PaymentCard()
+        ..issuer = 'HDFC'
+        ..last4 = '4321'
+        ..type = CardType.debit
+        ..status = CardStatus.active,
+    ]);
+    cubit.loadCards();
+    await pumpEventQueue();
+
+    final state = cubit.state as CardsLoadSuccess;
+    expect(state.cards.single.summary.card.type, CardType.debit);
+    expect(state.cards.single.summary.spent, 0);
+  });
+
   test('a closed card moves to the retired list, with what it hides',
       () async {
     final card = seedCard();

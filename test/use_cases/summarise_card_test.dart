@@ -274,4 +274,39 @@ void main() {
       expect(result.spent, 1000);
     });
   });
+
+  group('summariseDebitCard', () {
+    final debitCard = PaymentCard()
+      ..issuer = 'HDFC'
+      ..last4 = '4321'
+      ..type = CardType.debit
+      ..status = CardStatus.active;
+
+    test("is the month's spending, with refunds subtracted", () {
+      final result = summariseDebitCard(
+        debitCard,
+        [
+          _spend(500, DateTime(2026, 7, 3)),
+          _spend(300, DateTime(2026, 7, 20)),
+          _spend(900, DateTime(2026, 6, 30)),
+          _credit(100, DateTime(2026, 7, 21))..kind = TransactionKind.refund,
+        ],
+        month: DateTime(2026, 7, 15),
+      );
+
+      expect(result.spent, 700);
+      expect(result.available, 0);
+      expect(result.utilization, 0);
+    });
+  });
+
+  test('summariseCard still refuses a debit card', () {
+    final debitCard = PaymentCard()
+      ..issuer = 'HDFC'
+      ..last4 = '4321'
+      ..type = CardType.debit
+      ..status = CardStatus.active;
+    expect(() => summariseCard(debitCard, const []), throwsArgumentError);
+  });
 }
+

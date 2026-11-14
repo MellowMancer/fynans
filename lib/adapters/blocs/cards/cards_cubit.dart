@@ -105,11 +105,13 @@ class CardsCubit extends Cubit<CardsState> {
       final transactions = _transactionsByCard[card.id] ?? const [];
       final isActive = card.status == CardStatus.active;
       final entry = CardWithTransactions(
-        summary: summariseCard(
-          card,
-          transactions,
-          latestStatement: _statementByCard[card.id],
-        ),
+        summary: card.type == CardType.credit
+            ? summariseCard(
+                card,
+                transactions,
+                latestStatement: _statementByCard[card.id],
+              )
+            : summariseDebitCard(card, transactions, month: DateTime.now()),
         transactions: transactions,
         latestStatement: _statementByCard[card.id],
         hidden: isActive

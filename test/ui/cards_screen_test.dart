@@ -209,6 +209,26 @@ void main() {
     });
   });
 
+  testWidgets(
+      'a debit card shows its spending this month and its account, with no '
+      'limit figures', (tester) async {
+    cardRepository.seed([
+      PaymentCard()
+        ..issuer = 'HDFC'
+        ..last4 = '1234'
+        ..type = CardType.debit
+        ..status = CardStatus.active
+        ..accountLast4 = '4321',
+    ]);
+    await pumpScreen(tester);
+
+    expect(find.text('Debit'), findsOneWidget);
+    expect(find.text('SPENT THIS MONTH'), findsOneWidget);
+    expect(find.text('FROM A/C •••• 4321'), findsOneWidget);
+    expect(find.text('AVAILABLE'), findsNothing);
+    expect(find.textContaining('% USED'), findsNothing);
+  });
+
   group('closed and untracked cards', () {
     PaymentCard closedCard() => PaymentCard()
       ..issuer = 'AXIS'

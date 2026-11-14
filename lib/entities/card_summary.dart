@@ -3,6 +3,10 @@ import 'package:fynans/entities/payment_card.dart';
 
 /// Derived spend/limit figures for one [card]. Nothing here is stored —
 /// computed fresh by `summariseCard` from the card and its transactions.
+///
+/// For a debit card, [spent] is this month's spending, and [available] and
+/// [utilization] are 0: a debit card has no limit. See
+/// `summariseDebitCard`.
 @immutable
 class CardSummary {
   const CardSummary({

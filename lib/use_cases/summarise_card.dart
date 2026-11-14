@@ -1,5 +1,6 @@
 import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/card_summary.dart';
+import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 
@@ -55,6 +56,21 @@ CardSummary summariseCard(
     utilization: creditLimit == 0 ? 0 : spent / creditLimit,
     asOf: anchor.asOf,
   );
+}
+
+/// Summarises a debit card: its spending in the calendar month that
+/// contains [month]. A debit card has no limit, so `available` and
+/// `utilization` are 0.
+CardSummary summariseDebitCard(
+  PaymentCard card,
+  List<Transaction> transactions, {
+  required DateTime month,
+}) {
+  final range = DateRange.month(month);
+  final spent = transactions
+      .where((t) => range.contains(t.date))
+      .fold(0.0, (sum, t) => sum + t.spendingEffect);
+  return CardSummary(card: card, spent: spent, available: 0, utilization: 0);
 }
 
 /// What was owed at the newest known point, when that was, and the row that
