@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/add_card/add_card_cubit.dart';
 import 'package:fynans/adapters/blocs/add_card/add_card_state.dart';
 import 'package:fynans/entities/detected_card.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/ports/card_repository.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
@@ -14,14 +15,15 @@ import 'package:fynans/ui/theme/app_typography.dart';
 import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 
-/// Provides the [AddCardCubit] and renders the add-card form: issuer, last
-/// 2-4 digits, required credit limit, optional nickname. No full card
-/// numbers, ever.
+/// Provides the [AddCardCubit] and renders the add-card form: card type,
+/// issuer, last 2-4 digits, then a required credit limit for a credit card or
+/// an optional bank account for a debit card, and an optional nickname. No
+/// full card numbers, ever.
 ///
 /// [fromDetection], when set, pre-fills issuer + last4 from a "is this your
-/// card?" prompt (`DetectedCardsBanner`) — the credit limit still has to be
-/// typed in, since a spend SMS only ever reports what's currently
-/// *available*, never the card's total limit.
+/// card?" prompt (`DetectedCardsBanner`), which only ever detects credit
+/// cards — the credit limit still has to be typed in, since a spend SMS only
+/// ever reports what's currently *available*, never the card's total limit.
 class AddCardScreen extends StatelessWidget {
   const AddCardScreen({super.key, this.fromDetection});
 
@@ -57,13 +59,16 @@ class _AddCardFormState extends State<_AddCardForm> {
   late final _last4Controller =
       TextEditingController(text: widget.fromDetection?.last4);
   final _limitController = TextEditingController();
+  final _accountController = TextEditingController();
   final _nicknameController = TextEditingController();
+  CardType _type = CardType.credit;
 
   @override
   void dispose() {
     _issuerController.dispose();
     _last4Controller.dispose();
     _limitController.dispose();
+    _accountController.dispose();
     _nicknameController.dispose();
     super.dispose();
   }
@@ -73,7 +78,9 @@ class _AddCardFormState extends State<_AddCardForm> {
     context.read<AddCardCubit>().save(
           issuer: _issuerController.text,
           last4: _last4Controller.text,
+          type: _type,
           creditLimit: _limitController.text,
+          accountLast4: _accountController.text,
           nickname: _nicknameController.text,
           fromDetection: widget.fromDetection,
         );
@@ -142,6 +149,17 @@ class _AddCardFormState extends State<_AddCardForm> {
               ),
               children: [
                 _Section(
+                  label: 'Card type',
+                  child: AppSegmented<CardType>(
+                    segments: const [
+                      AppSegment(value: CardType.credit, label: 'Credit'),
+                      AppSegment(value: CardType.debit, label: 'Debit'),
+                    ],
+                    value: _type,
+                    onChanged: (type) => setState(() => _type = type),
+                  ),
+                ),
+                _Section(
                   label: 'Issuer',
                   child: TextFormField(
                     controller: _issuerController,
@@ -174,38 +192,60 @@ class _AddCardFormState extends State<_AddCardForm> {
                     },
                   ),
                 ),
-                _Section(
-                  label: 'Credit limit',
-                  child: TextFormField(
-                    controller: _limitController,
-                    style: context.type.amount,
-                    decoration: InputDecoration(
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.only(
-                          left: AppSpacing.md,
-                          right: AppSpacing.sm,
+                if (_type == CardType.credit)
+                  _Section(
+                    label: 'Credit limit',
+                    child: TextFormField(
+                      controller: _limitController,
+                      style: context.type.amount,
+                      decoration: InputDecoration(
+                        prefixIcon: Padding(
+                          padding: EdgeInsets.only(
+                            left: AppSpacing.md,
+                            right: AppSpacing.sm,
+                          ),
+                          child: Text(Fmt.currencySymbol,
+                              style: context.type.amount),
                         ),
-                        child: Text(Fmt.currencySymbol,
-                            style: context.type.amount),
+                        prefixIconConstraints: BoxConstraints(minWidth: 0),
+                        hintText: '0.00',
                       ),
-                      prefixIconConstraints: BoxConstraints(minWidth: 0),
-                      hintText: '0.00',
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,2}')),
+                      ],
+                      validator: (value) {
+                        final limit = double.tryParse((value ?? '').trim());
+                        if (limit == null || limit <= 0) {
+                          return 'Enter a credit limit greater than 0';
+                        }
+                        return null;
+                      },
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d+\.?\d{0,2}')),
-                    ],
-                    validator: (value) {
-                      final limit = double.tryParse((value ?? '').trim());
-                      if (limit == null || limit <= 0) {
-                        return 'Enter a credit limit greater than 0';
-                      }
-                      return null;
-                    },
                   ),
-                ),
+                if (_type == CardType.debit)
+                  _Section(
+                    label: 'Bank account last 3-4 digits (optional)',
+                    child: TextFormField(
+                      controller: _accountController,
+                      style: context.type.amount,
+                      decoration: const InputDecoration(hintText: '4321'),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(4),
+                      ],
+                      validator: (value) {
+                        final trimmed = value?.trim() ?? '';
+                        if (trimmed.isNotEmpty && trimmed.length < 3) {
+                          return 'Enter 3 or 4 digits, or leave it empty';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
                 _Section(
                   label: 'Nickname (optional)',
                   child: TextFormField(

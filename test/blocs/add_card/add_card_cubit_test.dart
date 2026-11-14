@@ -26,8 +26,8 @@ void main() {
     test(
         'a valid save persists the card, then sweeps SMS before reporting success',
         () async {
-      final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       // The post-save SMS sweep goes through a real platform plugin
@@ -51,6 +51,7 @@ void main() {
       await cubit.save(
         issuer: 'HDFC',
         last4: '1234',
+        type: CardType.credit,
         creditLimit: '50000',
         nickname: 'Travel card',
       );
@@ -67,8 +68,8 @@ void main() {
     });
 
     test('a blank issuer is rejected before saving or sweeping', () async {
-      final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       final expectation = expectLater(
@@ -81,29 +82,41 @@ void main() {
         ]),
       );
 
-      await cubit.save(issuer: '  ', last4: '1234', creditLimit: '50000');
+      await cubit.save(
+          issuer: '  ',
+          last4: '1234',
+          type: CardType.credit,
+          creditLimit: '50000');
       await expectation;
 
       expect(await cardRepository.fetchCards(), isEmpty);
     });
 
     test('last4 outside 2-4 digits is rejected', () async {
-      final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
-      await cubit.save(issuer: 'HDFC', last4: '123456', creditLimit: '50000');
+      await cubit.save(
+          issuer: 'HDFC',
+          last4: '123456',
+          type: CardType.credit,
+          creditLimit: '50000');
 
       expect(cubit.state.status, AddCardStatus.invalid);
       expect(await cardRepository.fetchCards(), isEmpty);
     });
 
     test('a credit limit of 0 or less is rejected', () async {
-      final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
-      await cubit.save(issuer: 'HDFC', last4: '1234', creditLimit: '0');
+      await cubit.save(
+          issuer: 'HDFC',
+          last4: '1234',
+          type: CardType.credit,
+          creditLimit: '0');
 
       expect(cubit.state.status, AddCardStatus.invalid);
       expect(await cardRepository.fetchCards(), isEmpty);
@@ -111,25 +124,35 @@ void main() {
 
     test('registering the same issuer + last4 twice fails on the second save',
         () async {
-      final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
-      await cubit.save(issuer: 'HDFC', last4: '1234', creditLimit: '50000');
-      await cubit.save(issuer: 'HDFC', last4: '1234', creditLimit: '20000');
+      await cubit.save(
+          issuer: 'HDFC',
+          last4: '1234',
+          type: CardType.credit,
+          creditLimit: '50000');
+      await cubit.save(
+          issuer: 'HDFC',
+          last4: '1234',
+          type: CardType.credit,
+          creditLimit: '20000');
 
-      expect(cubit.state.status, AddCardStatus.failure);
+      expect(cubit.state.status, AddCardStatus.invalid);
+      expect(cubit.state.message, 'This card is already added.');
       expect(await cardRepository.fetchCards(), hasLength(1));
     });
 
     test('an empty nickname is stored as null, not an empty string', () async {
-      final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       await cubit.save(
         issuer: 'HDFC',
         last4: '1234',
+        type: CardType.credit,
         creditLimit: '50000',
         nickname: '   ',
       );
@@ -148,13 +171,14 @@ void main() {
         ..lastSeen = DateTime(2026, 1, 1);
       detectedCardRepository.seed([detection]);
 
-      final cubit = AddCardCubit(
-          cardRepository, transactionRepository, detectedCardRepository, statementRepository);
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
       addTearDown(cubit.close);
 
       await cubit.save(
         issuer: 'HDFC',
         last4: '1234',
+        type: CardType.credit,
         creditLimit: '50000',
         fromDetection: detection,
       );
@@ -164,6 +188,80 @@ void main() {
         isEmpty,
         reason: 'confirmed, so it must not still show as pending',
       );
+    });
+
+    group('debit cards', () {
+      AddCardCubit newCubit() {
+        final cubit = AddCardCubit(cardRepository, transactionRepository,
+            detectedCardRepository, statementRepository);
+        addTearDown(cubit.close);
+        return cubit;
+      }
+
+      test('saves without a limit, with the bank account digits', () async {
+        await newCubit().save(
+          issuer: 'HDFC',
+          last4: '1234',
+          type: CardType.debit,
+          accountLast4: ' 4321 ',
+        );
+
+        final saved = (await cardRepository.fetchCards()).single;
+        expect(saved.type, CardType.debit);
+        expect(saved.creditLimit, isNull);
+        expect(saved.accountLast4, '4321');
+      });
+
+      test('an account of fewer than 3 digits is refused', () async {
+        final cubit = newCubit();
+        await cubit.save(
+          issuer: 'HDFC',
+          last4: '1234',
+          type: CardType.debit,
+          accountLast4: '12',
+        );
+
+        expect(cubit.state.status, AddCardStatus.invalid);
+        expect(await cardRepository.fetchCards(), isEmpty);
+      });
+
+      test('the same digits as a credit card are fine for a debit card',
+          () async {
+        await newCubit().save(
+            issuer: 'HDFC',
+            last4: '1234',
+            type: CardType.credit,
+            creditLimit: '50000');
+        await newCubit()
+            .save(issuer: 'HDFC', last4: '1234', type: CardType.debit);
+
+        expect(await cardRepository.fetchCards(), hasLength(2));
+      });
+    });
+
+    test('a retired duplicate is refused with a hint to restore it', () async {
+      final retired = PaymentCard()
+        ..issuer = 'HDFC'
+        ..last4 = '1234'
+        ..type = CardType.credit
+        ..status = CardStatus.closed
+        ..closedOn = DateTime(2026, 7, 31)
+        ..creditLimit = 50000;
+      cardRepository.seed([retired]);
+      final cubit = AddCardCubit(cardRepository, transactionRepository,
+          detectedCardRepository, statementRepository);
+      addTearDown(cubit.close);
+
+      await cubit.save(
+          issuer: 'HDFC',
+          last4: '1234',
+          type: CardType.credit,
+          creditLimit: '50000');
+
+      expect(cubit.state.status, AddCardStatus.invalid);
+      expect(cubit.state.message,
+          'This card already exists. Restore it from the Cards page.');
+      expect(await cardRepository.fetchCards(), hasLength(1));
     });
   });
 }

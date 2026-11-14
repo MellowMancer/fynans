@@ -26,14 +26,21 @@ class AddCardCubit extends Cubit<AddCardState> {
   ) : super(const AddCardState());
 
   static final _last4Pattern = RegExp(r'^\d{2,4}$');
+  static final _accountLast4Pattern = RegExp(r'^\d{3,4}$');
 
+  /// Validates and saves a card of [type]. A credit card needs
+  /// [creditLimit]. A debit card ignores it, and may carry [accountLast4],
+  /// the last digits of the bank account that it draws from.
+  ///
   /// [fromDetection], when the form was opened from a "is this your card?"
   /// prompt, is removed from the detected-card list once the real card is
   /// saved — it's confirmed now, not still a pending sighting.
   Future<void> save({
     required String issuer,
     required String last4,
-    required String creditLimit,
+    required CardType type,
+    String creditLimit = '',
+    String accountLast4 = '',
     String? nickname,
     DetectedCard? fromDetection,
   }) async {
@@ -41,44 +48,46 @@ class AddCardCubit extends Cubit<AddCardState> {
 
     final trimmedIssuer = issuer.trim();
     if (trimmedIssuer.isEmpty) {
-      emit(state.copyWith(
-          status: AddCardStatus.invalid, message: 'Enter an issuer'));
-      return;
+      return _invalid('Enter an issuer');
     }
 
     final trimmedLast4 = last4.trim();
     if (!_last4Pattern.hasMatch(trimmedLast4)) {
-      emit(state.copyWith(
-          status: AddCardStatus.invalid, message: 'Enter the last 2-4 digits'));
-      return;
+      return _invalid('Enter the last 2-4 digits');
     }
 
+    final isCredit = type == CardType.credit;
     final limit = double.tryParse(creditLimit.trim());
-    if (limit == null || limit <= 0) {
-      emit(state.copyWith(
-          status: AddCardStatus.invalid,
-          message: 'Enter a credit limit greater than 0'));
-      return;
+    if (isCredit && (limit == null || limit <= 0)) {
+      return _invalid('Enter a credit limit greater than 0');
     }
 
-    final trimmedNickname = nickname?.trim();
+    final account = isCredit ? null : _nonEmpty(accountLast4);
+    if (account != null && !_accountLast4Pattern.hasMatch(account)) {
+      return _invalid('Enter the last 3 or 4 digits of the bank account');
+    }
+
+    final duplicateMessage =
+        await _duplicateMessage(trimmedIssuer, type, trimmedLast4);
+    if (duplicateMessage != null) return _invalid(duplicateMessage);
+
     final card = PaymentCard()
       ..issuer = trimmedIssuer
       ..last4 = trimmedLast4
-      ..type = CardType.credit
+      ..type = type
       ..status = CardStatus.active
-      ..creditLimit = limit
-      ..nickname = (trimmedNickname != null && trimmedNickname.isNotEmpty)
-          ? trimmedNickname
-          : null;
+      ..creditLimit = isCredit ? limit : null
+      ..accountLast4 = account
+      ..nickname = _nonEmpty(nickname);
 
     try {
       await _cardRepository.saveCard(card);
-    } catch (error) {
-      // Most likely cause: the unique (issuer, type, last4) index — this card
-      // is already registered.
+    } catch (_) {
+      // Keep the message plain: the error text can contain SQL and card
+      // details.
       emit(state.copyWith(
-          status: AddCardStatus.failure, message: error.toString()));
+          status: AddCardStatus.failure,
+          message: 'The card could not be saved. Try again.'));
       return;
     }
 
@@ -115,5 +124,27 @@ class AddCardCubit extends Cubit<AddCardState> {
       // the next app launch's own catchUp will pick up where this left off.
       emit(state.copyWith(status: AddCardStatus.success, importedCount: 0));
     }
+  }
+
+  void _invalid(String message) =>
+      emit(state.copyWith(status: AddCardStatus.invalid, message: message));
+
+  /// A card with the same issuer, type and digits already exists. A retired
+  /// one cannot be added again, but it can be restored.
+  Future<String?> _duplicateMessage(
+      String issuer, CardType type, String last4) async {
+    final cards = await _cardRepository.fetchCards();
+    for (final c in cards) {
+      if (c.issuer != issuer || c.type != type || c.last4 != last4) continue;
+      return c.status == CardStatus.active
+          ? 'This card is already added.'
+          : 'This card already exists. Restore it from the Cards page.';
+    }
+    return null;
+  }
+
+  static String? _nonEmpty(String? value) {
+    final trimmed = value?.trim();
+    return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 }
