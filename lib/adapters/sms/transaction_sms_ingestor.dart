@@ -89,32 +89,17 @@ class TransactionSmsIngestor {
       return false;
     }
 
-    PaymentCard? card;
-    double? cardAvailableLimit;
-    if (details.isCreditCard) {
-      card = matchCard(
-        await _cards(),
-        last4: details.cardLast4,
-        sender: sender,
-      );
-      // Unmatched → still no transaction is saved (never guess-attribute
-      // real money to a card), but record a sighting so the user can be
-      // prompted to register it, instead of the SMS silently vanishing.
-      if (card == null) {
-        final last4 = details.cardLast4;
-        if (last4 != null) {
-          await _detectedCardRepository.recordSighting(
-            sender: sender,
-            issuerGuess: guessCardIssuer(sender),
-            last4: last4,
-            seenAt: date,
-          );
-        }
-        return false;
-      }
-      cardAvailableLimit = details.availableLimit;
+    final card = await _cardFor(details, sender);
+    // An unmatched credit card SMS is not saved: real money is never
+    // guess-attributed to a card. A debit card spend, matched or not, is
+    // money out of the account, so it is saved either way.
+    if (details.isCreditCard && card == null) {
+      await _recordSighting(details, sender, date);
+      return false;
     }
     final cardId = card?.id;
+    final cardAvailableLimit =
+        card?.type == CardType.credit ? details.availableLimit : null;
 
     final isInflow = details.type == TransactionType.credit;
     final party = (details.merchant?.trim().isNotEmpty ?? false)
@@ -158,6 +143,34 @@ class TransactionSmsIngestor {
       );
     }
     return false;
+  }
+
+  /// The registered card that a card SMS belongs to. An SMS that says
+  /// "credit card" only matches a credit card. A debit card SMS, or one that
+  /// names a card only by its digits ("HDFC Bank Card 1234"), matches a card
+  /// of either type.
+  Future<PaymentCard?> _cardFor(
+      ParsedTransactionDetails details, String sender) async {
+    if (!details.isCreditCard && details.cardLast4 == null) return null;
+    final cards = await _cards();
+    final candidates = details.isCreditCard
+        ? cards.where((c) => c.type == CardType.credit).toList()
+        : cards;
+    return matchCard(candidates, last4: details.cardLast4, sender: sender);
+  }
+
+  /// Records an unmatched credit card, so that the user is prompted to
+  /// register it instead of the SMS silently vanishing.
+  Future<void> _recordSighting(
+      ParsedTransactionDetails details, String sender, DateTime date) async {
+    final last4 = details.cardLast4;
+    if (last4 == null) return;
+    await _detectedCardRepository.recordSighting(
+      sender: sender,
+      issuerGuess: guessCardIssuer(sender),
+      last4: last4,
+      seenAt: date,
+    );
   }
 
   String _buildNote(String sender, ParsedTransactionDetails d) {

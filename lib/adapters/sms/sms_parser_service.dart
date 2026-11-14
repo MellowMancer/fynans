@@ -348,10 +348,22 @@ class SmsParserService {
     );
   }
 
+  /// Does this SMS name a card of any type: a credit card, a debit card, or
+  /// a card that it only identifies by its digits ("HDFC Bank Card 1234")?
+  /// Card SMS follow the card rules. Only [isCreditCardSms] says which ones
+  /// are credit cards.
+  bool isCardSms(String sender, String messageBody) {
+    if (isCreditCardSms(sender, messageBody)) return true;
+    if (_bankAccountRegex.hasMatch(messageBody)) return false;
+    final lowerCaseBody = messageBody.toLowerCase();
+    return lowerCaseBody.contains('debit card') ||
+        _cardLast4Regex.hasMatch(lowerCaseBody);
+  }
+
   bool isTransactionSms(String sender, String messageBody) {
     final lowerCaseSender = sender.toLowerCase();
     final lowerCaseBody = messageBody.toLowerCase();
-    if (isCreditCardSms(sender, messageBody)) {
+    if (isCardSms(sender, messageBody)) {
       return _isCardTransaction(lowerCaseSender, lowerCaseBody);
     }
 
@@ -396,11 +408,11 @@ class SmsParserService {
       return null;
     }
 
-    final isCard = isCreditCardSms(sender, lowerCaseBody);
+    final isCard = isCardSms(sender, lowerCaseBody);
+    final isCreditCard = isCreditCardSms(sender, lowerCaseBody);
 
     // 1.
-    final transactionType =
-        _getTransactionType(lowerCaseBody, isCreditCard: isCard);
+    final transactionType = _getTransactionType(lowerCaseBody, isCard: isCard);
     if (transactionType == TransactionType.unknown) {
       return null;
     }
@@ -425,18 +437,19 @@ class SmsParserService {
       balance: balance,
       accountNumber: accountNumber,
       merchant: merchant,
-      isCreditCard: isCard,
+      isCreditCard: isCreditCard,
       cardLast4: cardLast4,
       availableLimit: availableLimit,
-      isRepayment: _isRepayment(lowerCaseBody, transactionType, isCard: isCard),
+      isRepayment: _isRepayment(lowerCaseBody, transactionType,
+          isCreditCard: isCreditCard),
     );
   }
 
   /// One side of a credit card bill payment: the card's "payment received",
   /// or a bank debit that names a credit card.
   bool _isRepayment(String lowerCaseBody, TransactionType type,
-      {required bool isCard}) {
-    if (isCard) {
+      {required bool isCreditCard}) {
+    if (isCreditCard) {
       return type == TransactionType.credit &&
           lowerCaseBody.contains('payment') &&
           !_containsAny(lowerCaseBody, _cardRefundWords);
@@ -448,13 +461,13 @@ class SmsParserService {
   // --- PRIVATE HELPER METHODS ---
 
   TransactionType _getTransactionType(String lowerCaseBody,
-      {bool isCreditCard = false}) {
+      {bool isCard = false}) {
     // Declines still contain debit keywords ("spent"), so this must run first
     // or a failed payment is recorded as real outflow.
     if (_declinedKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.declined;
     }
-    if (isCreditCard) return _cardDirection(lowerCaseBody);
+    if (isCard) return _cardDirection(lowerCaseBody);
     if (_debitKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.debit;
     }

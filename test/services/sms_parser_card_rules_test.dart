@@ -237,5 +237,29 @@ void main() {
       expect(r?.merchant, 'Starbucks');
     });
   });
+
+  group('debit cards and cards of unknown type', () {
+    test('a debit card spend names its card but is not a credit card SMS', () {
+      final r = parse('HDFCBK',
+          'Rs.500.00 spent on HDFC Bank Debit Card XX1234 at AMAZON.');
+      expect(r, isNotNull);
+      expect(r!.type, TransactionType.debit);
+      expect(r.isCreditCard, isFalse);
+      expect(r.cardLast4, '1234');
+    });
+
+    test('HDFC\'s "Txn ... On HDFC Bank Card" format is read, not dropped',
+        () {
+      final r = parse(
+          'HDFCBK',
+          'Txn Rs.500.00 On HDFC Bank Card 1234 At AMAZON by UPI 601234567890 '
+              'On 2026-01-12:12:30:00');
+      expect(r, isNotNull);
+      expect(r!.amount, 500.00);
+      expect(r.type, TransactionType.debit);
+      expect(r.isCreditCard, isFalse);
+      expect(r.cardLast4, '1234');
+    });
+  });
 }
 

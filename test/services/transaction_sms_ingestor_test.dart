@@ -308,6 +308,76 @@ void main() {
       });
     });
   });
+
+  group('debit cards and cards of unknown type', () {
+    const debitSpend =
+        'Rs.500.00 spent on HDFC Bank Debit Card XX1234 at AMAZON.';
+    final day = DateTime(2026, 1, 15);
+
+    PaymentCard hdfcCard(CardType type) => PaymentCard()
+      ..issuer = 'HDFC'
+      ..last4 = '1234'
+      ..type = type
+      ..status = CardStatus.active
+      ..creditLimit = type == CardType.credit ? 50000 : null;
+
+    Future<Transaction> onlyRow() async => (await repository
+            .fetchTransactionsInRange(range: DateRange.month(day)))
+        .single;
+
+    test('a debit card spend is linked to the debit card as an expense',
+        () async {
+      final card = hdfcCard(CardType.debit);
+      cardRepository.seed([card]);
+
+      expect(
+          await ingestor.ingest(sender: 'HDFCBK', body: debitSpend, date: day),
+          isTrue);
+
+      final row = await onlyRow();
+      expect(row.cardId, card.id);
+      expect(row.kind, TransactionKind.expense);
+    });
+
+    test('with no matching card, a debit card spend is still imported, with '
+        'no card and no sighting', () async {
+      expect(
+          await ingestor.ingest(sender: 'HDFCBK', body: debitSpend, date: day),
+          isTrue);
+
+      expect((await onlyRow()).cardId, isNull);
+      expect(await detectedCardRepository.watchPending().first, isEmpty);
+    });
+
+    test('"HDFC Bank Card" matched to a registered credit card is debt',
+        () async {
+      final card = hdfcCard(CardType.credit);
+      cardRepository.seed([card]);
+
+      await ingestor.ingest(
+        sender: 'HDFCBK',
+        body: 'Txn Rs.500.00 On HDFC Bank Card 1234 At AMAZON',
+        date: day,
+      );
+
+      final row = await onlyRow();
+      expect(row.cardId, card.id);
+      expect(row.kind, TransactionKind.debt);
+    });
+
+    test('an explicit credit card SMS never matches a debit card', () async {
+      cardRepository.seed([hdfcCard(CardType.debit)]);
+
+      final saved = await ingestor.ingest(
+        sender: 'HDFCCC',
+        body: 'Rs.500.00 spent on HDFC Bank Credit Card XX1234 at AMAZON.',
+        date: day,
+      );
+
+      expect(saved, isFalse);
+      expect(await detectedCardRepository.watchPending().first, hasLength(1));
+    });
+  });
 }
 
 void _smsIdStabilityTests() {
