@@ -14,7 +14,8 @@ Transaction _txn(DateTime date, {double amount = 10}) => Transaction()
   ..tags = <String>[]
   ..group = <String>[]
   ..party = 'x'
-  ..isInflow = false;
+  ..isInflow = false
+  ..kind = TransactionKind.expense;
 
 void main() {
   group('time buckets are chronological, not ranked by total', () {

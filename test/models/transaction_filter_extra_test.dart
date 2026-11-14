@@ -18,6 +18,7 @@ Transaction _txn({
       ..group = List.of(group)
       ..party = party
       ..isInflow = isCredit
+      ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
       ..cardId = cardId;
 
 void main() {

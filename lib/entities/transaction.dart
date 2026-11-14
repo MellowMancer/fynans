@@ -17,6 +17,11 @@ class Transaction {
 
   bool isInflow = false;
 
+  /// How the totals count this row. [isInflow] records which way the money
+  /// moved; [kind] records whether that movement is income, spending or
+  /// neither.
+  late TransactionKind kind;
+
   String? note;
 
   /// Stable per-SMS identity hash (sender+body+date) for auto-imported records;
@@ -44,4 +49,30 @@ class Transaction {
   /// True when this is a card spend/payment rather than an ordinary bank
   /// transaction.
   bool get isCardTransaction => cardId != null;
+}
+
+/// How a [Transaction] counts in the totals.
+///
+/// Spending is expense + debt - refund. Income is income. A repayment or a
+/// transfer only moves money between the user's own accounts and cards, so
+/// it counts as neither.
+enum TransactionKind {
+  /// Money that came into an account.
+  income,
+
+  /// Money that left an account, by any method, including a debit card.
+  expense,
+
+  /// A spend on a credit card.
+  debt,
+
+  /// A payment of a credit card bill. Both the bank's SMS and the card
+  /// issuer's SMS get this kind.
+  repayment,
+
+  /// Money that moved between two of the user's own accounts.
+  transfer,
+
+  /// Money returned for an earlier spend, for example a refund or a reversal.
+  refund,
 }

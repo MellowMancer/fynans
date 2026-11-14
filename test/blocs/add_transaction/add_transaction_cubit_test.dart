@@ -21,7 +21,8 @@ Transaction _txn({List<String> group = const [], String party = 'X'}) {
     ..tags = const []
     ..group = List.of(group)
     ..party = party
-    ..isInflow = false;
+    ..isInflow = false
+    ..kind = TransactionKind.expense;
 }
 
 void main() {

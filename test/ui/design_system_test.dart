@@ -174,6 +174,7 @@ void main() {
       ..group = <String>[]
       ..party = 'Corner Cafe'
       ..isInflow = false
+      ..kind = TransactionKind.expense
       ..note = null
       ..smsId = smsId
       ..smsBody = smsBody;

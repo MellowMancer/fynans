@@ -24,6 +24,7 @@ void main() {
       ..tags = ['food']
       ..party = 'Cafe'
       ..isInflow = false
+      ..kind = TransactionKind.expense
       ..smsId = smsId
       ..smsBody = smsId == null ? null : 'Sent Rs 410.00 From HDFC Bank';
     await repo.saveTransaction(t);

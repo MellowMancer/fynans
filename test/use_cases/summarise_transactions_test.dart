@@ -14,7 +14,8 @@ Transaction makeDebit({
     ..tags = List<String>.from(tags)
     ..group = List<String>.from(group)
     ..party = 'test'
-    ..isInflow = false;
+    ..isInflow = false
+    ..kind = TransactionKind.expense;
 }
 
 Transaction makeCredit({required double amount}) {
@@ -24,7 +25,8 @@ Transaction makeCredit({required double amount}) {
     ..tags = []
     ..group = []
     ..party = 'test'
-    ..isInflow = true;
+    ..isInflow = true
+    ..kind = TransactionKind.income;
 }
 
 void main() {

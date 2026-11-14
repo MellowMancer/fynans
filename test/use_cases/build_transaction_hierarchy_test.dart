@@ -15,6 +15,7 @@ Transaction _txn({
     ..amount = amount
     ..date = date
     ..isInflow = isCredit
+    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
     ..tags = List.of(tags)
     ..group = List.of(group)
     ..party = party
@@ -122,7 +123,8 @@ void _dayWeekGroupingTests() {
     ..tags = <String>[]
     ..group = <String>[]
     ..party = 'x'
-    ..isInflow = false;
+    ..isInflow = false
+    ..kind = TransactionKind.expense;
 
   const build = BuildTransactionHierarchy();
 

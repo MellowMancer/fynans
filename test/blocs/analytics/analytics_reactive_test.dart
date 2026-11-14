@@ -13,7 +13,8 @@ Transaction _txn(double amount, DateTime date, {bool isCredit = false}) =>
       ..tags = ['food']
       ..group = <String>[]
       ..party = 'x'
-      ..isInflow = isCredit;
+      ..isInflow = isCredit
+      ..kind = isCredit ? TransactionKind.income : TransactionKind.expense;
 
 void main() {
   test('analytics recompute when transactions are written afterwards',

@@ -16,7 +16,8 @@ void main() {
     ..tags = <String>[]
     ..group = <String>[]
     ..party = 'x'
-    ..isInflow = false;
+    ..isInflow = false
+    ..kind = TransactionKind.expense;
 
   test('saving assigns an id', () async {
     final repo = FakeTransactionRepository();

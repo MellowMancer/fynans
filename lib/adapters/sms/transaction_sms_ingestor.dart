@@ -128,6 +128,7 @@ class TransactionSmsIngestor {
       ..amount = details.amount
       ..date = details.date
       ..isInflow = isInflow
+      ..kind = isInflow ? TransactionKind.income : TransactionKind.expense
       ..party = party
       ..tags = <String>[]
       ..group = <String>[]

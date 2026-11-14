@@ -1,7 +1,9 @@
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/data/app_database.dart';
 import 'package:fynans/entities/payment_card.dart';
+import 'package:fynans/entities/transaction.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 const _allIndexes = [
@@ -46,21 +48,34 @@ void main() {
         (amount, date, party, is_credit, note, sms_id, sms_body, tags, groups)
       VALUES
         (500.0, '2026-01-15 10:30:00.000000', 'Corner Cafe', 0, NULL, 'abc123',
-         'Rs.500 debited', '["food"]', '[]');
+         'Rs.500 debited', '["food"]', '[]'),
+        (9000.0, '2026-01-16 09:00:00.000000', 'Employer', 1, NULL, 'def456',
+         'Rs.9000 credited', '[]', '[]');
     ''');
     raw.execute('PRAGMA user_version = 1');
 
     final db = AppDatabase(NativeDatabase.opened(raw));
     addTearDown(db.close);
 
-    // The existing row survived, with the new columns defaulted to null.
-    final rows = await db.select(db.transactions).get();
-    expect(rows, hasLength(1));
-    expect(rows.single.party, 'Corner Cafe');
-    expect(rows.single.smsId, 'abc123');
-    expect(rows.single.tags, ['food']);
-    expect(rows.single.cardId, isNull);
-    expect(rows.single.cardAvailableLimit, isNull);
+    // The existing rows survived, with the new card columns defaulted to null.
+    final rows = await (db.select(db.transactions)
+          ..orderBy([(t) => OrderingTerm(expression: t.date)]))
+        .get();
+    expect(rows, hasLength(2));
+    final outflow = rows.first;
+    expect(outflow.party, 'Corner Cafe');
+    expect(outflow.smsId, 'abc123');
+    expect(outflow.tags, ['food']);
+    expect(outflow.cardId, isNull);
+    expect(outflow.cardAvailableLimit, isNull);
+
+    // is_credit became is_inflow, and kind was filled from the direction.
+    expect(outflow.isInflow, isFalse);
+    expect(outflow.kind, TransactionKind.expense);
+    final inflow = rows.last;
+    expect(inflow.party, 'Employer');
+    expect(inflow.isInflow, isTrue);
+    expect(inflow.kind, TransactionKind.income);
 
     // The cards table has the type and status columns, and a statement can
     // reference a card.

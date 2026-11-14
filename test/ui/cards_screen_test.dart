@@ -106,6 +106,7 @@ void main() {
         ..group = []
         ..party = 'Merchant'
         ..isInflow = false
+        ..kind = TransactionKind.expense
         ..cardId = card.id,
     ]);
 

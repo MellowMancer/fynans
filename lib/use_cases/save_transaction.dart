@@ -73,6 +73,7 @@ class SaveTransaction {
       ..group = groups
       ..party = resolvedParty
       ..isInflow = isInflow
+      ..kind = isInflow ? TransactionKind.income : TransactionKind.expense
       ..note = (note != null && note.isNotEmpty) ? note : null
       ..smsId = existing?.smsId
       ..smsBody = existing?.smsBody

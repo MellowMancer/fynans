@@ -19,6 +19,7 @@ Transaction txn({
       ..group = List<String>.from(group)
       ..party = party
       ..isInflow = false
+      ..kind = TransactionKind.expense
       ..smsId = smsId
       ..cardId = cardId;
 
@@ -142,6 +143,19 @@ void runTransactionRepositoryContract(
 
         expect(stored.tags, ['food', 'lunch']);
         expect(stored.group, ['goa trip']);
+      });
+
+      // A refund is never the column default, so this also proves that the
+      // repository writes the kind instead of falling back to the default.
+      test('direction and kind round-trip', () async {
+        await repo.saveTransaction(txn(date: DateTime(2026, 7, 10))
+          ..isInflow = true
+          ..kind = TransactionKind.refund);
+
+        final stored = (await inJuly()).single;
+
+        expect(stored.isInflow, isTrue);
+        expect(stored.kind, TransactionKind.refund);
       });
 
       test('distinct helpers trim, drop empties and dedupe', () async {

@@ -175,7 +175,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   /// Bank Acct Last 4 digits. Only for Debit Cards
   final String? accountLast4;
 
-  /// The Transaction Limit for any credit card. Only for Credit Cards
+  /// The Credit Limit for any credit card. Only for Credit Cards
   final double? creditLimit;
   final String? nickname;
   final DateTime? closedOn;
@@ -511,16 +511,23 @@ class $TransactionsTable extends Transactions
   late final GeneratedColumn<String> party = GeneratedColumn<String>(
       'party', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _isCreditMeta =
-      const VerificationMeta('isCredit');
+  static const VerificationMeta _isInflowMeta =
+      const VerificationMeta('isInflow');
   @override
-  late final GeneratedColumn<bool> isCredit = GeneratedColumn<bool>(
-      'is_credit', aliasedName, false,
+  late final GeneratedColumn<bool> isInflow = GeneratedColumn<bool>(
+      'is_inflow', aliasedName, false,
       type: DriftSqlType.bool,
       requiredDuringInsert: false,
       defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("is_credit" IN (0, 1))'),
+          GeneratedColumn.constraintIsAlways('CHECK ("is_inflow" IN (0, 1))'),
       defaultValue: const Constant(false));
+  @override
+  late final GeneratedColumnWithTypeConverter<TransactionKind, String> kind =
+      GeneratedColumn<String>('kind', aliasedName, false,
+              type: DriftSqlType.string,
+              requiredDuringInsert: false,
+              defaultValue: Constant(TransactionKind.expense.name))
+          .withConverter<TransactionKind>($TransactionsTable.$converterkind);
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -569,7 +576,8 @@ class $TransactionsTable extends Transactions
         amount,
         date,
         party,
-        isCredit,
+        isInflow,
+        kind,
         note,
         smsId,
         smsBody,
@@ -609,9 +617,9 @@ class $TransactionsTable extends Transactions
     } else if (isInserting) {
       context.missing(_partyMeta);
     }
-    if (data.containsKey('is_credit')) {
-      context.handle(_isCreditMeta,
-          isCredit.isAcceptableOrUnknown(data['is_credit']!, _isCreditMeta));
+    if (data.containsKey('is_inflow')) {
+      context.handle(_isInflowMeta,
+          isInflow.isAcceptableOrUnknown(data['is_inflow']!, _isInflowMeta));
     }
     if (data.containsKey('note')) {
       context.handle(
@@ -652,8 +660,11 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       party: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}party'])!,
-      isCredit: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}is_credit'])!,
+      isInflow: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_inflow'])!,
+      kind: $TransactionsTable.$converterkind.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!),
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note']),
       smsId: attachedDatabase.typeMapping
@@ -678,6 +689,8 @@ class $TransactionsTable extends Transactions
     return $TransactionsTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<TransactionKind, String, String> $converterkind =
+      const EnumNameConverter<TransactionKind>(TransactionKind.values);
   static JsonTypeConverter2<List<String>, String, List<dynamic>>
       $convertertags = const StringListConverter();
   static JsonTypeConverter2<List<String>, String, List<dynamic>>
@@ -689,7 +702,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final double amount;
   final DateTime date;
   final String party;
-  final bool isCredit;
+  final bool isInflow;
+
+  /// See `Transaction.kind`. The default exists only because SQLite needs a
+  /// value for the rows that already exist when the version 2 migration adds
+  /// this NOT NULL column. Every writer sets the kind itself.
+  final TransactionKind kind;
   final String? note;
 
   /// Raw-SMS identity of auto-imported records; null for manual entries.
@@ -715,7 +733,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       required this.amount,
       required this.date,
       required this.party,
-      required this.isCredit,
+      required this.isInflow,
+      required this.kind,
       this.note,
       this.smsId,
       this.smsBody,
@@ -730,7 +749,11 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     map['amount'] = Variable<double>(amount);
     map['date'] = Variable<DateTime>(date);
     map['party'] = Variable<String>(party);
-    map['is_credit'] = Variable<bool>(isCredit);
+    map['is_inflow'] = Variable<bool>(isInflow);
+    {
+      map['kind'] =
+          Variable<String>($TransactionsTable.$converterkind.toSql(kind));
+    }
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -763,7 +786,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       amount: Value(amount),
       date: Value(date),
       party: Value(party),
-      isCredit: Value(isCredit),
+      isInflow: Value(isInflow),
+      kind: Value(kind),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       smsId:
           smsId == null && nullToAbsent ? const Value.absent() : Value(smsId),
@@ -788,7 +812,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       amount: serializer.fromJson<double>(json['amount']),
       date: serializer.fromJson<DateTime>(json['date']),
       party: serializer.fromJson<String>(json['party']),
-      isCredit: serializer.fromJson<bool>(json['isCredit']),
+      isInflow: serializer.fromJson<bool>(json['isInflow']),
+      kind: $TransactionsTable.$converterkind
+          .fromJson(serializer.fromJson<String>(json['kind'])),
       note: serializer.fromJson<String?>(json['note']),
       smsId: serializer.fromJson<String?>(json['smsId']),
       smsBody: serializer.fromJson<String?>(json['smsBody']),
@@ -809,7 +835,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'amount': serializer.toJson<double>(amount),
       'date': serializer.toJson<DateTime>(date),
       'party': serializer.toJson<String>(party),
-      'isCredit': serializer.toJson<bool>(isCredit),
+      'isInflow': serializer.toJson<bool>(isInflow),
+      'kind': serializer
+          .toJson<String>($TransactionsTable.$converterkind.toJson(kind)),
       'note': serializer.toJson<String?>(note),
       'smsId': serializer.toJson<String?>(smsId),
       'smsBody': serializer.toJson<String?>(smsBody),
@@ -827,7 +855,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           double? amount,
           DateTime? date,
           String? party,
-          bool? isCredit,
+          bool? isInflow,
+          TransactionKind? kind,
           Value<String?> note = const Value.absent(),
           Value<String?> smsId = const Value.absent(),
           Value<String?> smsBody = const Value.absent(),
@@ -840,7 +869,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         amount: amount ?? this.amount,
         date: date ?? this.date,
         party: party ?? this.party,
-        isCredit: isCredit ?? this.isCredit,
+        isInflow: isInflow ?? this.isInflow,
+        kind: kind ?? this.kind,
         note: note.present ? note.value : this.note,
         smsId: smsId.present ? smsId.value : this.smsId,
         smsBody: smsBody.present ? smsBody.value : this.smsBody,
@@ -857,7 +887,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       amount: data.amount.present ? data.amount.value : this.amount,
       date: data.date.present ? data.date.value : this.date,
       party: data.party.present ? data.party.value : this.party,
-      isCredit: data.isCredit.present ? data.isCredit.value : this.isCredit,
+      isInflow: data.isInflow.present ? data.isInflow.value : this.isInflow,
+      kind: data.kind.present ? data.kind.value : this.kind,
       note: data.note.present ? data.note.value : this.note,
       smsId: data.smsId.present ? data.smsId.value : this.smsId,
       smsBody: data.smsBody.present ? data.smsBody.value : this.smsBody,
@@ -877,7 +908,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('amount: $amount, ')
           ..write('date: $date, ')
           ..write('party: $party, ')
-          ..write('isCredit: $isCredit, ')
+          ..write('isInflow: $isInflow, ')
+          ..write('kind: $kind, ')
           ..write('note: $note, ')
           ..write('smsId: $smsId, ')
           ..write('smsBody: $smsBody, ')
@@ -890,7 +922,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   }
 
   @override
-  int get hashCode => Object.hash(id, amount, date, party, isCredit, note,
+  int get hashCode => Object.hash(id, amount, date, party, isInflow, kind, note,
       smsId, smsBody, tags, groups, cardId, cardAvailableLimit);
   @override
   bool operator ==(Object other) =>
@@ -900,7 +932,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.amount == this.amount &&
           other.date == this.date &&
           other.party == this.party &&
-          other.isCredit == this.isCredit &&
+          other.isInflow == this.isInflow &&
+          other.kind == this.kind &&
           other.note == this.note &&
           other.smsId == this.smsId &&
           other.smsBody == this.smsBody &&
@@ -915,7 +948,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<double> amount;
   final Value<DateTime> date;
   final Value<String> party;
-  final Value<bool> isCredit;
+  final Value<bool> isInflow;
+  final Value<TransactionKind> kind;
   final Value<String?> note;
   final Value<String?> smsId;
   final Value<String?> smsBody;
@@ -928,7 +962,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.amount = const Value.absent(),
     this.date = const Value.absent(),
     this.party = const Value.absent(),
-    this.isCredit = const Value.absent(),
+    this.isInflow = const Value.absent(),
+    this.kind = const Value.absent(),
     this.note = const Value.absent(),
     this.smsId = const Value.absent(),
     this.smsBody = const Value.absent(),
@@ -942,7 +977,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     required double amount,
     required DateTime date,
     required String party,
-    this.isCredit = const Value.absent(),
+    this.isInflow = const Value.absent(),
+    this.kind = const Value.absent(),
     this.note = const Value.absent(),
     this.smsId = const Value.absent(),
     this.smsBody = const Value.absent(),
@@ -960,7 +996,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<double>? amount,
     Expression<DateTime>? date,
     Expression<String>? party,
-    Expression<bool>? isCredit,
+    Expression<bool>? isInflow,
+    Expression<String>? kind,
     Expression<String>? note,
     Expression<String>? smsId,
     Expression<String>? smsBody,
@@ -974,7 +1011,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (amount != null) 'amount': amount,
       if (date != null) 'date': date,
       if (party != null) 'party': party,
-      if (isCredit != null) 'is_credit': isCredit,
+      if (isInflow != null) 'is_inflow': isInflow,
+      if (kind != null) 'kind': kind,
       if (note != null) 'note': note,
       if (smsId != null) 'sms_id': smsId,
       if (smsBody != null) 'sms_body': smsBody,
@@ -991,7 +1029,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       Value<double>? amount,
       Value<DateTime>? date,
       Value<String>? party,
-      Value<bool>? isCredit,
+      Value<bool>? isInflow,
+      Value<TransactionKind>? kind,
       Value<String?>? note,
       Value<String?>? smsId,
       Value<String?>? smsBody,
@@ -1004,7 +1043,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       amount: amount ?? this.amount,
       date: date ?? this.date,
       party: party ?? this.party,
-      isCredit: isCredit ?? this.isCredit,
+      isInflow: isInflow ?? this.isInflow,
+      kind: kind ?? this.kind,
       note: note ?? this.note,
       smsId: smsId ?? this.smsId,
       smsBody: smsBody ?? this.smsBody,
@@ -1030,8 +1070,12 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (party.present) {
       map['party'] = Variable<String>(party.value);
     }
-    if (isCredit.present) {
-      map['is_credit'] = Variable<bool>(isCredit.value);
+    if (isInflow.present) {
+      map['is_inflow'] = Variable<bool>(isInflow.value);
+    }
+    if (kind.present) {
+      map['kind'] =
+          Variable<String>($TransactionsTable.$converterkind.toSql(kind.value));
     }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
@@ -1066,7 +1110,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('amount: $amount, ')
           ..write('date: $date, ')
           ..write('party: $party, ')
-          ..write('isCredit: $isCredit, ')
+          ..write('isInflow: $isInflow, ')
+          ..write('kind: $kind, ')
           ..write('note: $note, ')
           ..write('smsId: $smsId, ')
           ..write('smsBody: $smsBody, ')
@@ -2350,7 +2395,8 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   required double amount,
   required DateTime date,
   required String party,
-  Value<bool> isCredit,
+  Value<bool> isInflow,
+  Value<TransactionKind> kind,
   Value<String?> note,
   Value<String?> smsId,
   Value<String?> smsBody,
@@ -2365,7 +2411,8 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<double> amount,
   Value<DateTime> date,
   Value<String> party,
-  Value<bool> isCredit,
+  Value<bool> isInflow,
+  Value<TransactionKind> kind,
   Value<String?> note,
   Value<String?> smsId,
   Value<String?> smsBody,
@@ -2415,8 +2462,13 @@ class $$TransactionsTableFilterComposer
   ColumnFilters<String> get party => $composableBuilder(
       column: $table.party, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<bool> get isCredit => $composableBuilder(
-      column: $table.isCredit, builder: (column) => ColumnFilters(column));
+  ColumnFilters<bool> get isInflow => $composableBuilder(
+      column: $table.isInflow, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<TransactionKind, TransactionKind, String>
+      get kind => $composableBuilder(
+          column: $table.kind,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
@@ -2483,8 +2535,11 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<String> get party => $composableBuilder(
       column: $table.party, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<bool> get isCredit => $composableBuilder(
-      column: $table.isCredit, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<bool> get isInflow => $composableBuilder(
+      column: $table.isInflow, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
@@ -2547,8 +2602,11 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get party =>
       $composableBuilder(column: $table.party, builder: (column) => column);
 
-  GeneratedColumn<bool> get isCredit =>
-      $composableBuilder(column: $table.isCredit, builder: (column) => column);
+  GeneratedColumn<bool> get isInflow =>
+      $composableBuilder(column: $table.isInflow, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<TransactionKind, String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -2616,7 +2674,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<double> amount = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<String> party = const Value.absent(),
-            Value<bool> isCredit = const Value.absent(),
+            Value<bool> isInflow = const Value.absent(),
+            Value<TransactionKind> kind = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<String?> smsId = const Value.absent(),
             Value<String?> smsBody = const Value.absent(),
@@ -2630,7 +2689,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             amount: amount,
             date: date,
             party: party,
-            isCredit: isCredit,
+            isInflow: isInflow,
+            kind: kind,
             note: note,
             smsId: smsId,
             smsBody: smsBody,
@@ -2644,7 +2704,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             required double amount,
             required DateTime date,
             required String party,
-            Value<bool> isCredit = const Value.absent(),
+            Value<bool> isInflow = const Value.absent(),
+            Value<TransactionKind> kind = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<String?> smsId = const Value.absent(),
             Value<String?> smsBody = const Value.absent(),
@@ -2658,7 +2719,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             amount: amount,
             date: date,
             party: party,
-            isCredit: isCredit,
+            isInflow: isInflow,
+            kind: kind,
             note: note,
             smsId: smsId,
             smsBody: smsBody,

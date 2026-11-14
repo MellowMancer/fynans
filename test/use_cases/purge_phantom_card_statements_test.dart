@@ -20,6 +20,7 @@ Transaction cardTxn({
       ..group = []
       ..party = 'Merchant'
       ..isInflow = false
+      ..kind = TransactionKind.expense
       ..cardId = cardId
       ..smsId = smsId
       ..smsBody = smsBody
@@ -81,6 +82,7 @@ void main() {
         ..group = []
         ..party = 'Bank'
         ..isInflow = false
+        ..kind = TransactionKind.expense
         ..cardId = null
         ..smsId = 'abc123'
         ..smsBody = 'Total Due: Rs.5,000.00. Please pay by 15th.',

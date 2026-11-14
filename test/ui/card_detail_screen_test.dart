@@ -22,6 +22,7 @@ Transaction spend(double amount, DateTime date, int cardId) => Transaction()
   ..group = []
   ..party = 'Merchant'
   ..isInflow = false
+  ..kind = TransactionKind.expense
   ..cardId = cardId;
 
 void main() {

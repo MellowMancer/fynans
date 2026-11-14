@@ -22,6 +22,7 @@ Transaction _txn({
     ..amount = amount
     ..date = date
     ..isInflow = isCredit
+    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
     ..tags = List.of(tags)
     ..group = List.of(group)
     ..party = party

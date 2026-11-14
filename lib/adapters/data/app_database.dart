@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:fynans/entities/payment_card.dart';
+import 'package:fynans/entities/transaction.dart';
 
 part 'app_database.g.dart';
 
@@ -35,7 +36,14 @@ class Transactions extends Table {
   RealColumn get amount => real()();
   DateTimeColumn get date => dateTime()();
   TextColumn get party => text()();
-  BoolColumn get isCredit => boolean().withDefault(const Constant(false))();
+  BoolColumn get isInflow => boolean().withDefault(const Constant(false))();
+
+  /// See `Transaction.kind`. The default exists only because SQLite needs a
+  /// value for the rows that already exist when the version 2 migration adds
+  /// this NOT NULL column. Every writer sets the kind itself.
+  TextColumn get kind => textEnum<TransactionKind>()
+      .withDefault(Constant(TransactionKind.expense.name))();
+
   TextColumn get note => text().nullable()();
 
   /// Raw-SMS identity of auto-imported records; null for manual entries.
@@ -155,6 +163,18 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(cardStatements);
             await m.addColumn(transactions, transactions.cardId);
             await m.addColumn(transactions, transactions.cardAvailableLimit);
+            await m.renameColumn(
+              transactions,
+              'is_credit',
+              transactions.isInflow,
+            );
+            await m.addColumn(transactions, transactions.kind);
+            // The new kind column starts as expense on every existing row.
+            // Version 1 recorded only the direction, so an inflow was income.
+            await (update(transactions)..where((t) => t.isInflow.equals(true)))
+                .write(const TransactionsCompanion(
+              kind: Value(TransactionKind.income),
+            ));
             await _createIndexes();
           }
         },
