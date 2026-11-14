@@ -150,19 +150,27 @@ void main() {
     expect(find.text('Done'), findsOneWidget);
   });
 
-  testWidgets('Remove card offers close and untrack for a card with history',
-      (tester) async {
+  testWidgets(
+      'Remove card offers close and untrack for a card with history, with '
+      'what each one hides', (tester) async {
     transactionRepository.seed([spend(450, DateTime.now(), card.id!)]);
     await pumpScreen(tester);
 
     await tester.tap(find.byTooltip('Remove card'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Close card'), findsOneWidget);
-    expect(find.text('Untrack card'), findsOneWidget);
+    expect(find.text('Close this card'), findsOneWidget);
+    expect(find.text('Untrack this card'), findsOneWidget);
     expect(find.text('Delete'), findsNothing);
+    // Closed today, so today's spend stays. Untracked hides it.
+    expect(find.text('Hides 0 transactions (${Fmt.money(0)}).'),
+        findsOneWidget);
+    expect(find.text('Hides 1 transaction (${Fmt.money(450)}).'),
+        findsOneWidget);
 
-    await tester.tap(find.text('Untrack card'));
+    await tester.tap(find.text('Untrack this card'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove'));
     await tester.pumpAndSettle();
 
     final stored = (await cardRepository.fetchCards()).single;
@@ -177,11 +185,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Delete'), findsOneWidget);
-    expect(find.text('Close card'), findsNothing);
+    expect(find.text('Close this card'), findsNothing);
 
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
 
     expect(await cardRepository.fetchCards(), isEmpty);
+  });
+
+  testWidgets(
+      'a retired card shows what it hides and can be restored, with no '
+      'remove or add button', (tester) async {
+    transactionRepository.seed([spend(450, DateTime.now(), card.id!)]);
+    await cardRepository.untrackCard(card);
+    await pumpScreen(tester);
+
+    expect(find.byTooltip('Remove card'), findsNothing);
+    expect(find.byTooltip('Add transaction'), findsNothing);
+    expect(
+      find.text('Hides 1 transaction (${Fmt.money(450)}) from your lists '
+          'and totals.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Restore card'));
+    await tester.pumpAndSettle();
+
+    expect((await cardRepository.fetchCards()).single.status,
+        CardStatus.active);
+    expect(find.byTooltip('Remove card'), findsOneWidget);
   });
 }

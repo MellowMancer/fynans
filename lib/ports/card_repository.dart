@@ -11,14 +11,18 @@ abstract class CardRepository {
   Future<void> deleteCard(PaymentCard card);
 
   /// Marks [card] as closed. [day] is the start (midnight) of the closing
-  /// day. The card's transactions after that day are hidden.
+  /// date. The card's transactions after that date are hidden.
   Future<void> closeCard(PaymentCard card, DateTime day);
 
   /// Marks [card] as untracked. All of its transactions are hidden.
   Future<void> untrackCard(PaymentCard card);
 
-  /// Live list of the active cards: the cards that the cards list shows.
-  Stream<List<PaymentCard>> watchActiveCards();
+  /// Makes a closed or untracked [card] active again, with no closing date.
+  Future<void> restoreCard(PaymentCard card);
+
+  /// Live list of every card, whatever its status. The cards page shows the
+  /// active cards and, in a separate section, the closed and untracked ones.
+  Stream<List<PaymentCard>> watchCards();
 
   /// Every card, whatever its status. The SMS ingestor needs closed and
   /// untracked cards too, so that their SMS still match a known card.

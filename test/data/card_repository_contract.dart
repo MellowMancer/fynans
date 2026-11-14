@@ -135,13 +135,26 @@ void runCardRepositoryContract(
         expect(stored.status, CardStatus.untracked);
         expect(stored.closedOn, isNull);
       });
+
+      test('restoreCard makes a closed card active, with no closing date',
+          () async {
+        final saved = card();
+        await repo.saveCard(saved);
+        await repo.closeCard(saved, DateTime(2026, 7, 31));
+
+        await repo.restoreCard(saved);
+
+        final stored = (await repo.fetchCards()).single;
+        expect(stored.status, CardStatus.active);
+        expect(stored.closedOn, isNull);
+      });
     });
 
-    group('watchActiveCards', () {
+    group('watchCards', () {
       test('emits current state then again on a write', () async {
         final seen = <int>[];
         final sub =
-            repo.watchActiveCards().listen((cards) => seen.add(cards.length));
+            repo.watchCards().listen((cards) => seen.add(cards.length));
 
         await pumpEventQueue();
         expect(seen, isNotEmpty, reason: 'first emission is the current state');
@@ -153,9 +166,8 @@ void runCardRepositoryContract(
         await sub.cancel();
       });
 
-      test(
-          'closed and untracked cards leave the active list, but fetchCards '
-          'still returns them', () async {
+      test('closed and untracked cards stay in the list with their status',
+          () async {
         final kept = card(last4: '1111');
         final closed = card(last4: '2222');
         final untracked = card(last4: '3333');
@@ -166,9 +178,15 @@ void runCardRepositoryContract(
         await repo.closeCard(closed, DateTime(2026, 7, 31));
         await repo.untrackCard(untracked);
 
-        final active = await repo.watchActiveCards().first;
-        expect(active.map((c) => c.last4), ['1111']);
-        expect(await repo.fetchCards(), hasLength(3));
+        final cards = await repo.watchCards().first;
+        expect(
+          {for (final c in cards) c.last4: c.status},
+          {
+            '1111': CardStatus.active,
+            '2222': CardStatus.closed,
+            '3333': CardStatus.untracked,
+          },
+        );
       });
     });
   });

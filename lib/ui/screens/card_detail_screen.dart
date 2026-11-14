@@ -12,11 +12,14 @@ import 'package:fynans/ui/screens/add_transaction_screen.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
 import 'package:fynans/ui/theme/app_typography.dart';
+import 'package:fynans/ui/utils/card_status_text.dart';
 import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/widgets/card_tile.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/ui/widgets/month_year_wheel_picker.dart';
 import 'package:fynans/ui/widgets/payment_due_banner.dart';
+import 'package:fynans/ui/widgets/remove_card_dialog.dart';
+import 'package:fynans/ui/widgets/retired_card_banner.dart';
 import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/ui/widgets/transaction_list_widgets.dart';
 import 'package:fynans/use_cases/remove_card.dart';
@@ -49,7 +52,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
 
   CardWithTransactions? _findCard(CardsState state) {
     if (state is! CardsLoadSuccess) return null;
-    for (final c in state.cards) {
+    for (final c in [...state.cards, ...state.retired]) {
       if (c.summary.card.id == widget.cardId) return c;
     }
     return null;
@@ -73,47 +76,47 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
     }
   }
 
-  /// Asks [RemoveCard] how [card] can leave the list, then lets the user
-  /// confirm. The screen closes when the card is gone from the list.
-  Future<void> _removeCard(BuildContext context, PaymentCard card) async {
+  RemoveCard _removeCardUseCase(BuildContext context) => RemoveCard(
+        context.read<CardRepository>(),
+        context.read<TransactionRepository>(),
+        context.read<CardStatementRepository>(),
+      );
+
+  /// Asks [RemoveCard] how the card can leave the list, then lets the user
+  /// choose. The screen closes, and a message says what happened.
+  Future<void> _removeCard(
+      BuildContext context, CardWithTransactions entry) async {
+    final card = entry.summary.card;
     // Read everything that needs the context before the first await.
-    final removeCard = RemoveCard(
-      context.read<CardRepository>(),
-      context.read<TransactionRepository>(),
-      context.read<CardStatementRepository>(),
-    );
+    final removeCard = _removeCardUseCase(context);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
     try {
       final removal = await removeCard.removalFor(card);
       if (!context.mounted) return;
-      final bool removed;
+      final String? result;
       switch (removal) {
         case CardRemoval.delete:
-          removed = await _confirmDelete(context, removeCard, card);
+          result = await _confirmDelete(context, removeCard, card);
         case CardRemoval.retire:
-          removed = await _chooseRetirement(context, removeCard, card);
+          result = await _retire(context, removeCard, entry);
       }
-      if (removed) navigator.pop();
+      if (result == null) return;
+      navigator.pop();
+      messenger.showSnackBar(SnackBar(content: Text(result)));
     } catch (_) {
-      // Keep the message plain: the error text can contain SQL and card
-      // details.
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('The card could not be changed. Try again.'),
-        ),
-      );
+      _showFailure(messenger);
     }
   }
 
-  /// Returns true if the user confirmed and the card was deleted.
-  Future<bool> _confirmDelete(
+  /// Returns the result message, or null if the user cancels.
+  Future<String?> _confirmDelete(
       BuildContext context, RemoveCard removeCard, PaymentCard card) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete ${card.issuer} •••• ${card.last4}?'),
+        title: Text('Delete ${cardName(card)}?'),
         content: const Text('This card has no transactions and no statements.'),
         actions: [
           TextButton(
@@ -127,70 +130,61 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
         ],
       ),
     );
-    if (confirmed != true) return false;
+    if (confirmed != true) return null;
     await removeCard.delete(card);
-    return true;
+    return '${cardName(card)} is deleted.';
   }
 
-  /// Returns true if the user closed or untracked the card.
-  Future<bool> _chooseRetirement(
-      BuildContext context, RemoveCard removeCard, PaymentCard card) async {
-    final choice = await showDialog<CardStatus>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Remove ${card.issuer} •••• ${card.last4}?'),
-        content: const Text(
-          'This card has history, so it cannot be deleted.\n\n'
-          'Close card: keeps its transactions up to the closing day, and '
-          'hides later ones.\n\n'
-          'Untrack card: hides all of its transactions from your lists and '
-          'totals.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, CardStatus.untracked),
-            child: const Text('Untrack card'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, CardStatus.closed),
-            child: const Text('Close card'),
-          ),
-        ],
-      ),
+  /// Returns the result message, or null if the user cancels.
+  Future<String?> _retire(BuildContext context, RemoveCard removeCard,
+      CardWithTransactions entry) async {
+    final card = entry.summary.card;
+    final now = DateTime.now();
+    final choice = await RemoveCardDialog.show(
+      context,
+      card: card,
+      transactions: entry.transactions,
+      firstClosingDate: DateTime(now.year - _kMonthsHistoryYears),
     );
-    if (!context.mounted) return false;
+    if (choice == null) return null;
 
-    switch (choice) {
-      case CardStatus.closed:
-        final now = DateTime.now();
-        final day = await showDatePicker(
-          context: context,
-          initialDate: now,
-          firstDate: DateTime(now.year - _kMonthsHistoryYears),
-          lastDate: now,
-          helpText: 'Closing day',
-        );
-        if (day == null) return false;
-        await removeCard.close(card, day);
-        return true;
-      case CardStatus.untracked:
-        await removeCard.untrack(card);
-        return true;
-      case CardStatus.active:
-      case null:
-        return false;
+    final hides = hiddenTransactionsText(HiddenTransactions.of(
+        entry.transactions, choice.status, choice.closingDate));
+    if (choice.status == CardStatus.closed) {
+      await removeCard.close(card, choice.closingDate);
+      return '${cardName(card)} is closed. It hides $hides.';
+    }
+    await removeCard.untrack(card);
+    return '${cardName(card)} is untracked. It hides $hides.';
+  }
+
+  Future<void> _restoreCard(BuildContext context, PaymentCard card) async {
+    final removeCard = _removeCardUseCase(context);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await removeCard.restore(card);
+      messenger.showSnackBar(
+        SnackBar(content: Text('${cardName(card)} is restored.')),
+      );
+    } catch (_) {
+      _showFailure(messenger);
     }
   }
+
+  // Keep the message plain: the error text can contain SQL and card details.
+  void _showFailure(ScaffoldMessengerState messenger) =>
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('The card could not be changed. Try again.'),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<CardsCubit, CardsState>(
       builder: (context, state) {
         final entry = _findCard(state);
+        final isActive = entry?.summary.card.status == CardStatus.active;
 
         return Scaffold(
           appBar: AppBar(
@@ -210,20 +204,19 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 ),
               ],
             ),
-            actions: entry == null
+            actions: entry == null || !isActive
                 ? null
                 : [
                     IconButton(
                       icon: Icon(Icons.delete_outline_rounded,
                           color: context.colors.danger),
                       tooltip: 'Remove card',
-                      onPressed: () =>
-                          _removeCard(context, entry.summary.card),
+                      onPressed: () => _removeCard(context, entry),
                     ),
                     AppSpacing.hGapSm,
                   ],
           ),
-          floatingActionButton: entry == null
+          floatingActionButton: entry == null || !isActive
               ? null
               : FloatingActionButton(
                   onPressed: () => Navigator.push(
@@ -245,6 +238,8 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                     entry.transactions,
                   ),
                   onSelectMonth: _selectMonth,
+                  onRestore: () =>
+                      _restoreCard(context, entry.summary.card),
                 ),
         );
       },
@@ -258,12 +253,16 @@ class _CardDetailBody extends StatelessWidget {
     required this.selectedMonth,
     required this.monthTransactions,
     required this.onSelectMonth,
+    required this.onRestore,
   });
 
   final CardWithTransactions entry;
   final DateTime selectedMonth;
   final List<Transaction> monthTransactions;
   final VoidCallback onSelectMonth;
+
+  /// Restores a closed or untracked card.
+  final VoidCallback onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -274,10 +273,19 @@ class _CardDetailBody extends StatelessWidget {
     return ListView(
       padding: AppSpacing.pageInsets,
       children: [
-        CardTile(summary: entry.summary),
-        if (entry.latestStatement != null) ...[
-          AppSpacing.gapMd,
-          PaymentDueBanner(statement: entry.latestStatement),
+        // A retired card shows what it hides instead of its figures.
+        if (entry.hidden case final hidden?)
+          RetiredCardBanner(
+            card: entry.summary.card,
+            hidden: hidden,
+            onRestore: onRestore,
+          )
+        else ...[
+          CardTile(summary: entry.summary),
+          if (entry.latestStatement != null) ...[
+            AppSpacing.gapMd,
+            PaymentDueBanner(statement: entry.latestStatement),
+          ],
         ],
         AppSpacing.gapXl,
         StatementPeriodRow(month: selectedMonth, onSelectMonth: onSelectMonth),

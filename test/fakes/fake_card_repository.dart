@@ -66,15 +66,25 @@ class FakeCardRepository implements CardRepository {
   }
 
   @override
-  Stream<List<PaymentCard>> watchActiveCards() {
+  Future<void> restoreCard(PaymentCard card) async {
+    for (final c in _withId(card)) {
+      c
+        ..status = CardStatus.active
+        ..closedOn = null;
+    }
+    _notify();
+  }
+
+  @override
+  Stream<List<PaymentCard>> watchCards() {
     late final StreamController<List<PaymentCard>> controller;
     StreamSubscription<void>? watcher;
 
     controller = StreamController<List<PaymentCard>>(
       onListen: () {
-        controller.add(_activeCards());
+        controller.add(List.of(_cards));
         watcher =
-            _changes.stream.listen((_) => controller.add(_activeCards()));
+            _changes.stream.listen((_) => controller.add(List.of(_cards)));
       },
       onCancel: () async {
         await watcher?.cancel();
@@ -86,9 +96,6 @@ class FakeCardRepository implements CardRepository {
 
   @override
   Future<List<PaymentCard>> fetchCards() async => List.of(_cards);
-
-  List<PaymentCard> _activeCards() =>
-      _cards.where((c) => c.status == CardStatus.active).toList();
 
   // Like the Drift update, a missing row is not an error: the loop is empty.
   Iterable<PaymentCard> _withId(PaymentCard card) {

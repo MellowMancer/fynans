@@ -12,6 +12,7 @@ import 'package:fynans/ui/screens/add_card_screen.dart';
 import 'package:fynans/ui/screens/card_detail_screen.dart';
 import 'package:fynans/ui/screens/cards_screen.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
+import 'package:fynans/ui/utils/formatters.dart';
 
 import '../fakes/fake_card_repository.dart';
 import '../fakes/fake_card_statement_repository.dart';
@@ -205,6 +206,64 @@ void main() {
       final issuerField =
           tester.widget<TextFormField>(find.byType(TextFormField).first);
       expect(issuerField.controller!.text, 'HDFC');
+    });
+  });
+
+  group('closed and untracked cards', () {
+    PaymentCard closedCard() => PaymentCard()
+      ..issuer = 'AXIS'
+      ..last4 = '4321'
+      ..type = CardType.credit
+      ..status = CardStatus.closed
+      ..closedOn = DateTime(2026, 7, 31)
+      ..creditLimit = 50000;
+
+    testWidgets('sit in a collapsed section that shows what they hide',
+        (tester) async {
+      final closed = closedCard();
+      cardRepository.seed([
+        PaymentCard()
+          ..issuer = 'HDFC'
+          ..last4 = '1234'
+          ..type = CardType.credit
+          ..status = CardStatus.active
+          ..creditLimit = 50000,
+        closed,
+      ]);
+      transactionRepository.seed([
+        Transaction()
+          ..amount = 300
+          ..date = DateTime(2026, 8, 2)
+          ..tags = <String>[]
+          ..group = <String>[]
+          ..party = 'x'
+          ..isInflow = false
+          ..kind = TransactionKind.debt
+          ..cardId = closed.id,
+      ]);
+      await pumpScreen(tester);
+
+      expect(find.text('CLOSED AND UNTRACKED (1)'), findsOneWidget);
+      expect(find.textContaining('4321', findRichText: true), findsNothing,
+          reason: 'the section starts collapsed');
+
+      await tester.tap(find.text('CLOSED AND UNTRACKED (1)'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('4321', findRichText: true), findsWidgets);
+      expect(
+        find.text('HIDES 1 TRANSACTION (${Fmt.money(300)})'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('with no active card, the page shows the section, not the '
+        'empty state', (tester) async {
+      cardRepository.seed([closedCard()]);
+      await pumpScreen(tester);
+
+      expect(find.text('No cards yet'), findsNothing);
+      expect(find.text('CLOSED AND UNTRACKED (1)'), findsOneWidget);
     });
   });
 }

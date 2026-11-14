@@ -7,6 +7,7 @@ import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
+import 'package:fynans/use_cases/remove_card.dart';
 import 'package:fynans/use_cases/summarise_card.dart';
 import 'cards_state.dart';
 
@@ -44,7 +45,7 @@ class CardsCubit extends Cubit<CardsState> {
     await _cancelAll();
     emit(CardsLoadInProgress());
 
-    _cardsSubscription = _cardRepository.watchActiveCards().listen(
+    _cardsSubscription = _cardRepository.watchCards().listen(
       (cards) {
         if (isClosed || generation != _generation) return;
         _onCardsChanged(cards, generation);
@@ -98,18 +99,26 @@ class CardsCubit extends Cubit<CardsState> {
   }
 
   void _emitSummaries() {
-    emit(CardsLoadSuccess([
-      for (final card in _cards)
-        CardWithTransactions(
-          summary: summariseCard(
-            card,
-            _transactionsByCard[card.id] ?? const [],
-            latestStatement: _statementByCard[card.id],
-          ),
-          transactions: _transactionsByCard[card.id] ?? const [],
+    final active = <CardWithTransactions>[];
+    final retired = <CardWithTransactions>[];
+    for (final card in _cards) {
+      final transactions = _transactionsByCard[card.id] ?? const [];
+      final isActive = card.status == CardStatus.active;
+      final entry = CardWithTransactions(
+        summary: summariseCard(
+          card,
+          transactions,
           latestStatement: _statementByCard[card.id],
         ),
-    ]));
+        transactions: transactions,
+        latestStatement: _statementByCard[card.id],
+        hidden: isActive
+            ? null
+            : HiddenTransactions.of(transactions, card.status, card.closedOn),
+      );
+      (isActive ? active : retired).add(entry);
+    }
+    emit(CardsLoadSuccess(active, retired: retired));
   }
 
   Future<void> _cancelAll() async {

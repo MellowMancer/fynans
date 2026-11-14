@@ -3,6 +3,7 @@ import 'package:fynans/adapters/blocs/cards/cards_cubit.dart';
 import 'package:fynans/adapters/blocs/cards/cards_state.dart';
 import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/payment_card.dart';
+import 'package:fynans/entities/transaction.dart';
 
 import '../../../fakes/fake_card_repository.dart';
 import '../../../fakes/fake_card_statement_repository.dart';
@@ -43,6 +44,31 @@ void main() {
     cardRepository.seed([card]);
     return card;
   }
+
+  test('a closed card moves to the retired list, with what it hides',
+      () async {
+    final card = seedCard();
+    transactionRepository.seed([
+      Transaction()
+        ..amount = 300
+        ..date = DateTime(2026, 8, 2)
+        ..tags = <String>[]
+        ..party = 'x'
+        ..isInflow = false
+        ..kind = TransactionKind.debt
+        ..cardId = card.id,
+    ]);
+    cubit.loadCards();
+    await pumpEventQueue();
+
+    await cardRepository.closeCard(card, DateTime(2026, 7, 31));
+    await pumpEventQueue();
+
+    final state = cubit.state as CardsLoadSuccess;
+    expect(state.cards, isEmpty);
+    expect(state.retired.single.summary.card.id, card.id);
+    expect(state.retired.single.hidden?.count, 1);
+  });
 
   test('a card with no statement yet reports latestStatement as null',
       () async {

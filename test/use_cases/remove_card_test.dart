@@ -97,4 +97,48 @@ void main() {
     expect(await transactions.listenToTransactionsForCard(card.id!).first,
         hasLength(1));
   });
+
+  test('restore makes a retired card active again', () async {
+    await addSpend();
+    await removeCard.untrack(card);
+
+    await removeCard.restore(card);
+
+    final stored = (await cards.fetchCards()).single;
+    expect(stored.status, CardStatus.active);
+    expect(stored.closedOn, isNull);
+  });
+
+  group('HiddenTransactions.of', () {
+    Transaction spendOn(DateTime date, double amount) => Transaction()
+      ..amount = amount
+      ..date = date
+      ..tags = <String>[]
+      ..party = 'x'
+      ..isInflow = false
+      ..kind = TransactionKind.debt;
+
+    final transactions = [
+      spendOn(DateTime(2026, 7, 30), 100),
+      spendOn(DateTime(2026, 7, 31, 22), 200),
+      spendOn(DateTime(2026, 8, 2), 400),
+    ];
+
+    test('a closed card counts only the transactions after the closing date',
+        () {
+      final hidden = HiddenTransactions.of(
+          transactions, CardStatus.closed, DateTime(2026, 7, 31));
+
+      expect(hidden.count, 1);
+      expect(hidden.total, 400);
+    });
+
+    test('an untracked card counts every transaction', () {
+      final hidden =
+          HiddenTransactions.of(transactions, CardStatus.untracked, null);
+
+      expect(hidden.count, 3);
+      expect(hidden.total, 700);
+    });
+  });
 }

@@ -43,10 +43,17 @@ class DriftCardRepository implements CardRepository {
       );
 
   @override
-  Stream<List<PaymentCard>> watchActiveCards() => (_db.select(_db.cards)
-        ..where((c) => c.status.equalsValue(CardStatus.active)))
-      .watch()
-      .map((rows) => rows.map(_toEntity).toList());
+  Future<void> restoreCard(PaymentCard card) => _setStatus(
+        card,
+        const CardsCompanion(
+          status: Value(CardStatus.active),
+          closedOn: Value(null),
+        ),
+      );
+
+  @override
+  Stream<List<PaymentCard>> watchCards() =>
+      _db.select(_db.cards).watch().map((rows) => rows.map(_toEntity).toList());
 
   Future<void> _setStatus(PaymentCard card, CardsCompanion change) async {
     final id = _savedId(card);

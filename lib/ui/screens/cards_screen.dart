@@ -11,6 +11,7 @@ import 'package:fynans/ui/theme/app_spacing.dart';
 import 'package:fynans/ui/widgets/card_tile.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/ui/widgets/detected_cards_banner.dart';
+import 'package:fynans/ui/widgets/retired_card_row.dart';
 
 /// List of registered cards with their live spend summaries.
 ///
@@ -37,6 +38,43 @@ void _openAddCard(BuildContext context) => Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const AddCardScreen()),
     );
+
+void _openCard(BuildContext context, CardWithTransactions entry) =>
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<CardsCubit>(),
+          child: CardDetailScreen(cardId: entry.summary.card.id!),
+        ),
+      ),
+    );
+
+/// The closed and untracked cards, collapsed by default so that the page
+/// keeps its attention on the cards in use.
+class _RetiredCardsSection extends StatelessWidget {
+  const _RetiredCardsSection({required this.retired});
+
+  final List<CardWithTransactions> retired;
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: AppSectionLabel('Closed and untracked (${retired.length})'),
+        children: [
+          for (final c in retired)
+            Padding(
+              padding: AppSpacing.cardGapInsets,
+              child: RetiredCardRow(
+                card: c.summary.card,
+                hidden: c.hidden!,
+                onTap: () => _openCard(context, c),
+              ),
+            ),
+        ],
+      );
+}
 
 class _CardsView extends StatelessWidget {
   const _CardsView();
@@ -68,7 +106,7 @@ class _CardsView extends StatelessWidget {
                 if (state is! CardsLoadSuccess) {
                   return const AppLoading();
                 }
-                if (state.cards.isEmpty) {
+                if (state.cards.isEmpty && state.retired.isEmpty) {
                   return AppEmptyState(
                     icon: Icons.credit_card_outlined,
                     title: 'No cards yet',
@@ -90,18 +128,11 @@ class _CardsView extends StatelessWidget {
                         padding: AppSpacing.cardGapInsets,
                         child: CardTile(
                           summary: c.summary,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => BlocProvider.value(
-                                value: context.read<CardsCubit>(),
-                                child: CardDetailScreen(
-                                    cardId: c.summary.card.id!),
-                              ),
-                            ),
-                          ),
+                          onTap: () => _openCard(context, c),
                         ),
                       ),
+                    if (state.retired.isNotEmpty)
+                      _RetiredCardsSection(retired: state.retired),
                   ],
                 );
               },
