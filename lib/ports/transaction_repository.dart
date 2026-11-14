@@ -52,7 +52,8 @@ abstract class TransactionRepository {
   Future<List<String>> getAllParties();
 
   /// Attaches [cardId] to the transaction with [smsId], but only if that
-  /// transaction has no card. Returns true if a row was updated.
+  /// transaction has no card, and sets its [kind] for that card. Returns
+  /// true if a row was updated.
   ///
   /// Needed because `importTransaction`'s dedup is keyed on smsId. An SMS
   /// can be imported as an ordinary transaction and only later be recognised
@@ -65,6 +66,7 @@ abstract class TransactionRepository {
   Future<bool> relinkTransactionToCard({
     required String smsId,
     required int cardId,
+    required TransactionKind kind,
     double? cardAvailableLimit,
   });
 }

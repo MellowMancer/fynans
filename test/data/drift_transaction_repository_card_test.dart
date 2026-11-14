@@ -144,7 +144,7 @@ void main() {
       await transactions
           .saveTransaction(txn(date: DateTime(2026, 7, 1), smsId: 'a'));
 
-      expect(transactions.relinkTransactionToCard(smsId: 'a', cardId: missing),
+      expect(transactions.relinkTransactionToCard(kind: TransactionKind.debt,smsId: 'a', cardId: missing),
           throwsMissingCard);
     });
 
@@ -246,6 +246,7 @@ void main() {
         .saveTransaction(txn(date: DateTime(2026, 7, 1), smsId: 'sms-1'));
 
     final relinked = await transactions.relinkTransactionToCard(
+      kind: TransactionKind.debt,
       smsId: 'sms-1',
       cardId: card.id!,
       cardAvailableLimit: 47500,
@@ -256,6 +257,8 @@ void main() {
         await transactions.listenToTransactionsForCard(card.id!).first;
     expect(forCard, hasLength(1));
     expect(forCard.single.cardAvailableLimit, 47500);
+    expect(forCard.single.kind, TransactionKind.debt,
+        reason: 'the row was an expense, and a spend on a credit card is debt');
   });
 
   test(
@@ -268,6 +271,7 @@ void main() {
     );
 
     final relinked = await transactions.relinkTransactionToCard(
+      kind: TransactionKind.debt,
       smsId: 'sms-2',
       cardId: cardB,
     );

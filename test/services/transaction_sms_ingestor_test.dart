@@ -242,6 +242,8 @@ void main() {
       );
       expect(mainList.single.cardId, card.id,
           reason: 'the row stays in the main list, now with its card');
+      expect(mainList.single.kind, TransactionKind.debt,
+          reason: 'it was saved as an expense, before it had a credit card');
     });
 
     group('kinds', () {

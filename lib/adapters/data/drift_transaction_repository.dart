@@ -127,6 +127,7 @@ class DriftTransactionRepository implements TransactionRepository {
   Future<bool> relinkTransactionToCard({
     required String smsId,
     required int cardId,
+    required TransactionKind kind,
     double? cardAvailableLimit,
   }) async {
     final updated = await guardCardReference(
@@ -135,6 +136,7 @@ class DriftTransactionRepository implements TransactionRepository {
             ..where((t) => t.smsId.equals(smsId) & t.cardId.isNull()))
           .write(TransactionsCompanion(
         cardId: Value(cardId),
+        kind: Value(kind),
         cardAvailableLimit: Value(cardAvailableLimit),
       )),
     );

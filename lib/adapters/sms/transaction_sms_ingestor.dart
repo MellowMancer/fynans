@@ -126,13 +126,15 @@ class TransactionSmsIngestor {
     // distinct SMS sharing minute+amount+party still import separately.
     final smsId = smsIdFor(sender: sender, body: body, date: date);
 
+    final kind = details.isRepayment
+        ? TransactionKind.repayment
+        : newTransactionKind(isInflow: isInflow, card: card);
+
     final t = Transaction()
       ..amount = details.amount
       ..date = details.date
       ..isInflow = isInflow
-      ..kind = details.isRepayment
-          ? TransactionKind.repayment
-          : newTransactionKind(isInflow: isInflow, card: card)
+      ..kind = kind
       ..party = party
       ..tags = <String>[]
       ..group = <String>[]
@@ -149,12 +151,14 @@ class TransactionSmsIngestor {
     // Already on disk under this smsId — the common case is just a repeat
     // scan (nothing to do). But if this is a matched card SMS, the existing
     // row may have been imported before the SMS was recognised as a card SMS,
-    // so it has no card. Link it to the card now, because
-    // importTransaction's insert-or-ignore has no way to do that itself.
+    // so it has no card, and its kind ignores the card. Link it to the card
+    // and set the kind for that card now, because importTransaction's
+    // insert-or-ignore has no way to do that itself.
     if (cardId != null) {
       return _repository.relinkTransactionToCard(
         smsId: smsId,
         cardId: cardId,
+        kind: kind,
         cardAvailableLimit: cardAvailableLimit,
       );
     }

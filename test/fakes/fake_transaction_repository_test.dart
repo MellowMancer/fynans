@@ -112,6 +112,7 @@ void main() {
       await repo.saveTransaction(txn()..smsId = 'abc123'); // cardId null
 
       final relinked = await repo.relinkTransactionToCard(
+        kind: TransactionKind.debt,
         smsId: 'abc123',
         cardId: 7,
         cardAvailableLimit: 4500,
@@ -135,7 +136,7 @@ void main() {
         ..cardId = 1);
 
       final relinked =
-          await repo.relinkTransactionToCard(smsId: 'abc123', cardId: 2);
+          await repo.relinkTransactionToCard(kind: TransactionKind.debt,smsId: 'abc123', cardId: 2);
 
       expect(relinked, isFalse);
       final stored = (await repo.fetchTransactionsInRange(
@@ -149,7 +150,7 @@ void main() {
         () async {
       final repo = FakeTransactionRepository();
       expect(
-        await repo.relinkTransactionToCard(smsId: 'missing', cardId: 1),
+        await repo.relinkTransactionToCard(kind: TransactionKind.debt,smsId: 'missing', cardId: 1),
         isFalse,
       );
     });

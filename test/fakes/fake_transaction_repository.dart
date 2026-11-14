@@ -166,12 +166,14 @@ class FakeTransactionRepository implements TransactionRepository {
   Future<bool> relinkTransactionToCard({
     required String smsId,
     required int cardId,
+    required TransactionKind kind,
     double? cardAvailableLimit,
   }) async {
     await _requireCard(cardId);
     for (final t in _transactions) {
       if (t.smsId == smsId && t.cardId == null) {
         t.cardId = cardId;
+        t.kind = kind;
         t.cardAvailableLimit = cardAvailableLimit;
         _notify();
         return true;
