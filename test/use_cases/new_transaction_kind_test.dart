@@ -15,6 +15,63 @@ PaymentCard _card(CardType type) => PaymentCard()
   ..status = CardStatus.active;
 
 void main() {
+  group('a kind that the user picked', () {
+    test('replaces the kind from the direction and the card', () {
+      expect(
+          newTransactionKind(
+              isInflow: false,
+              card: _card(CardType.credit),
+              chosen: TransactionKind.transfer),
+          TransactionKind.transfer);
+    });
+
+    test('debt and refund fix the direction; repayment and transfer do not',
+        () {
+      expect(fixedInflowOf(TransactionKind.debt), isFalse);
+      expect(fixedInflowOf(TransactionKind.refund), isTrue);
+      expect(fixedInflowOf(TransactionKind.repayment), isNull);
+      expect(fixedInflowOf(TransactionKind.transfer), isNull);
+    });
+
+    test('SaveTransaction keeps the fixed direction of the kind', () async {
+      final repo = FakeTransactionRepository();
+      await SaveTransaction(repo)(
+        amount: '50',
+        party: 'Shop',
+        group: '',
+        tags: const ['food'],
+        isInflow: false,
+        date: DateTime(2026, 7, 5),
+        kind: TransactionKind.refund,
+      );
+
+      final saved = (await repo.fetchTransactionsInRange(
+              range: DateRange.month(DateTime(2026, 7))))
+          .single;
+      expect(saved.kind, TransactionKind.refund);
+      expect(saved.isInflow, isTrue, reason: 'a refund is always money in');
+    });
+
+    test('SaveTransaction keeps the direction of a transfer', () async {
+      final repo = FakeTransactionRepository();
+      await SaveTransaction(repo)(
+        amount: '50',
+        party: 'Savings',
+        group: '',
+        tags: const ['food'],
+        isInflow: false,
+        date: DateTime(2026, 7, 5),
+        kind: TransactionKind.transfer,
+      );
+
+      final saved = (await repo.fetchTransactionsInRange(
+              range: DateRange.month(DateTime(2026, 7))))
+          .single;
+      expect(saved.kind, TransactionKind.transfer);
+      expect(saved.isInflow, isFalse);
+    });
+  });
+
   group('newTransactionKind', () {
     test('without a card, the direction decides', () {
       expect(newTransactionKind(isInflow: true), TransactionKind.income);

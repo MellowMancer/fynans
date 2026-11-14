@@ -68,6 +68,25 @@ void main() {
       expect(t.note, 'lunch');
     });
 
+    test('a picked kind is saved', () async {
+      final cubit = AddTransactionCubit(repo);
+      addTearDown(cubit.close);
+
+      await cubit.save(
+        amount: '500',
+        party: 'Savings',
+        group: '',
+        tags: ['food'],
+        isInflow: false,
+        date: DateTime(2026, 7, 5),
+        kind: TransactionKind.transfer,
+      );
+
+      final saved = await repo.fetchTransactionsInRange(
+          range: DateRange.month(DateTime(2026, 7)));
+      expect(saved.single.kind, TransactionKind.transfer);
+    });
+
     test('a failed save shows a plain message, not the error text', () async {
       final cubit = AddTransactionCubit(_FailingSaves());
       addTearDown(cubit.close);

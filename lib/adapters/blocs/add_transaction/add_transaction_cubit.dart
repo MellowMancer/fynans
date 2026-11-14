@@ -17,6 +17,10 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
         _saveTransaction = SaveTransaction(repository),
         super(const AddTransactionState());
 
+  /// The failure message when the repository cannot save the row.
+  static const saveFailedMessage =
+      'The transaction could not be saved. Try again.';
+
   /// Loads group/party autocomplete suggestions from the repository.
   Future<void> loadSuggestions() async {
     final groups = await _repository.getAllGroups();
@@ -24,13 +28,10 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
     emit(state.copyWith(groups: groups, parties: parties));
   }
 
-  /// The failure message when the repository cannot save the row.
-  static const saveFailedMessage =
-      'The transaction could not be saved. Try again.';
-
   /// Validates and persists the given form values via the use case, emitting
   /// [SaveStatus.inProgress] then success/invalid/failure. [existing] is the
-  /// saved row that the user edits, if any.
+  /// saved row that the user edits, if any. [kind] is the kind that the user
+  /// picked, if any.
   Future<void> save({
     required String amount,
     required String party,
@@ -41,6 +42,7 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
     String? note,
     Transaction? existing,
     PaymentCard? card,
+    TransactionKind? kind,
   }) async {
     emit(state.copyWith(status: SaveStatus.inProgress));
     try {
@@ -54,6 +56,7 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
         note: note,
         existing: existing,
         card: card,
+        kind: kind,
       );
       if (!result.isSuccess) {
         emit(state.copyWith(status: SaveStatus.invalid, message: result.error));
@@ -62,7 +65,8 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
       emit(state.copyWith(status: SaveStatus.success));
     } catch (_) {
       // Keep the message plain: the error text can contain SQL and the row.
-      emit(state.copyWith(status: SaveStatus.failure, message: saveFailedMessage));
+      emit(state.copyWith(
+          status: SaveStatus.failure, message: saveFailedMessage));
     }
   }
 }

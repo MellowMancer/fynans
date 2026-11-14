@@ -13,6 +13,7 @@ import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/utils/tag_helper.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/use_cases/amount_parser.dart';
+import 'package:fynans/use_cases/new_transaction_kind.dart';
 import 'package:fynans/use_cases/save_transaction.dart';
 
 /// How far back a transaction may be dated.
@@ -71,6 +72,11 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   late final List<String> _allTags = TagHelper.getAllTags();
   bool _creditFlag = false;
 
+  /// The kind that the user picked from the extra kinds, or null to use the
+  /// kind from the direction and the card.
+  TransactionKind? _kind;
+  bool _showMoreKinds = false;
+
   bool get _isEditing => widget.editing != null;
 
   /// An SMS row keeps the amount and the date from its SMS.
@@ -88,6 +94,12 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
     _selectedDate = t.date;
     _selectedTags.addAll(t.tags);
     _creditFlag = t.isInflow;
+    // An extra kind starts picked, with its row open, so that the user sees
+    // it and a save keeps it.
+    if (extraTransactionKinds.contains(t.kind)) {
+      _kind = t.kind;
+      _showMoreKinds = true;
+    }
   }
 
   @override
@@ -128,6 +140,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           date: _selectedDate,
           existing: widget.editing,
           card: widget.card,
+          kind: _kind,
         );
   }
 
@@ -156,6 +169,8 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
       _selectedTags.clear();
       _selectedDate = DateTime.now();
       _creditFlag = false;
+      _kind = null;
+      _showMoreKinds = false;
       _partyController.text = '';
       _tagFormFieldKey.currentState?.didChange(<String>[]);
     });
@@ -282,7 +297,42 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                               : AppPillTone.outline,
                           onTap: () => _setCredit(true),
                         ),
+                        AppSpacing.hGapSm,
+                        AppPill(
+                          _showMoreKinds ? 'Less' : 'More',
+                          icon: _showMoreKinds
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                          tone: AppPillTone.muted,
+                          onTap: () => setState(
+                              () => _showMoreKinds = !_showMoreKinds),
+                        ),
                       ],
+                    ),
+                    AnimatedSize(
+                      duration: AppDuration.normal,
+                      curve: Curves.fastOutSlowIn,
+                      alignment: Alignment.topCenter,
+                      child: _showMoreKinds
+                          ? Padding(
+                              padding:
+                                  const EdgeInsets.only(top: AppSpacing.sm),
+                              child: Wrap(
+                                spacing: AppSpacing.sm,
+                                runSpacing: AppSpacing.sm,
+                                children: [
+                                  for (final kind in extraTransactionKinds)
+                                    AppPill(
+                                      Fmt.capitalize(kind.name),
+                                      tone: _kind == kind
+                                          ? AppPillTone.accent
+                                          : AppPillTone.outline,
+                                      onTap: () => _setKind(kind),
+                                    ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox(width: double.infinity),
                     ),
                   ],
                 ),
@@ -443,7 +493,25 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
 
   /// Switching direction only relabels the counterparty field (Sender vs
   /// Recipient) — it deliberately does not prefill or clear what was typed.
-  void _setCredit(bool isCredit) => setState(() => _creditFlag = isCredit);
+  /// Sets the direction. A picked kind whose fixed direction is the other
+  /// direction no longer fits, so the form clears it.
+  void _setCredit(bool isCredit) => setState(() {
+        _creditFlag = isCredit;
+        final kind = _kind;
+        final fixed = kind == null ? null : fixedInflowOf(kind);
+        if (fixed != null && fixed != isCredit) _kind = null;
+      });
+
+  /// Picks [kind], or clears it if it is already picked. A kind with a fixed
+  /// direction also sets the direction.
+  void _setKind(TransactionKind kind) => setState(() {
+        if (_kind == kind) {
+          _kind = null;
+          return;
+        }
+        _kind = kind;
+        _creditFlag = fixedInflowOf(kind) ?? _creditFlag;
+      });
 }
 
 /// A labelled block in the form — keeps every field's spacing identical.

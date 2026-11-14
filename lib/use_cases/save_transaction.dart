@@ -39,6 +39,10 @@ class SaveTransaction {
   /// values replace it, and it keeps its id and its SMS. An SMS row also
   /// keeps the amount and the date from its SMS, whatever [amount] and [date]
   /// say.
+  ///
+  /// [kind], when the user picked one, replaces the kind from the direction.
+  /// If that kind has a fixed direction (see [fixedInflowOf]), that direction
+  /// replaces [isInflow].
   Future<SaveTransactionResult> call({
     required String amount,
     required String party,
@@ -49,8 +53,10 @@ class SaveTransaction {
     String? note,
     Transaction? existing,
     PaymentCard? card,
+    TransactionKind? kind,
   }) async {
     final fromSms = existing != null && existing.isAutoImported;
+    final inflow = (kind == null ? null : fixedInflowOf(kind)) ?? isInflow;
     final amountResult = parseAmount(amount);
     final parsedAmount = fromSms ? existing.amount : amountResult.value;
     if (parsedAmount == null) {
@@ -65,7 +71,7 @@ class SaveTransaction {
 
     final trimmedParty = party.trim();
     final resolvedParty =
-        isInflow && trimmedParty.isEmpty ? kDefaultCreditParty : trimmedParty;
+        inflow && trimmedParty.isEmpty ? kDefaultCreditParty : trimmedParty;
 
     final transaction = Transaction()
       ..id = existing?.id
@@ -74,12 +80,13 @@ class SaveTransaction {
       ..tags = List.of(tags)
       ..group = groups
       ..party = resolvedParty
-      ..isInflow = isInflow
-      // An edit has no card object, so it keeps the row's kind and only
-      // flips it if the user changed the direction.
+      ..isInflow = inflow
+      // A picked kind always wins. Otherwise an edit, which has no card
+      // object, keeps the row's kind and flips it only if the direction
+      // changed.
       ..kind = existing == null
-          ? newTransactionKind(isInflow: isInflow, card: card)
-          : editedKind(existing, isInflow: isInflow)
+          ? newTransactionKind(isInflow: inflow, card: card, chosen: kind)
+          : kind ?? editedKind(existing, isInflow: inflow)
       ..note = (note != null && note.isNotEmpty) ? note : null
       ..smsId = existing?.smsId
       ..smsBody = existing?.smsBody
