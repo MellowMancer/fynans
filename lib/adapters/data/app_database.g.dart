@@ -1685,6 +1685,10 @@ class $CardStatementsTable extends CardStatements
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {cardId, dueDate},
+      ];
+  @override
   CardStatementRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return CardStatementRow(

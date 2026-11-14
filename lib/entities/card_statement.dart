@@ -1,10 +1,9 @@
 /// One card's billing-cycle statement — due date, total due, minimum due.
 ///
-/// Parsed from a statement/due-date-reminder SMS, which `SmsParserService`
-/// otherwise excludes outright (see `looksLikeCardStatementText`) to avoid
-/// recording it as a phantom debit. This is deliberately its own entity, not
-/// a `Transaction` — a statement is metadata about a billing cycle, not a
-/// money movement.
+/// Parsed from a statement SMS by `SmsParserService.parseCardStatement`. A
+/// statement states a total due and a due date. This is deliberately its own
+/// entity, not a `Transaction` — a statement is metadata about a billing
+/// cycle, not a money movement.
 class CardStatement {
   /// Storage-assigned row identity, null until the record has been saved.
   int? id;

@@ -129,7 +129,9 @@ class TransactionSmsIngestor {
       ..amount = details.amount
       ..date = details.date
       ..isInflow = isInflow
-      ..kind = newTransactionKind(isInflow: isInflow, card: card)
+      ..kind = details.isRepayment
+          ? TransactionKind.repayment
+          : newTransactionKind(isInflow: isInflow, card: card)
       ..party = party
       ..tags = <String>[]
       ..group = <String>[]

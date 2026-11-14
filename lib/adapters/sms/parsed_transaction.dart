@@ -24,6 +24,11 @@ class ParsedTransactionDetails extends Equatable {
   /// fold of past transactions — see `summariseCard`.
   final double? availableLimit;
 
+  /// True when this SMS is one side of a credit card bill payment: the bank
+  /// account's debit, or the card's "payment received". Neither side counts
+  /// as income or spending.
+  final bool isRepayment;
+
   const ParsedTransactionDetails({
     required this.type,
     required this.amount,
@@ -34,6 +39,7 @@ class ParsedTransactionDetails extends Equatable {
     this.isCreditCard = false,
     this.cardLast4,
     this.availableLimit,
+    this.isRepayment = false,
   });
 
   @override
@@ -47,5 +53,6 @@ class ParsedTransactionDetails extends Equatable {
         isCreditCard,
         cardLast4,
         availableLimit,
+        isRepayment,
       ];
 }

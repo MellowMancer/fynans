@@ -63,6 +63,29 @@ void runCardStatementRepositoryContract(
         expect(a, isTrue);
         expect(b, isTrue);
       });
+
+      test(
+          'a second statement for the same card and due date is a no-op — '
+          'a reminder that repeats a statement keeps the first date', () async {
+        final dueDate = DateTime(2026, 2, 5);
+        final first = await repo.importStatement(statement(
+          smsId: 'statement',
+          statementDate: DateTime(2026, 1, 20),
+          dueDate: dueDate,
+          totalDue: 5000,
+        ));
+        final reminder = await repo.importStatement(statement(
+          smsId: 'reminder',
+          statementDate: DateTime(2026, 2, 1),
+          dueDate: dueDate,
+          totalDue: 5000,
+        ));
+
+        expect(first, isTrue);
+        expect(reminder, isFalse);
+        expect((await repo.fetchLatestStatement(1))!.statementDate,
+            DateTime(2026, 1, 20));
+      });
     });
 
     group('fields', () {

@@ -169,22 +169,19 @@ class SmsParserService {
     'card statement',
   ];
 
-  // Card SMS decide direction from these explicit markers rather than the
-  // generic _creditKeywords, whose bare 'credit' substring matches "credit
-  // card" in the body of nearly every card SMS regardless of which way money
-  // moved — see isTransactionSms/_getTransactionType.
-  static const List<String> _cardCreditMarkers = [
-    'refund',
-    'reversed',
-    'reversal',
-    'credited to your',
-    'payment received',
-    'has been received',
-  ];
+  // A bank account written with its masked number ("A/c XX4321", "account
+  // ending 4321"). An SMS that names one is about that bank account, even
+  // when it also mentions a credit card ("debited from A/c XX4321 towards
+  // your credit card"). "Card account" is the card itself, so it is skipped.
+  static final _bankAccountRegex = RegExp(
+    r'(?<!card\s)\b(?:a/c|acct|account)\b[\s.:\-]*(?:no\.?\s*)?'
+    r'(?:[x*]{2,}\s*\d|ending\s*(?:with|in)?\s*\d)',
+    caseSensitive: false,
+  );
 
-  // Applied instead of _exclusionKeywords for SMS already recognized as card
-  // SMS: the full list's 'due'/'outstanding' would drop real spend alerts,
-  // which routinely carry a legitimate "Avl limit ... Total due ..." tail.
+  // Applied instead of _exclusionKeywords for card SMS: the full list's
+  // 'due'/'outstanding' would drop real spend alerts, which routinely carry
+  // a legitimate "Avl limit ... Total due ..." tail.
   static const List<String> _cardExclusionKeywords = [
     'otp',
     'one time password',
@@ -195,46 +192,66 @@ class SmsParserService {
     'congratulations',
   ];
 
-  // Statement/due-date reminder language, applied alongside
-  // _cardExclusionKeywords for card SMS. Phase 1 deliberately doesn't parse
-  // statements (CREDIT_CARD_PLAN.md) — without this, a reminder mentioning
-  // "payment"/"due" can still clear Rule 3's inclusion check on its own and
-  // get recorded as a phantom debit for the due amount, whose "Avl Limit"
-  // (a billing-cycle snapshot, not a live figure) then permanently overrides
-  // the real fold in summariseCard. Phrases, not bare 'due'/'outstanding' —
-  // those bare words sit in real spend-alert tails (see the exclusion note
-  // above) and in legitimate refund text ("adjusted against the
-  // outstanding"), so only multi-word statement-specific phrasing is safe
-  // to exclude here.
-  static const List<String> _cardStatementKeywords = [
-    'statement is generated',
-    'statement generated',
-    'e-statement',
-    'bill generated',
-    'total due',
-    'total amount due',
-    'minimum due',
-    'minimum amount due',
-    'min due',
-    'amount due',
-    'due date',
-    'due on',
+  // Reminders announce money that has not moved yet. Phrases, not bare
+  // 'due'/'outstanding', which sit in real spend-alert tails and in refund
+  // text ("adjusted against the outstanding").
+  static const List<String> _cardReminderPhrases = [
+    'overdue',
     'is due',
-    'payment due',
-    'please pay by',
+    'due on',
+    'ignore if paid',
+    'ignore if already paid',
+    'please pay',
     'kindly pay',
-    'make payment by',
+    'make payment',
     'pay by',
+    'pay before',
   ];
 
-  // Widens Rule 3's inclusion check for card SMS: a refund/reversal notice
-  // (e.g. "Refund initiated: Amt: Rs.X on HDFC Bank Credit Card 1111.")
-  // often carries none of the generic _transactionKeywords.
-  static const List<String> _cardInclusionKeywords = [
-    'refund',
-    'reversed',
-    'reversal',
+  // Words that show that money moved. A card SMS without one is a notice,
+  // not a transaction.
+  static const List<String> _cardSpendWords = [
+    'spent',
+    'debited',
+    'charged',
+    'purchase',
+    'used',
+    'txn',
+    'transaction',
+    'withdrawn',
+    'paid',
   ];
+  static const List<String> _cardRefundWords = [
+    'refund',
+    'reversal',
+    'reversed',
+  ];
+  static const List<String> _cardActionWords = [
+    ..._cardSpendWords,
+    ..._cardRefundWords,
+    'received',
+    'credited',
+  ];
+
+  // A statement states what is due. One that also reports money moving is a
+  // spend or a payment alert with a statement-like tail, not a statement.
+  static const List<String> _statementBlockingWords = [
+    'spent',
+    'debited',
+    'charged',
+    'purchase',
+    ..._cardRefundWords,
+    'received',
+    'credited',
+  ];
+
+  // Money onto the card: a payment received, or something credited to the
+  // card. "Credited to your account" (reward points) is not money onto the
+  // card.
+  static final _cardInflowRegex = RegExp(
+    r'\breceived\b|credited\s+to\s+(?:your\s+)?[\w\s]{0,30}?card',
+    caseSensitive: false,
+  );
 
   // Card last-4 shapes _accountRegex can't reach: "ending 1234"/"ending with
   // 1234", and unmasked forms like "Credit Card 1111" with no x's at all.
@@ -258,8 +275,7 @@ class SmsParserService {
     dotAll: true,
   );
 
-  // Statement-SMS-only regexes — never run against a plain spend/payment
-  // alert, only against text `looksLikeCardStatementText` already flagged.
+  // Statement-SMS-only regexes, run by parseCardStatement.
   static final _dueDateRegex = RegExp(
     r'(?:due\s*(?:date)?|pay\s*by)\s*(?:is|:|on)?\s*'
     r'(\d{1,2}[-/][A-Za-z]{3,9}[-/]?\d{2,4}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})',
@@ -274,52 +290,45 @@ class SmsParserService {
     caseSensitive: false,
   );
 
-  /// Rule 0: does this SMS describe a credit-card spend/payment rather than a
-  /// savings-account transaction? Card SMS are classified, not rejected —
-  /// `isTransactionSms` still returns true for them, but routes them through
-  /// the card-aware exclusion/inclusion rules below.
+  /// Rule 0: does this SMS describe a credit card rather than a bank
+  /// account? An SMS that names a bank account by its masked number is about
+  /// that account, even when it also mentions a credit card.
   bool isCreditCardSms(String sender, String messageBody) {
-    final lowerCaseSender = sender.toLowerCase();
-    final lowerCaseBody = messageBody.toLowerCase();
-    return _creditCardSenders
-            .any((token) => lowerCaseSender.contains(token.toLowerCase())) ||
-        _creditCardBodyKeywords.any((kw) => lowerCaseBody.contains(kw));
+    if (_bankAccountRegex.hasMatch(messageBody)) return false;
+    return _containsToken(sender.toLowerCase(), _creditCardSenders) ||
+        _containsAny(messageBody.toLowerCase(), _creditCardBodyKeywords);
   }
 
-  /// True when [body] reads like a card statement/due-date reminder rather
-  /// than a real spend/payment — see `_cardStatementKeywords`. Exposed
-  /// (unlike the other rule sets, which stay private) so already-imported
-  /// transactions saved before this exclusion existed can be identified and
-  /// purged — see `purgePhantomCardStatementTransactions`.
-  bool looksLikeCardStatementText(String body) {
-    final lowerCaseBody = body.toLowerCase();
-    return _cardStatementKeywords.any((k) => lowerCaseBody.contains(k));
-  }
-
-  /// Extracts due-date/total/minimum from a statement SMS. Only meaningful
-  /// when [looksLikeCardStatementText] is true — unlike
-  /// [parseTransactionDetails], this is never gated behind
-  /// [isTransactionSms], since statement SMS are deliberately excluded from
-  /// ever becoming a `Transaction` (see `entities/card_statement.dart`).
+  /// Extracts the due date, total due and minimum due from a card statement.
+  ///
+  /// A statement is a card SMS from a known sender that states a total due
+  /// and a due date, and reports no money moving. A reminder without a total
+  /// is not a statement, and neither is a spend alert with a "Total Due"
+  /// tail. A statement never becomes a `Transaction`.
   ParsedCardStatementDetails? parseCardStatement({
     required String sender,
     required String body,
     required DateTime date,
   }) {
     if (body.trim().isEmpty) return null;
-    if (!isCreditCardSms(sender, body) || !looksLikeCardStatementText(body)) {
+    final lowerCaseBody = body.toLowerCase();
+    if (!isCreditCardSms(sender, body) ||
+        _containsAny(lowerCaseBody, _cardExclusionKeywords) ||
+        !_isKnownSender(sender.toLowerCase(), isCard: true) ||
+        _containsAny(lowerCaseBody, _statementBlockingWords)) {
       return null;
     }
 
-    final lowerCaseBody = body.toLowerCase();
     final cardLast4 = _getCardLast4(lowerCaseBody);
-    if (cardLast4 == null) return null; // can't route without a card match
+    final totalDue = _extractAmount(_totalDueRegex, lowerCaseBody);
+    final dueDate = _getDueDate(lowerCaseBody);
+    if (cardLast4 == null || totalDue == null || dueDate == null) return null;
 
     return ParsedCardStatementDetails(
       statementDate: date,
       cardLast4: cardLast4,
-      dueDate: _getDueDate(lowerCaseBody),
-      totalDue: _extractAmount(_totalDueRegex, lowerCaseBody),
+      dueDate: dueDate,
+      totalDue: totalDue,
       minimumDue: _extractAmount(_minimumDueRegex, lowerCaseBody),
     );
   }
@@ -327,38 +336,37 @@ class SmsParserService {
   bool isTransactionSms(String sender, String messageBody) {
     final lowerCaseSender = sender.toLowerCase();
     final lowerCaseBody = messageBody.toLowerCase();
-    final isCard = isCreditCardSms(sender, messageBody);
+    if (isCreditCardSms(sender, messageBody)) {
+      return _isCardTransaction(lowerCaseSender, lowerCaseBody);
+    }
 
     // Rule 1: Exclusion Check.
-    final exclusionKeywords = isCard
-        ? [..._cardExclusionKeywords, ..._cardStatementKeywords]
-        : _exclusionKeywords;
-    if (exclusionKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
-      // This log helps you see what's being actively blocked.
-      return false;
-    }
-
-    // Sender whitelist. Most _creditCardSenders values don't match
-    // _whiteListedSenders (AMEX, ONECRD, CITICC, ICICCC, ...), so without
-    // this union a card SMS would be dropped here regardless of what Rule 0
-    // classified it as.
-    final whitelisted = _whiteListedSenders.any(
-            (keyword) => lowerCaseSender.contains(keyword.toLowerCase())) ||
-        (isCard &&
-            _creditCardSenders
-                .any((token) => lowerCaseSender.contains(token.toLowerCase())));
-    if (!whitelisted) {
-      // This log is crucial for debugging your sender list.
-      return false;
-    }
-
-    // Rule 3: Inclusion Check. Widened for card SMS — a refund/reversal
-    // notice often carries none of the generic _transactionKeywords.
-    final inclusionKeywords = isCard
-        ? [..._transactionKeywords, ..._cardInclusionKeywords]
-        : _transactionKeywords;
-    return inclusionKeywords.any((keyword) => lowerCaseBody.contains(keyword));
+    if (_containsAny(lowerCaseBody, _exclusionKeywords)) return false;
+    // Rule 2: the sender must be a known bank.
+    if (!_isKnownSender(lowerCaseSender, isCard: false)) return false;
+    // Rule 3: Inclusion Check.
+    return _containsAny(lowerCaseBody, _transactionKeywords);
   }
+
+  /// A card SMS is a transaction when it reports money moving, is not a
+  /// promotion or a reminder, and comes from a known sender.
+  bool _isCardTransaction(String lowerCaseSender, String lowerCaseBody) =>
+      !_containsAny(lowerCaseBody, _cardExclusionKeywords) &&
+      !_containsAny(lowerCaseBody, _cardReminderPhrases) &&
+      _isKnownSender(lowerCaseSender, isCard: true) &&
+      _containsAny(lowerCaseBody, _cardActionWords);
+
+  /// Card SMS also accept the card-only senders (AMEX, ONECRD, ...), which
+  /// the bank list does not contain.
+  bool _isKnownSender(String lowerCaseSender, {required bool isCard}) =>
+      _containsToken(lowerCaseSender, _whiteListedSenders) ||
+      (isCard && _containsToken(lowerCaseSender, _creditCardSenders));
+
+  static bool _containsAny(String lowerCaseText, List<String> keywords) =>
+      keywords.any(lowerCaseText.contains);
+
+  static bool _containsToken(String lowerCaseSender, List<String> tokens) =>
+      tokens.any((t) => lowerCaseSender.contains(t.toLowerCase()));
 
   ParsedTransactionDetails? parseTransactionDetails({
     required String sender,
@@ -405,7 +413,21 @@ class SmsParserService {
       isCreditCard: isCard,
       cardLast4: cardLast4,
       availableLimit: availableLimit,
+      isRepayment: _isRepayment(lowerCaseBody, transactionType, isCard: isCard),
     );
+  }
+
+  /// One side of a credit card bill payment: the card's "payment received",
+  /// or a bank debit that names a credit card.
+  bool _isRepayment(String lowerCaseBody, TransactionType type,
+      {required bool isCard}) {
+    if (isCard) {
+      return type == TransactionType.credit &&
+          lowerCaseBody.contains('payment') &&
+          !_containsAny(lowerCaseBody, _cardRefundWords);
+    }
+    return type == TransactionType.debit &&
+        _containsAny(lowerCaseBody, _creditCardBodyKeywords);
   }
 
   // --- PRIVATE HELPER METHODS ---
@@ -417,17 +439,7 @@ class SmsParserService {
     if (_declinedKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.declined;
     }
-    if (isCreditCard) {
-      // Never fall through to the generic _creditKeywords here: its bare
-      // 'credit' substring matches "credit card" in almost every card SMS
-      // body, which would mis-sign a plain spend as a refund whenever the
-      // message happens to lack a debit keyword — silently inflating the
-      // shown available limit. Card SMS decide direction only from this
-      // explicit marker list, defaulting to debit otherwise.
-      return _cardCreditMarkers.any((k) => lowerCaseBody.contains(k))
-          ? TransactionType.credit
-          : TransactionType.debit;
-    }
+    if (isCreditCard) return _cardDirection(lowerCaseBody);
     if (_debitKeywords.any((keyword) => lowerCaseBody.contains(keyword))) {
       return TransactionType.debit;
     }
@@ -453,6 +465,19 @@ class SmsParserService {
           return TransactionType.credit;
         }
       }
+    }
+    return TransactionType.unknown;
+  }
+
+  /// A card SMS's direction. "Credit card" appears in nearly every card SMS,
+  /// so the generic credit keywords never decide it.
+  TransactionType _cardDirection(String lowerCaseBody) {
+    if (_containsAny(lowerCaseBody, _cardRefundWords) ||
+        _cardInflowRegex.hasMatch(lowerCaseBody)) {
+      return TransactionType.credit;
+    }
+    if (_containsAny(lowerCaseBody, _cardSpendWords)) {
+      return TransactionType.debit;
     }
     return TransactionType.unknown;
   }

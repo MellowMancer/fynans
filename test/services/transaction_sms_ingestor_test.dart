@@ -243,6 +243,70 @@ void main() {
       expect(mainList.single.cardId, card.id,
           reason: 'the row stays in the main list, now with its card');
     });
+
+    group('kinds', () {
+      PaymentCard seedSbiCard() {
+        final card = PaymentCard()
+          ..issuer = 'SBI Card'
+          ..last4 = '1234'
+          ..type = CardType.credit
+          ..status = CardStatus.active
+          ..creditLimit = 50000;
+        cardRepository.seed([card]);
+        return card;
+      }
+
+      Future<Transaction> onlyRow() async => (await repository
+              .fetchTransactionsInRange(range: DateRange.month(cardDate)))
+          .single;
+
+      test("the card's payment-received SMS is a repayment on the card",
+          () async {
+        final card = seedSbiCard();
+        await ingestor.ingest(
+          sender: cardSender,
+          body: 'Your payment of Rs.1,644.55 has been credited to your SBI '
+              'Credit Card ending with 1234. Your available limit is '
+              'Rs.48,355.45.',
+          date: cardDate,
+        );
+
+        final row = await onlyRow();
+        expect(row.kind, TransactionKind.repayment);
+        expect(row.isInflow, isTrue);
+        expect(row.cardId, card.id);
+      });
+
+      test("the bank's debit towards the card bill is a repayment with no "
+          'card', () async {
+        seedSbiCard();
+        await ingestor.ingest(
+          sender: 'SBIINB',
+          body: 'Rs.5,000.00 debited from A/c XX4321 towards payment of SBI '
+              'Credit Card XX1234',
+          date: cardDate,
+        );
+
+        final row = await onlyRow();
+        expect(row.kind, TransactionKind.repayment);
+        expect(row.isInflow, isFalse);
+        expect(row.cardId, isNull);
+      });
+
+      test('a refund on the card is a refund', () async {
+        final card = seedSbiCard();
+        await ingestor.ingest(
+          sender: cardSender,
+          body: 'Refund of Rs.250.00 credited to your SBI Credit Card ending '
+              '1234 for AMAZON.',
+          date: cardDate,
+        );
+
+        final row = await onlyRow();
+        expect(row.kind, TransactionKind.refund);
+        expect(row.cardId, card.id);
+      });
+    });
   });
 }
 

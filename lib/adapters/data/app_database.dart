@@ -133,6 +133,14 @@ class CardStatements extends Table {
   RealColumn get minimumDue => real().nullable()();
   TextColumn get smsId => text().nullable().unique()();
   TextColumn get smsBody => text().nullable()();
+
+  /// One statement per card and due date. A reminder that repeats the
+  /// statement's figures is then ignored, so the real statement's date stays
+  /// the anchor for the card balance.
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {cardId, dueDate},
+      ];
 }
 
 @DriftDatabase(tables: [Transactions, Cards, DetectedCards, CardStatements])

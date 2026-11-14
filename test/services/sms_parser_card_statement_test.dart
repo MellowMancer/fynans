@@ -1,11 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/sms/sms_parser_service.dart';
 
-/// Statement/due-date reminder parsing — a genuinely new capability. Before
-/// this, `looksLikeCardStatementText` existed only to *exclude* this SMS
-/// shape from `parseTransactionDetails` (see `sms_parser_card_test.dart`'s
-/// sibling coverage); this file covers the new `parseCardStatement`, which
-/// extracts the due date/total/minimum due instead of throwing them away.
+/// Statement parsing: `parseCardStatement` extracts the due date, total due
+/// and minimum due. See `sms_parser_card_rules_test.dart` for what is not a
+/// statement (reminders, spend alerts, promotions, unknown senders).
 void main() {
   final parser = SmsParserService();
   final now = DateTime(2026, 1, 20);

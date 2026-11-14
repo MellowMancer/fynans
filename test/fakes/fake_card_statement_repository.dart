@@ -26,6 +26,14 @@ class FakeCardStatementRepository implements CardStatementRepository {
     if (smsId != null && _statements.any((s) => s.smsId == smsId)) {
       return false;
     }
+    // Mirrors the unique (cardId, dueDate) key. SQLite never treats two
+    // NULLs as equal, so a statement with no due date never conflicts.
+    final dueDate = statement.dueDate;
+    if (dueDate != null &&
+        _statements.any(
+            (s) => s.cardId == statement.cardId && s.dueDate == dueDate)) {
+      return false;
+    }
     statement.id = ++_nextId;
     _statements.add(statement);
     _notify();
