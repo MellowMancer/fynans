@@ -190,6 +190,52 @@ void main() {
       );
     });
 
+    group('sightings that the new card matches', () {
+      DetectedCard sighting(String sender, String last4) => DetectedCard()
+        ..issuerGuess = 'HDFC'
+        ..sender = sender
+        ..last4 = last4
+        ..firstSeen = DateTime(2026, 1, 1)
+        ..lastSeen = DateTime(2026, 1, 1);
+
+      Future<List<String>> pendingDigits() async =>
+          (await detectedCardRepository.watchPending().first)
+              .map((d) => d.last4)
+              .toList();
+
+      Future<void> addWithPlusButton(CardType type) async {
+        final cubit = AddCardCubit(cardRepository, transactionRepository,
+            detectedCardRepository, statementRepository);
+        addTearDown(cubit.close);
+        await cubit.save(
+          issuer: 'HDFC',
+          last4: '1234',
+          type: type,
+          creditLimit: '50000',
+        );
+      }
+
+      test('a credit card added with the + button removes its sighting',
+          () async {
+        detectedCardRepository
+            .seed([sighting('HDFCCC', '1234'), sighting('HDFCCC', '9999')]);
+
+        await addWithPlusButton(CardType.credit);
+
+        expect(await pendingDigits(), ['9999'],
+            reason: 'only the sighting that the card matches goes');
+      });
+
+      test('a debit card keeps the sighting, because a credit card SMS never '
+          'matches a debit card', () async {
+        detectedCardRepository.seed([sighting('HDFCCC', '1234')]);
+
+        await addWithPlusButton(CardType.debit);
+
+        expect(await pendingDigits(), ['1234']);
+      });
+    });
+
     group('debit cards', () {
       AddCardCubit newCubit() {
         final cubit = AddCardCubit(cardRepository, transactionRepository,

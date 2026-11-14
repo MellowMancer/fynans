@@ -6,6 +6,7 @@ import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/adapters/sms/sms_intake_service.dart';
+import 'package:fynans/use_cases/match_transaction_to_card.dart';
 import 'add_card_state.dart';
 
 /// Drives the add-card form: validates and persists via [CardRepository],
@@ -32,9 +33,10 @@ class AddCardCubit extends Cubit<AddCardState> {
   /// [creditLimit]. A debit card ignores it, and may carry [accountLast4],
   /// the last digits of the bank account that it draws from.
   ///
-  /// [fromDetection], when the form was opened from a "is this your card?"
-  /// prompt, is removed from the detected-card list once the real card is
-  /// saved — it's confirmed now, not still a pending sighting.
+  /// After the save, the sightings that the new card matches are removed,
+  /// because their SMS now belong to the card. [fromDetection], when the form
+  /// was opened from an "is this your card?" prompt, is removed too, even if
+  /// the user changed the digits.
   Future<void> save({
     required String issuer,
     required String last4,
@@ -91,13 +93,14 @@ class AddCardCubit extends Cubit<AddCardState> {
       return;
     }
 
-    if (fromDetection != null) {
-      try {
+    try {
+      if (fromDetection != null) {
         await _detectedCardRepository.remove(fromDetection);
-      } catch (_) {
-        // Best-effort — a failure here shouldn't block the save the user
-        // actually asked for; the sighting would just linger in the banner.
       }
+      await _removeMatchedSightings(card);
+    } catch (_) {
+      // Best-effort — a failure here shouldn't block the save the user
+      // actually asked for; the sighting would just linger in the banner.
     }
 
     emit(state.copyWith(status: AddCardStatus.sweepingSms));
@@ -123,6 +126,20 @@ class AddCardCubit extends Cubit<AddCardState> {
       // failed, so this is still a success from the user's point of view;
       // the next app launch's own catchUp will pick up where this left off.
       emit(state.copyWith(status: AddCardStatus.success, importedCount: 0));
+    }
+  }
+
+  /// Removes each pending sighting that the SMS sweep now matches to
+  /// [card]. The sweep matches a credit card SMS only to a credit card, and
+  /// only credit card SMS make sightings.
+  Future<void> _removeMatchedSightings(PaymentCard card) async {
+    final creditCards = (await _cardRepository.fetchCards())
+        .where((c) => c.type == CardType.credit)
+        .toList();
+    for (final sighting in await _detectedCardRepository.watchPending().first) {
+      final match =
+          matchCard(creditCards, last4: sighting.last4, sender: sighting.sender);
+      if (match?.id == card.id) await _detectedCardRepository.remove(sighting);
     }
   }
 
