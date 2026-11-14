@@ -67,10 +67,14 @@ CardSummary summariseDebitCard(
   required DateTime month,
 }) {
   final range = DateRange.month(month);
-  final spent = transactions
-      .where((t) => range.contains(t.date))
-      .fold(0.0, (sum, t) => sum + t.spendingEffect);
-  return CardSummary(card: card, spent: spent, available: 0, utilization: 0);
+  final inMonth = transactions.where((t) => range.contains(t.date));
+  return CardSummary(
+    card: card,
+    spent: inMonth.fold(0.0, (sum, t) => sum + t.spendingEffect),
+    income: inMonth.fold(0.0, (sum, t) => sum + t.incomeEffect),
+    available: 0,
+    utilization: 0,
+  );
 }
 
 /// What was owed at the newest known point, when that was, and the row that

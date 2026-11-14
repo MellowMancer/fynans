@@ -49,10 +49,24 @@ class CardTile extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppMetricTile(
-          label: 'Spent this month',
-          amount: summary.spent,
-          tone: MoneyTone.negative,
+        Row(
+          children: [
+            Expanded(
+              child: AppMetricTile(
+                label: 'Income this month',
+                amount: summary.income,
+                tone: MoneyTone.positive,
+              ),
+            ),
+            AppSpacing.hGapSm,
+            Expanded(
+              child: AppMetricTile(
+                label: 'Spent this month',
+                amount: summary.spent,
+                tone: MoneyTone.negative,
+              ),
+            ),
+          ],
         ),
         if (account != null) ...[
           AppSpacing.gapXs,

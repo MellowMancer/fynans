@@ -298,6 +298,25 @@ void main() {
       expect(result.available, 0);
       expect(result.utilization, 0);
     });
+
+    test("is the month's income, without refunds, repayments or transfers",
+        () {
+      final result = summariseDebitCard(
+        debitCard,
+        [
+          _credit(40000, DateTime(2026, 7, 1)),
+          _credit(2500, DateTime(2026, 7, 9)),
+          _credit(9000, DateTime(2026, 6, 30)),
+          _credit(100, DateTime(2026, 7, 21))..kind = TransactionKind.refund,
+          _credit(800, DateTime(2026, 7, 22))..kind = TransactionKind.transfer,
+          _credit(300, DateTime(2026, 7, 23))
+            ..kind = TransactionKind.repayment,
+        ],
+        month: DateTime(2026, 7, 15),
+      );
+
+      expect(result.income, 42500);
+    });
   });
 
   test('summariseCard still refuses a debit card', () {

@@ -229,6 +229,30 @@ void main() {
     expect(find.textContaining('% USED'), findsNothing);
   });
 
+  testWidgets("a debit card shows this month's income next to its spending",
+      (tester) async {
+    final debit = PaymentCard()
+      ..issuer = 'HDFC'
+      ..last4 = '1234'
+      ..type = CardType.debit
+      ..status = CardStatus.active;
+    cardRepository.seed([debit]);
+    transactionRepository.seed([
+      Transaction()
+        ..amount = 12345
+        ..date = DateTime.now()
+        ..isInflow = true
+        ..kind = TransactionKind.income
+        ..party = 'Employer'
+        ..tags = <String>[]
+        ..cardId = debit.id,
+    ]);
+    await pumpScreen(tester);
+
+    expect(find.text('INCOME THIS MONTH'), findsOneWidget);
+    expect(find.textContaining('12,345.00', findRichText: true), findsWidgets);
+  });
+
   group('closed and untracked cards', () {
     PaymentCard closedCard() => PaymentCard()
       ..issuer = 'AXIS'
