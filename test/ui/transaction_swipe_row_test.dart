@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
+import 'package:fynans/ui/theme/app_spacing.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
 import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/ui/widgets/transaction_swipe_row.dart';
@@ -68,6 +69,25 @@ void main() {
     expect(find.text('Cancel'), findsOneWidget);
     expect(find.byType(TransactionListItem), findsOneWidget);
     expect(await stored(), hasLength(1));
+  });
+
+  testWidgets('the buttons share the card\'s height and rounded corners',
+      (tester) async {
+    await pumpRow(tester);
+    await slideOpen(tester);
+
+    // The card's visible box, without the gap below the row.
+    final card = find
+        .descendant(
+            of: find.byType(TransactionListItem),
+            matching: find.byType(DecoratedBox))
+        .first;
+    expect(tester.getSize(find.byType(SlidableAction).first).height,
+        tester.getSize(card).height);
+
+    final clip = tester.widget<ClipRRect>(find.ancestor(
+        of: find.byType(Slidable), matching: find.byType(ClipRRect)));
+    expect(clip.borderRadius, AppRadius.lgAll);
   });
 
   testWidgets('Cancel closes the row', (tester) async {
