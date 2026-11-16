@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fynans/adapters/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_state.dart';
@@ -18,6 +19,7 @@ import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ui/widgets/date_range_selector.dart';
 import 'package:fynans/ui/widgets/transaction_filter_sheet.dart';
 import 'package:fynans/ui/widgets/transaction_list_item.dart';
+import 'package:fynans/ui/widgets/transaction_swipe_row.dart';
 import 'package:fynans/use_cases/date_range_presets.dart';
 
 
@@ -414,10 +416,12 @@ class SimpleTransactionListView extends StatelessWidget {
   /// Scrolls away with the content rather than staying pinned.
   final Widget? header;
 
+  // Opening one row closes the row that is open.
   @override
-  Widget build(BuildContext context) {
-    final repository = context.read<TransactionRepository>();
+  Widget build(BuildContext context) =>
+      SlidableAutoCloseBehavior(child: _list(context));
 
+  Widget _list(BuildContext context) {
     return BlocBuilder<TransactionCubit, TransactionState>(
       builder: (context, state) {
         final transactions =
@@ -473,30 +477,8 @@ class SimpleTransactionListView extends StatelessWidget {
               );
             }
 
-            final transaction = transactions[index - leading];
-            return Dismissible(
-              key: ValueKey(transaction.id),
-              direction: DismissDirection.endToStart,
-              // The live subscription re-emits on the delete; no manual
-              // refetch.
-              onDismissed: (_) => repository.deleteTransaction(transaction),
-              background: Container(
-                margin: AppSpacing.rowGapInsets,
-                padding: const EdgeInsets.only(right: AppSpacing.xl),
-                alignment: Alignment.centerRight,
-                decoration: BoxDecoration(
-                  color: context.colors.dangerSoft,
-                  borderRadius: AppRadius.lgAll,
-                  border: Border.all(color: context.colors.dangerBorder),
-                ),
-                child: Icon(
-                  Icons.delete_outline_rounded,
-                  color: context.colors.danger,
-                  size: 20,
-                ),
-              ),
-              child: TransactionListItem(transaction: transaction),
-            );
+            return TransactionSwipeRow(
+                transaction: transactions[index - leading]);
           },
         );
       },
