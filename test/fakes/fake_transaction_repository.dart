@@ -52,6 +52,18 @@ class FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
+  Future<void> updateTransaction(Transaction transaction) async {
+    final id = transaction.id;
+    // Matches DriftTransactionRepository, like deleteTransaction.
+    if (id == null) {
+      throw StateError('Cannot update a transaction that was never saved.');
+    }
+    final index = _transactions.indexWhere((t) => t.id == id);
+    if (index != -1) _transactions[index] = transaction;
+    _notify();
+  }
+
+  @override
   Future<bool> importTransaction(Transaction transaction) async {
     final smsId = transaction.smsId;
     if (smsId != null && _transactions.any((t) => t.smsId == smsId)) {

@@ -8,6 +8,10 @@ abstract class TransactionRepository {
   Future<void> saveTransaction(Transaction transaction);
   Future<void> deleteTransaction(Transaction transaction);
 
+  /// Writes every field of [transaction] over the stored row with the same
+  /// id. Throws a [StateError] if the transaction was never saved.
+  Future<void> updateTransaction(Transaction transaction);
+
   /// Saves [transaction] unless one with the same `smsId` is already stored,
   /// and reports whether it was saved.
   ///

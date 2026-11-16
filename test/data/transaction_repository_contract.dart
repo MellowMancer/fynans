@@ -67,6 +67,30 @@ void runTransactionRepositoryContract(
       });
     });
 
+    group('updateTransaction', () {
+      test('overwrites the fields and keeps the id', () async {
+        final saved = txn(date: DateTime(2026, 7, 10), party: 'before');
+        await repo.saveTransaction(saved);
+
+        await repo.updateTransaction(
+            txn(date: DateTime(2026, 7, 11), amount: 250, party: 'after')
+              ..id = saved.id
+              ..isCredit = true);
+
+        final stored = (await inJuly()).single;
+        expect(stored.id, saved.id);
+        expect(stored.party, 'after');
+        expect(stored.amount, 250);
+        expect(stored.date, DateTime(2026, 7, 11));
+        expect(stored.isCredit, isTrue);
+      });
+
+      test('updating an unsaved record throws', () {
+        expect(() => repo.updateTransaction(txn(date: DateTime(2026, 7, 10))),
+            throwsStateError);
+      });
+    });
+
     group('importTransaction', () {
       test('imports once, ignores a repeat of the same smsId', () async {
         expect(

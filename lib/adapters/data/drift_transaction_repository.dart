@@ -30,6 +30,16 @@ class DriftTransactionRepository implements TransactionRepository {
   }
 
   @override
+  Future<void> updateTransaction(Transaction transaction) async {
+    final id = transaction.id;
+    if (id == null) {
+      throw StateError('Cannot update a transaction that was never saved.');
+    }
+    await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
+        .write(_toRow(transaction));
+  }
+
+  @override
   Future<bool> importTransaction(Transaction transaction) async {
     // The UNIQUE index on smsId decides this, not a prior read — so two sweeps
     // racing cannot both insert the same message.

@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/use_cases/save_transaction.dart';
 import 'add_transaction_state.dart';
@@ -22,8 +23,13 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
     emit(state.copyWith(groups: groups, parties: parties));
   }
 
+  /// The failure message when the repository cannot save the row.
+  static const saveFailedMessage =
+      'The transaction could not be saved. Try again.';
+
   /// Validates and persists the given form values via the use case, emitting
-  /// [SaveStatus.inProgress] then success/invalid/failure.
+  /// [SaveStatus.inProgress] then success/invalid/failure. [existing] is the
+  /// saved row that the user edits, if any.
   Future<void> save({
     required String amount,
     required String party,
@@ -32,6 +38,7 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
     required bool isCredit,
     required DateTime date,
     String? note,
+    Transaction? existing,
   }) async {
     emit(state.copyWith(status: SaveStatus.inProgress));
     try {
@@ -43,15 +50,16 @@ class AddTransactionCubit extends Cubit<AddTransactionState> {
         isCredit: isCredit,
         date: date,
         note: note,
+        existing: existing,
       );
       if (!result.isSuccess) {
         emit(state.copyWith(status: SaveStatus.invalid, message: result.error));
         return;
       }
       emit(state.copyWith(status: SaveStatus.success));
-    } catch (error) {
-      emit(state.copyWith(
-          status: SaveStatus.failure, message: error.toString()));
+    } catch (_) {
+      // Keep the message plain: the error text can contain SQL and the row.
+      emit(state.copyWith(status: SaveStatus.failure, message: saveFailedMessage));
     }
   }
 }

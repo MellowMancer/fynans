@@ -32,6 +32,11 @@ class SaveTransaction {
 
   /// Parses [amount], splits the CSV [group] string, resolves the credit party
   /// default, constructs the [Transaction], and saves it.
+  ///
+  /// [existing], when set, is the saved row that the user edits. The new
+  /// values replace it, and it keeps its id and its SMS. An SMS row also
+  /// keeps the amount and the date from its SMS, whatever [amount] and [date]
+  /// say.
   Future<SaveTransactionResult> call({
     required String amount,
     required String party,
@@ -40,9 +45,12 @@ class SaveTransaction {
     required bool isCredit,
     required DateTime date,
     String? note,
+    Transaction? existing,
   }) async {
+    final fromSms = existing != null && existing.isAutoImported;
     final amountResult = parseAmount(amount);
-    if (amountResult.value == null) {
+    final parsedAmount = fromSms ? existing.amount : amountResult.value;
+    if (parsedAmount == null) {
       return SaveTransactionResult.failure(amountResult.error!);
     }
 
@@ -58,15 +66,22 @@ class SaveTransaction {
         : trimmedParty;
 
     final transaction = Transaction()
-      ..amount = amountResult.value!
-      ..date = date
+      ..id = existing?.id
+      ..amount = parsedAmount
+      ..date = fromSms ? existing.date : date
       ..tags = List.of(tags)
       ..group = groups
       ..party = resolvedParty
       ..isCredit = isCredit
-      ..note = (note != null && note.isNotEmpty) ? note : null;
+      ..note = (note != null && note.isNotEmpty) ? note : null
+      ..smsId = existing?.smsId
+      ..smsBody = existing?.smsBody;
 
-    await _repository.saveTransaction(transaction);
+    if (existing == null) {
+      await _repository.saveTransaction(transaction);
+    } else {
+      await _repository.updateTransaction(transaction);
+    }
     return const SaveTransactionResult.success();
   }
 }
