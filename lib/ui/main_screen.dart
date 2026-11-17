@@ -30,7 +30,15 @@ class _Destination {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({super.key, required this.showSmsTab});
+
+  /// Whether to show the SMS (DEV) tab and page. This removes the **page**,
+  /// not just the tab: `MainScreen` hosts its pages in an `IndexedStack`,
+  /// which builds every child at startup regardless of visibility, and
+  /// `TestSmsScreen.initState` reads the SMS inbox immediately. So on a
+  /// platform without SMS access, the page must be left out of the list
+  /// entirely rather than merely hidden.
+  final bool showSmsTab;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -39,35 +47,35 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  static const List<_Destination> _destinations = <_Destination>[
-    _Destination(
-      eyebrow: 'Your Money',
-      title: 'Expenses',
-      icon: Icons.receipt_long_outlined,
-      activeIcon: Icons.receipt_long,
-      label: 'EXPENSES',
-    ),
-    _Destination(
-      eyebrow: 'Oh, you prefer charts?',
-      title: 'Analytics',
-      icon: Icons.donut_small_outlined,
-      activeIcon: Icons.donut_small,
-      label: 'ANALYTICS',
-    ),
-    _Destination(
-      eyebrow: 'DEV',
-      title: 'Parsed SMS',
-      icon: Icons.sms_outlined,
-      activeIcon: Icons.sms,
-      label: 'SMS (DEV)',
-    ),
-  ];
+  static const _expenses = _Destination(
+    eyebrow: 'Your Money',
+    title: 'Expenses',
+    icon: Icons.receipt_long_outlined,
+    activeIcon: Icons.receipt_long,
+    label: 'EXPENSES',
+  );
+  static const _analytics = _Destination(
+    eyebrow: 'Oh, you prefer charts?',
+    title: 'Analytics',
+    icon: Icons.donut_small_outlined,
+    activeIcon: Icons.donut_small,
+    label: 'ANALYTICS',
+  );
+  static const _smsDev = _Destination(
+    eyebrow: 'DEV',
+    title: 'Parsed SMS',
+    icon: Icons.sms_outlined,
+    activeIcon: Icons.sms,
+    label: 'SMS (DEV)',
+  );
 
+  late final List<_Destination> _destinations;
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
+    _destinations = [_expenses, _analytics, if (widget.showSmsTab) _smsDev];
     _pages = <Widget>[
       MultiBlocProvider(
         providers: [
@@ -84,7 +92,7 @@ class _MainScreenState extends State<MainScreen> {
         child: const TransactionsListScreen(),
       ),
       const AnalyticsScreen(),
-      const TestSmsScreen(),
+      if (widget.showSmsTab) const TestSmsScreen(),
     ];
   }
 

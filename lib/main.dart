@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,13 +27,18 @@ Future<void> main() async {
   // Read before the first frame, or the app paints once in the wrong theme.
   final themePreference = await settings.readThemePreference();
 
+  // Only Android lets an app read the SMS inbox. iOS is manual entry only:
+  // no launch sweep and no dev SMS tab.
+  final smsInboxAvailable = Platform.isAndroid;
+
   runApp(MyApp(
     repository: repository,
     settings: settings,
     themePreference: themePreference,
+    smsInboxAvailable: smsInboxAvailable,
   ));
   // After the UI is up, sweep the inbox for bank-transaction SMS.
-  SmsIntakeService.catchUp(repository);
+  SmsIntakeService.catchUp(repository, smsInboxAvailable: smsInboxAvailable);
 }
 
 class MyApp extends StatelessWidget {
@@ -39,12 +46,17 @@ class MyApp extends StatelessWidget {
     super.key,
     required this.repository,
     required this.settings,
+    required this.smsInboxAvailable,
     this.themePreference = ThemePreference.system,
   });
 
   final TransactionRepository repository;
   final SettingsRepository settings;
   final ThemePreference themePreference;
+
+  /// Whether the platform lets Fynans read the SMS inbox. Android only:
+  /// iOS sandboxes the Messages inbox and offers no entitlement to read it.
+  final bool smsInboxAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +84,7 @@ class MyApp extends StatelessWidget {
             // Both themes come from the same builder, so neither can drift;
             // AppColors.lerp animates the crossfade between them.
             themeMode: preference.themeMode,
-            home: const MainScreen(),
+            home: MainScreen(showSmsTab: smsInboxAvailable),
           ),
         ),
       ),
