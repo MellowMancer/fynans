@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_state.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
@@ -12,6 +13,7 @@ import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/utils/tag_helper.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/use_cases/amount_parser.dart';
+import 'package:fynans/use_cases/new_transaction_kind.dart';
 import 'package:fynans/use_cases/save_transaction.dart';
 
 /// How far back a transaction may be dated.
@@ -26,10 +28,15 @@ const String _kFromSmsNote = 'From the SMS. The amount and date cannot change.';
 /// [editing], when set, is a saved row: the form opens filled in with it, and
 /// saving updates that row. An SMS row keeps the amount and the date from its
 /// SMS.
+///
+/// [card], when set, binds the saved transaction to that card — pushed this
+/// way from [CardDetailScreen]'s "add transaction" action. The regular
+/// Expenses FAB pushes this with no card.
 class AddTransactionScreen extends StatelessWidget {
-  const AddTransactionScreen({super.key, this.editing});
+  const AddTransactionScreen({super.key, this.editing, this.card});
 
   final Transaction? editing;
+  final PaymentCard? card;
 
   @override
   Widget build(BuildContext context) {
@@ -37,15 +44,16 @@ class AddTransactionScreen extends StatelessWidget {
       create: (context) =>
           AddTransactionCubit(context.read<TransactionRepository>())
             ..loadSuggestions(),
-      child: _AddTransactionForm(editing: editing),
+      child: _AddTransactionForm(editing: editing, card: card),
     );
   }
 }
 
 class _AddTransactionForm extends StatefulWidget {
-  const _AddTransactionForm({this.editing});
+  const _AddTransactionForm({this.editing, this.card});
 
   final Transaction? editing;
+  final PaymentCard? card;
 
   @override
   State<_AddTransactionForm> createState() => _AddTransactionFormState();
@@ -64,6 +72,11 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   late final List<String> _allTags = TagHelper.getAllTags();
   bool _creditFlag = false;
 
+  /// The kind that the user picked from the extra kinds, or null to use the
+  /// kind from the direction and the card.
+  TransactionKind? _kind;
+  bool _showMoreKinds = false;
+
   bool get _isEditing => widget.editing != null;
 
   /// An SMS row keeps the amount and the date from its SMS.
@@ -80,7 +93,13 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
     _noteController.text = t.note ?? '';
     _selectedDate = t.date;
     _selectedTags.addAll(t.tags);
-    _creditFlag = t.isCredit;
+    _creditFlag = t.isInflow;
+    // An extra kind starts picked, with its row open, so that the user sees
+    // it and a save keeps it.
+    if (extraTransactionKinds.contains(t.kind)) {
+      _kind = t.kind;
+      _showMoreKinds = true;
+    }
   }
 
   @override
@@ -116,10 +135,12 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           party: _partyController.text,
           group: _groupController.text,
           tags: List.of(_selectedTags),
-          isCredit: _creditFlag,
+          isInflow: _creditFlag,
           note: _noteController.text,
           date: _selectedDate,
           existing: widget.editing,
+          card: widget.card,
+          kind: _kind,
         );
   }
 
@@ -148,6 +169,8 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
       _selectedTags.clear();
       _selectedDate = DateTime.now();
       _creditFlag = false;
+      _kind = null;
+      _showMoreKinds = false;
       _partyController.text = '';
       _tagFormFieldKey.currentState?.didChange(<String>[]);
     });
@@ -190,8 +213,14 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppSectionLabel(_isEditing ? 'Edit entry' : 'New entry',
-                color: context.colors.accent),
+            AppSectionLabel(
+              widget.card != null
+                  ? '${widget.card!.issuer} •••• ${widget.card!.last4}'
+                  : _isEditing
+                      ? 'Edit entry'
+                      : 'New entry',
+              color: context.colors.accent,
+            ),
             AppSpacing.gapXxs,
             Text(_isEditing ? 'Edit transaction' : 'Add transaction',
                 style: context.type.h1),
@@ -268,7 +297,42 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                               : AppPillTone.outline,
                           onTap: () => _setCredit(true),
                         ),
+                        AppSpacing.hGapSm,
+                        AppPill(
+                          _showMoreKinds ? 'Less' : 'More',
+                          icon: _showMoreKinds
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                          tone: AppPillTone.muted,
+                          onTap: () => setState(
+                              () => _showMoreKinds = !_showMoreKinds),
+                        ),
                       ],
+                    ),
+                    AnimatedSize(
+                      duration: AppDuration.normal,
+                      curve: Curves.fastOutSlowIn,
+                      alignment: Alignment.topCenter,
+                      child: _showMoreKinds
+                          ? Padding(
+                              padding:
+                                  const EdgeInsets.only(top: AppSpacing.sm),
+                              child: Wrap(
+                                spacing: AppSpacing.sm,
+                                runSpacing: AppSpacing.sm,
+                                children: [
+                                  for (final kind in extraTransactionKinds)
+                                    AppPill(
+                                      Fmt.capitalize(kind.name),
+                                      tone: _kind == kind
+                                          ? AppPillTone.accent
+                                          : AppPillTone.outline,
+                                      onTap: () => _setKind(kind),
+                                    ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox(width: double.infinity),
                     ),
                   ],
                 ),
@@ -381,13 +445,13 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
               ),
               _Section(
                 // "Sender" for inflows, "Recipient" for outflows.
-                label: Fmt.partyLabel(isCredit: _creditFlag),
+                label: Fmt.partyLabel(isInflow: _creditFlag),
                 child: _SuggestingField(
                   controller: _partyController,
                   suggestions: state.parties,
                   hintText: _creditFlag ? 'Who paid you?' : 'Who did you pay?',
                   validator: (value) => (value == null || value.trim().isEmpty)
-                      ? 'Enter a ${Fmt.partyLabel(isCredit: _creditFlag).toLowerCase()}'
+                      ? 'Enter a ${Fmt.partyLabel(isInflow: _creditFlag).toLowerCase()}'
                       : null,
                 ),
               ),
@@ -429,7 +493,25 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
 
   /// Switching direction only relabels the counterparty field (Sender vs
   /// Recipient) — it deliberately does not prefill or clear what was typed.
-  void _setCredit(bool isCredit) => setState(() => _creditFlag = isCredit);
+  /// Sets the direction. A picked kind whose fixed direction is the other
+  /// direction no longer fits, so the form clears it.
+  void _setCredit(bool isCredit) => setState(() {
+        _creditFlag = isCredit;
+        final kind = _kind;
+        final fixed = kind == null ? null : fixedInflowOf(kind);
+        if (fixed != null && fixed != isCredit) _kind = null;
+      });
+
+  /// Picks [kind], or clears it if it is already picked. A kind with a fixed
+  /// direction also sets the direction.
+  void _setKind(TransactionKind kind) => setState(() {
+        if (_kind == kind) {
+          _kind = null;
+          return;
+        }
+        _kind = kind;
+        _creditFlag = fixedInflowOf(kind) ?? _creditFlag;
+      });
 }
 
 /// A labelled block in the form — keeps every field's spacing identical.
@@ -564,9 +646,8 @@ class _TagPickerSheetState extends State<_TagPickerSheet> {
                   AppPill(
                     Fmt.capitalize(tag),
                     icon: TagHelper.getIconForTag(tag),
-                    color: _selected.contains(tag)
-                        ? context.tagColor(tag)
-                        : null,
+                    color:
+                        _selected.contains(tag) ? context.tagColor(tag) : null,
                     tone: AppPillTone.outline,
                     onTap: () => setState(
                       () => _selected.contains(tag)

@@ -23,16 +23,16 @@ abstract final class Fmt {
     int decimals = 2,
     bool signed = false,
   }) {
-    final formatted = (decimals == 0 ? _moneyWhole : _money)
-        .format(amount.abs());
+    final formatted =
+        (decimals == 0 ? _moneyWhole : _money).format(amount.abs());
     if (!signed) return amount < 0 ? '-$formatted' : formatted;
     return amount < 0 ? '-$formatted' : '+$formatted';
   }
 
   /// What the counterparty is called, by direction: money coming in was paid by
   /// a **Sender**; money going out was paid to a **Recipient**.
-  static String partyLabel({required bool isCredit}) =>
-      isCredit ? 'Sender' : 'Recipient';
+  static String partyLabel({required bool isInflow}) =>
+      isInflow ? 'Sender' : 'Recipient';
 
   /// Upper-cases the first character.
   static String capitalize(String value) {

@@ -13,7 +13,8 @@ Transaction _txn({
   return Transaction()
     ..amount = amount
     ..date = date
-    ..isCredit = isCredit
+    ..isInflow = isCredit
+    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
     ..tags = List.of(tags)
     ..group = const []
     ..party = 'Test'
@@ -32,29 +33,69 @@ void main() {
 
     test('computes inflow/outflow and daily spending for the month', () async {
       repo.seed([
-        _txn(amount: 120, date: DateTime(2026, 7, 5), isCredit: false, tags: ['food']),
-        _txn(amount: 30, date: DateTime(2026, 7, 5), isCredit: false, tags: ['food']),
+        _txn(
+            amount: 120,
+            date: DateTime(2026, 7, 5),
+            isCredit: false,
+            tags: ['food']),
+        _txn(
+            amount: 30,
+            date: DateTime(2026, 7, 5),
+            isCredit: false,
+            tags: ['food']),
         _txn(amount: 500, date: DateTime(2026, 7, 6), isCredit: true),
-        _txn(amount: 999, date: DateTime(2026, 6, 30), isCredit: false, tags: ['rent']),
+        _txn(
+            amount: 999,
+            date: DateTime(2026, 6, 30),
+            isCredit: false,
+            tags: ['rent']),
       ]);
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
 
-      expect(analytics.totalOutflow, 150);
-      expect(analytics.totalInflow, 500);
+      expect(analytics.totalSpending, 150);
+      expect(analytics.totalIncome, 500);
       expect(analytics.dailySpending[5], 150);
       expect(analytics.dailySpending.containsKey(30), isFalse);
     });
 
     test('folds the 6th+ tags into an "Others" bucket', () async {
       repo.seed([
-        _txn(amount: 60, date: DateTime(2026, 7, 1), isCredit: false, tags: ['a']),
-        _txn(amount: 50, date: DateTime(2026, 7, 2), isCredit: false, tags: ['b']),
-        _txn(amount: 40, date: DateTime(2026, 7, 3), isCredit: false, tags: ['c']),
-        _txn(amount: 30, date: DateTime(2026, 7, 4), isCredit: false, tags: ['d']),
-        _txn(amount: 20, date: DateTime(2026, 7, 5), isCredit: false, tags: ['e']),
-        _txn(amount: 8, date: DateTime(2026, 7, 6), isCredit: false, tags: ['f']),
-        _txn(amount: 2, date: DateTime(2026, 7, 7), isCredit: false, tags: ['g']),
+        _txn(
+            amount: 60,
+            date: DateTime(2026, 7, 1),
+            isCredit: false,
+            tags: ['a']),
+        _txn(
+            amount: 50,
+            date: DateTime(2026, 7, 2),
+            isCredit: false,
+            tags: ['b']),
+        _txn(
+            amount: 40,
+            date: DateTime(2026, 7, 3),
+            isCredit: false,
+            tags: ['c']),
+        _txn(
+            amount: 30,
+            date: DateTime(2026, 7, 4),
+            isCredit: false,
+            tags: ['d']),
+        _txn(
+            amount: 20,
+            date: DateTime(2026, 7, 5),
+            isCredit: false,
+            tags: ['e']),
+        _txn(
+            amount: 8,
+            date: DateTime(2026, 7, 6),
+            isCredit: false,
+            tags: ['f']),
+        _txn(
+            amount: 2,
+            date: DateTime(2026, 7, 7),
+            isCredit: false,
+            tags: ['g']),
       ]);
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
@@ -71,8 +112,16 @@ void main() {
 
     test('computes per-slice percentages of total outflow', () async {
       repo.seed([
-        _txn(amount: 75, date: DateTime(2026, 7, 1), isCredit: false, tags: ['food']),
-        _txn(amount: 25, date: DateTime(2026, 7, 2), isCredit: false, tags: ['travel']),
+        _txn(
+            amount: 75,
+            date: DateTime(2026, 7, 1),
+            isCredit: false,
+            tags: ['food']),
+        _txn(
+            amount: 25,
+            date: DateTime(2026, 7, 2),
+            isCredit: false,
+            tags: ['travel']),
       ]);
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
@@ -83,7 +132,8 @@ void main() {
       expect(travel.percentage, 25);
     });
 
-    test('guards divide-by-zero: no NaN percentages when outflow is 0', () async {
+    test('guards divide-by-zero: no NaN percentages when outflow is 0',
+        () async {
       // Only credit transactions -> zero outflow.
       repo.seed([
         _txn(amount: 500, date: DateTime(2026, 7, 6), isCredit: true),
@@ -91,7 +141,7 @@ void main() {
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
 
-      expect(analytics.totalOutflow, 0);
+      expect(analytics.totalSpending, 0);
       expect(analytics.tagSlices, isEmpty);
       for (final slice in analytics.tagSlices) {
         expect(slice.percentage.isNaN, isFalse);

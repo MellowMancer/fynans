@@ -201,9 +201,9 @@ class _ConfirmDeleteDialog extends StatelessWidget {
               children: [
                 // The same tone and sign as the row: green in, red out.
                 MoneyText(
-                  t.isCredit ? t.amount : -t.amount,
-                  tone: t.isCredit ? MoneyTone.positive : MoneyTone.negative,
-                  signed: t.isCredit,
+                  t.isInflow ? t.amount : -t.amount,
+                  tone: t.isInflow ? MoneyTone.positive : MoneyTone.negative,
+                  signed: t.isInflow,
                 ),
                 AppSpacing.gapMd,
                 Row(

@@ -14,7 +14,8 @@ Transaction _txn(DateTime date, {double amount = 10}) => Transaction()
   ..tags = <String>[]
   ..group = <String>[]
   ..party = 'x'
-  ..isCredit = false;
+  ..isInflow = false
+  ..kind = TransactionKind.expense;
 
 void main() {
   group('time buckets are chronological, not ranked by total', () {
@@ -22,10 +23,12 @@ void main() {
 
     test('days list newest first regardless of amount', () {
       final nodes = build([
-        _txn(DateTime(2026, 7, 3), amount: 900),   // biggest, oldest
-        _txn(DateTime(2026, 7, 19), amount: 5),    // smallest, newest
+        _txn(DateTime(2026, 7, 3), amount: 900), // biggest, oldest
+        _txn(DateTime(2026, 7, 19), amount: 5), // smallest, newest
         _txn(DateTime(2026, 7, 8), amount: 100),
-      ], [GroupingOption.day]);
+      ], [
+        GroupingOption.day
+      ]);
 
       expect(
         nodes.map((n) => n.name).toList(),
@@ -38,7 +41,9 @@ void main() {
         final nodes = build([
           _txn(DateTime(2026, 5, 4), amount: 900),
           _txn(DateTime(2026, 7, 20), amount: 5),
-        ], [option]);
+        ], [
+          option
+        ]);
         expect(nodes.first.name.contains('Jul'), isTrue,
             reason: '$option should put the newest bucket first');
       }
@@ -201,21 +206,21 @@ void main() {
         const SummaryBody(summary: summary),
       ));
 
-      expect(find.text('INFLOW'), findsNothing);
-      expect(find.text('OUTFLOW'), findsNothing);
+      expect(find.text('INCOME'), findsNothing);
+      expect(find.text('SPENT'), findsNothing);
       expect(find.text('NET FOR THIS PERIOD'), findsOneWidget);
 
       await tester.tap(find.text('NET FOR THIS PERIOD'));
       await tester.pumpAndSettle();
 
-      expect(find.text('INFLOW'), findsOneWidget);
-      expect(find.text('OUTFLOW'), findsOneWidget);
+      expect(find.text('INCOME'), findsOneWidget);
+      expect(find.text('SPENT'), findsOneWidget);
       // Expanding must still fit the fixed-height month pager.
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('NET FOR THIS PERIOD'));
       await tester.pumpAndSettle();
-      expect(find.text('INFLOW'), findsNothing);
+      expect(find.text('INCOME'), findsNothing);
     });
 
     testWidgets('can start expanded', (tester) async {
@@ -226,8 +231,8 @@ void main() {
         )),
       );
 
-      expect(find.text('INFLOW'), findsOneWidget);
-      expect(find.text('OUTFLOW'), findsOneWidget);
+      expect(find.text('INCOME'), findsOneWidget);
+      expect(find.text('SPENT'), findsOneWidget);
     });
   });
 }

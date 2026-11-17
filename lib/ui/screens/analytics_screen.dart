@@ -87,7 +87,7 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
               if (state is! AnalyticsLoadSuccess) return const AppLoading();
 
               final analytics = state.analytics;
-              if (analytics.totalOutflow == 0 && analytics.totalInflow == 0) {
+              if (analytics.totalSpending == 0 && analytics.totalIncome == 0) {
                 return const AppEmptyState(
                   icon: Icons.insights_outlined,
                   title: 'Nothing to chart yet',
@@ -134,7 +134,7 @@ class _FlowSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final net = analytics.totalInflow - analytics.totalOutflow;
+    final net = analytics.totalIncome - analytics.totalSpending;
 
     return AppCard(
       label: 'Statement Period',
@@ -152,8 +152,8 @@ class _FlowSummary extends StatelessWidget {
             children: [
               Expanded(
                 child: AppMetricTile(
-                  label: 'Inflow',
-                  amount: analytics.totalInflow,
+                  label: 'Income',
+                  amount: analytics.totalIncome,
                   tone: MoneyTone.positive,
                   icon: Icons.south_west_rounded,
                 ),
@@ -161,8 +161,8 @@ class _FlowSummary extends StatelessWidget {
               AppSpacing.hGapSm,
               Expanded(
                 child: AppMetricTile(
-                  label: 'Outflow',
-                  amount: analytics.totalOutflow,
+                  label: 'Spent',
+                  amount: analytics.totalSpending,
                   tone: MoneyTone.negative,
                   icon: Icons.north_east_rounded,
                 ),

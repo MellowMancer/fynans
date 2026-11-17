@@ -9,6 +9,7 @@ Transaction _txn({
   List<String> tags = const [],
   List<String> group = const [],
   String party = 'Cafe',
+  int? cardId,
 }) =>
     Transaction()
       ..amount = amount
@@ -16,7 +17,9 @@ Transaction _txn({
       ..tags = List.of(tags)
       ..group = List.of(group)
       ..party = party
-      ..isCredit = isCredit;
+      ..isInflow = isCredit
+      ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
+      ..cardId = cardId;
 
 void main() {
   group('direction filter', () {
@@ -66,7 +69,8 @@ void main() {
     expect(f.matches(_txn(tags: ['food'], amount: 60)), isTrue);
     expect(f.matches(_txn(tags: ['food'], amount: 10)), isFalse);
     expect(f.matches(_txn(tags: ['travel'], amount: 60)), isFalse);
-    expect(f.matches(_txn(tags: ['food'], amount: 60, isCredit: true)), isFalse);
+    expect(
+        f.matches(_txn(tags: ['food'], amount: 60, isCredit: true)), isFalse);
     expect(f.activeCount, 3);
   });
 

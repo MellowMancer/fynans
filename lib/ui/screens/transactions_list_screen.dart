@@ -104,6 +104,8 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
+        // No hero: MainScreen keeps every tab alive, so a shared tag clashes.
+        heroTag: null,
         onPressed: _openAddTransaction,
         tooltip: 'Add transaction',
         child: const Icon(Icons.add_rounded),

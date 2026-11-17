@@ -40,7 +40,7 @@ void main() {
     expect(row.party, 'Swiggy');
     expect(row.tags, ['food', 'lunch']);
     expect(row.groups, ['goa trip']);
-    expect(row.isCredit, isFalse);
+    expect(row.isInflow, isFalse);
   });
 
   test('empty list columns survive the JSON converter', () async {

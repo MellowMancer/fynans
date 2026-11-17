@@ -1,6 +1,8 @@
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/use_cases/amount_parser.dart';
+import 'package:fynans/use_cases/new_transaction_kind.dart';
 
 /// Separator between group names in the raw CSV group field.
 const String kGroupSeparator = ',';
@@ -37,17 +39,24 @@ class SaveTransaction {
   /// values replace it, and it keeps its id and its SMS. An SMS row also
   /// keeps the amount and the date from its SMS, whatever [amount] and [date]
   /// say.
+  ///
+  /// [kind], when the user picked one, replaces the kind from the direction.
+  /// If that kind has a fixed direction (see [fixedInflowOf]), that direction
+  /// replaces [isInflow].
   Future<SaveTransactionResult> call({
     required String amount,
     required String party,
     required String group,
     required List<String> tags,
-    required bool isCredit,
+    required bool isInflow,
     required DateTime date,
     String? note,
     Transaction? existing,
+    PaymentCard? card,
+    TransactionKind? kind,
   }) async {
     final fromSms = existing != null && existing.isAutoImported;
+    final inflow = (kind == null ? null : fixedInflowOf(kind)) ?? isInflow;
     final amountResult = parseAmount(amount);
     final parsedAmount = fromSms ? existing.amount : amountResult.value;
     if (parsedAmount == null) {
@@ -61,9 +70,8 @@ class SaveTransaction {
         .toList();
 
     final trimmedParty = party.trim();
-    final resolvedParty = isCredit && trimmedParty.isEmpty
-        ? kDefaultCreditParty
-        : trimmedParty;
+    final resolvedParty =
+        inflow && trimmedParty.isEmpty ? kDefaultCreditParty : trimmedParty;
 
     final transaction = Transaction()
       ..id = existing?.id
@@ -72,10 +80,19 @@ class SaveTransaction {
       ..tags = List.of(tags)
       ..group = groups
       ..party = resolvedParty
-      ..isCredit = isCredit
+      ..isInflow = inflow
+      // A picked kind always wins. Otherwise an edit, which has no card
+      // object, keeps the row's kind and flips it only if the direction
+      // changed.
+      ..kind = existing == null
+          ? newTransactionKind(isInflow: inflow, card: card, chosen: kind)
+          : kind ?? editedKind(existing, isInflow: inflow)
       ..note = (note != null && note.isNotEmpty) ? note : null
       ..smsId = existing?.smsId
-      ..smsBody = existing?.smsBody;
+      ..smsBody = existing?.smsBody
+      // An edit keeps the row's own card and the limit that its SMS reported.
+      ..cardId = existing == null ? card?.id : existing.cardId
+      ..cardAvailableLimit = existing?.cardAvailableLimit;
 
     if (existing == null) {
       await _repository.saveTransaction(transaction);

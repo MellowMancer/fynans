@@ -21,7 +21,8 @@ Transaction _txn({List<String> group = const [], String party = 'X'}) {
     ..tags = const []
     ..group = List.of(group)
     ..party = party
-    ..isCredit = false;
+    ..isInflow = false
+    ..kind = TransactionKind.expense;
 }
 
 void main() {
@@ -49,22 +50,41 @@ void main() {
         party: 'Cafe',
         group: 'Food, Outing',
         tags: ['food'],
-        isCredit: false,
+        isInflow: false,
         note: 'lunch',
         date: DateTime(2026, 7, 5),
       );
       await expectation;
 
-      final saved =
-          await repo.fetchTransactionsInRange(range: DateRange.month(DateTime(2026, 7)));
+      final saved = await repo.fetchTransactionsInRange(
+          range: DateRange.month(DateTime(2026, 7)));
       expect(saved, hasLength(1));
       final t = saved.single;
       expect(t.amount, 120.50);
       expect(t.party, 'Cafe');
       expect(t.group, ['Food', 'Outing']);
       expect(t.tags, ['food']);
-      expect(t.isCredit, isFalse);
+      expect(t.isInflow, isFalse);
       expect(t.note, 'lunch');
+    });
+
+    test('a picked kind is saved', () async {
+      final cubit = AddTransactionCubit(repo);
+      addTearDown(cubit.close);
+
+      await cubit.save(
+        amount: '500',
+        party: 'Savings',
+        group: '',
+        tags: ['food'],
+        isInflow: false,
+        date: DateTime(2026, 7, 5),
+        kind: TransactionKind.transfer,
+      );
+
+      final saved = await repo.fetchTransactionsInRange(
+          range: DateRange.month(DateTime(2026, 7)));
+      expect(saved.single.kind, TransactionKind.transfer);
     });
 
     test('a failed save shows a plain message, not the error text', () async {
@@ -76,7 +96,7 @@ void main() {
         party: 'Secret Shop',
         group: '',
         tags: ['food'],
-        isCredit: false,
+        isInflow: false,
         date: DateTime(2026, 7, 5),
       );
 
@@ -119,14 +139,14 @@ void main() {
         party: 'Cafe',
         group: '',
         tags: ['food'],
-        isCredit: false,
+        isInflow: false,
         note: null,
         date: DateTime(2026, 7, 5),
       );
       await expectation;
 
-      final saved =
-          await repo.fetchTransactionsInRange(range: DateRange.month(DateTime(2026, 7)));
+      final saved = await repo.fetchTransactionsInRange(
+          range: DateRange.month(DateTime(2026, 7)));
       expect(saved, isEmpty);
     });
 
@@ -139,15 +159,15 @@ void main() {
         party: '',
         group: '',
         tags: ['salary'],
-        isCredit: true,
+        isInflow: true,
         note: null,
         date: DateTime(2026, 7, 5),
       );
 
-      final saved =
-          await repo.fetchTransactionsInRange(range: DateRange.month(DateTime(2026, 7)));
+      final saved = await repo.fetchTransactionsInRange(
+          range: DateRange.month(DateTime(2026, 7)));
       expect(saved.single.party, 'Me');
-      expect(saved.single.isCredit, isTrue);
+      expect(saved.single.isInflow, isTrue);
     });
   });
 }

@@ -17,7 +17,8 @@ Transaction _txn({
   return Transaction()
     ..amount = amount
     ..date = date
-    ..isCredit = isCredit
+    ..isInflow = isCredit
+    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
     ..tags = <String>[]
     ..group = <String>[]
     ..party = 'Test'
@@ -142,7 +143,8 @@ void main() {
             filter: any(named: 'filter'),
           )).thenAnswer((_) => controller.stream);
 
-      final bloc = AdvancedViewBloc(repo, initialRange: DateRange.month(DateTime(2026, 7)));
+      final bloc = AdvancedViewBloc(repo,
+          initialRange: DateRange.month(DateTime(2026, 7)));
       addTearDown(bloc.close);
 
       final expectation = expectLater(
@@ -183,7 +185,8 @@ void main() {
             filter: any(named: 'filter'),
           )).thenAnswer((_) => controller.stream);
 
-      final bloc = AdvancedViewBloc(repo, initialRange: DateRange.month(DateTime(2026, 7)));
+      final bloc = AdvancedViewBloc(repo,
+          initialRange: DateRange.month(DateTime(2026, 7)));
       addTearDown(bloc.close);
 
       final expectation = expectLater(
@@ -214,7 +217,8 @@ void main() {
         return controller.stream;
       });
 
-      final bloc = AdvancedViewBloc(repo, initialRange: DateRange.month(DateTime(2026, 7)));
+      final bloc = AdvancedViewBloc(repo,
+          initialRange: DateRange.month(DateTime(2026, 7)));
       addTearDown(bloc.close);
 
       bloc.add(AdvancedViewDataFetched());

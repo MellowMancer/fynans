@@ -17,13 +17,15 @@ void main() {
   });
   tearDown(() => repo.dispose());
 
-  Future<Transaction> seed({String? smsId}) async {
+  Future<Transaction> seed(
+      {String? smsId, TransactionKind kind = TransactionKind.expense}) async {
     final t = Transaction()
       ..amount = 410
       ..date = DateTime(2026, 7, 14, 9, 30)
       ..tags = ['food']
       ..party = 'Cafe'
-      ..isCredit = false
+      ..isInflow = false
+      ..kind = kind
       ..smsId = smsId
       ..smsBody = smsId == null ? null : 'Sent Rs 410.00 From HDFC Bank';
     await repo.saveTransaction(t);
@@ -35,7 +37,7 @@ void main() {
         party: 'Bakery',
         group: 'Trip',
         tags: const ['shopping'],
-        isCredit: true,
+        isInflow: true,
         date: DateTime(2026, 7, 20),
         note: 'fixed',
         existing: existing,
@@ -53,7 +55,7 @@ void main() {
     expect(stored.party, 'Bakery');
     expect(stored.group, ['Trip']);
     expect(stored.tags, ['shopping']);
-    expect(stored.isCredit, isTrue);
+    expect(stored.isInflow, isTrue);
     expect(stored.note, 'fixed');
   });
 
@@ -68,5 +70,25 @@ void main() {
     expect(stored.smsId, 'sms-1');
     expect(stored.smsBody, 'Sent Rs 410.00 From HDFC Bank');
     expect(stored.party, 'Bakery', reason: 'the other fields can change');
+  });
+
+  test('editing a credit card spend keeps it as debt', () async {
+    final existing = await seed(kind: TransactionKind.debt)
+      ..cardId = 7;
+
+    await save(
+      amount: '410',
+      party: 'Bakery',
+      group: '',
+      tags: const ['food'],
+      isInflow: false,
+      date: DateTime(2026, 7, 14),
+      existing: existing,
+    );
+
+    final stored = (await repo.fetchTransactionsInRange(range: july)).single;
+    expect(stored.kind, TransactionKind.debt,
+        reason: 'the edit form has no card, so it must not reset the kind');
+    expect(stored.cardId, 7);
   });
 }

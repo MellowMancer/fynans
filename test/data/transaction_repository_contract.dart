@@ -10,6 +10,7 @@ Transaction txn({
   List<String> tags = const [],
   List<String> group = const [],
   String party = 'x',
+  int? cardId,
 }) =>
     Transaction()
       ..amount = amount
@@ -17,8 +18,10 @@ Transaction txn({
       ..tags = List<String>.from(tags)
       ..group = List<String>.from(group)
       ..party = party
-      ..isCredit = false
-      ..smsId = smsId;
+      ..isInflow = false
+      ..kind = TransactionKind.expense
+      ..smsId = smsId
+      ..cardId = cardId;
 
 /// The behaviour every [TransactionRepository] must exhibit, run against each
 /// implementation.
@@ -53,8 +56,8 @@ void runTransactionRepositoryContract(
         final stored = (await inJuly()).single;
 
         // A detached instance carrying the same id must delete the row.
-        await repo.deleteTransaction(txn(date: DateTime(2026, 7, 10))
-          ..id = stored.id);
+        await repo.deleteTransaction(
+            txn(date: DateTime(2026, 7, 10))..id = stored.id);
 
         expect(await inJuly(), isEmpty);
       });
@@ -75,14 +78,14 @@ void runTransactionRepositoryContract(
         await repo.updateTransaction(
             txn(date: DateTime(2026, 7, 11), amount: 250, party: 'after')
               ..id = saved.id
-              ..isCredit = true);
+              ..isInflow = true);
 
         final stored = (await inJuly()).single;
         expect(stored.id, saved.id);
         expect(stored.party, 'after');
         expect(stored.amount, 250);
         expect(stored.date, DateTime(2026, 7, 11));
-        expect(stored.isCredit, isTrue);
+        expect(stored.isInflow, isTrue);
       });
 
       test('updating an unsaved record throws', () {
@@ -142,6 +145,19 @@ void runTransactionRepositoryContract(
         expect(stored.group, ['goa trip']);
       });
 
+      // A refund is never the column default, so this also proves that the
+      // repository writes the kind instead of falling back to the default.
+      test('direction and kind round-trip', () async {
+        await repo.saveTransaction(txn(date: DateTime(2026, 7, 10))
+          ..isInflow = true
+          ..kind = TransactionKind.refund);
+
+        final stored = (await inJuly()).single;
+
+        expect(stored.isInflow, isTrue);
+        expect(stored.kind, TransactionKind.refund);
+      });
+
       test('distinct helpers trim, drop empties and dedupe', () async {
         await repo.saveTransaction(txn(
           date: DateTime(2026, 7, 10),
@@ -194,7 +210,8 @@ void runTransactionRepositoryContract(
         // which deadlocked every caller that awaited it.
         await sub.cancel().timeout(
               const Duration(seconds: 2),
-              onTimeout: () => fail('cancel() did not complete — stream leaked'),
+              onTimeout: () =>
+                  fail('cancel() did not complete — stream leaked'),
             );
       });
 
@@ -218,5 +235,13 @@ void runTransactionRepositoryContract(
       });
     });
 
+    // Card visibility and listenToTransactionsForCard are deliberately not
+    // covered here: this contract only builds a TransactionRepository, and
+    // with `PRAGMA foreign_keys = ON` a cardId has to reference a real row in
+    // the Cards table or Drift rejects the insert — a card-aware fixture
+    // needs a CardRepository too. See
+    // drift_transaction_repository_card_test.dart (Drift, with real seeded
+    // cards) and fake_transaction_repository_test.dart's card group (the
+    // fake, which has no such constraint to satisfy).
   });
 }

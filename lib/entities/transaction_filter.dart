@@ -64,9 +64,9 @@ class TransactionFilter {
     if (!_matchesAny(parties, [t.party])) return false;
     switch (direction) {
       case DirectionFilter.inflow:
-        if (!t.isCredit) return false;
+        if (!t.isInflow) return false;
       case DirectionFilter.outflow:
-        if (t.isCredit) return false;
+        if (t.isInflow) return false;
       case DirectionFilter.any:
         break;
     }
@@ -89,10 +89,8 @@ class TransactionFilter {
       tags: tags ?? this.tags,
       parties: parties ?? this.parties,
       direction: direction ?? this.direction,
-      minAmount:
-          minAmount == _sentinel ? this.minAmount : minAmount as double?,
-      maxAmount:
-          maxAmount == _sentinel ? this.maxAmount : maxAmount as double?,
+      minAmount: minAmount == _sentinel ? this.minAmount : minAmount as double?,
+      maxAmount: maxAmount == _sentinel ? this.maxAmount : maxAmount as double?,
     );
   }
 
@@ -108,8 +106,7 @@ class TransactionFilter {
       a.length == b.length && a.containsAll(b);
 
   /// Order-independent hash for a set of values.
-  static int _setHash(Set<String> values) =>
-      Object.hashAllUnordered(values);
+  static int _setHash(Set<String> values) => Object.hashAllUnordered(values);
 
   @override
   bool operator ==(Object other) =>

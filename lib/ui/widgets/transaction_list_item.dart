@@ -33,10 +33,15 @@ class _TransactionListItemState extends State<TransactionListItem> {
     return 'Untagged';
   }
 
-  /// Secondary line: when the transaction happened, plus its tags.
+  /// Secondary line: when the transaction happened, its kind when that is
+  /// not plain income or expense (for example "Debt"), and its tags.
   String get _meta {
+    final kind = _txn.kind;
+    final showKind =
+        kind != TransactionKind.income && kind != TransactionKind.expense;
     final parts = <String>[
       Fmt.dayMonthTime(_txn.date),
+      if (showKind) Fmt.capitalize(kind.name),
       if (_txn.tags.isNotEmpty) Fmt.capitalizeAll(_txn.tags),
     ];
     return parts.join('  ·  ');
@@ -44,7 +49,7 @@ class _TransactionListItemState extends State<TransactionListItem> {
 
   @override
   Widget build(BuildContext context) {
-    final tone = _txn.isCredit ? MoneyTone.positive : MoneyTone.negative;
+    final tone = _txn.isInflow ? MoneyTone.positive : MoneyTone.negative;
 
     return AppCard(
       margin: widget.margin ?? AppSpacing.rowGapInsets,
@@ -84,10 +89,10 @@ class _TransactionListItemState extends State<TransactionListItem> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   MoneyText(
-                    _txn.isCredit ? _txn.amount : -_txn.amount,
+                    _txn.isInflow ? _txn.amount : -_txn.amount,
                     tone: tone,
                     style: context.type.amountSmall,
-                    signed: _txn.isCredit,
+                    signed: _txn.isInflow,
                   ),
                   AppSpacing.gapXxs,
                   AnimatedRotation(
@@ -135,8 +140,8 @@ class _ExpandedDetails extends StatelessWidget {
       AppKeyValue(
         label: 'Direction',
         valueWidget: AppPill(
-          transaction.isCredit ? 'Inflow' : 'Outflow',
-          tone: transaction.isCredit ? AppPillTone.success : AppPillTone.danger,
+          transaction.isInflow ? 'Inflow' : 'Outflow',
+          tone: transaction.isInflow ? AppPillTone.success : AppPillTone.danger,
           dense: true,
         ),
         icon: Icons.swap_vert_rounded,
@@ -144,9 +149,9 @@ class _ExpandedDetails extends StatelessWidget {
       if (transaction.party.trim().isNotEmpty)
         AppKeyValue(
           // "Sender" for inflows, "Recipient" for outflows.
-          label: Fmt.partyLabel(isCredit: transaction.isCredit),
+          label: Fmt.partyLabel(isInflow: transaction.isInflow),
           value: transaction.party,
-          icon: transaction.isCredit
+          icon: transaction.isInflow
               ? Icons.call_received_rounded
               : Icons.person_outline,
         ),
@@ -158,7 +163,8 @@ class _ExpandedDetails extends StatelessWidget {
             runSpacing: AppSpacing.xs,
             children: [
               for (final g in transaction.group)
-                AppPill(Fmt.capitalize(g), tone: AppPillTone.muted, dense: true),
+                AppPill(Fmt.capitalize(g),
+                    tone: AppPillTone.muted, dense: true),
             ],
           ),
           icon: Icons.folder_outlined,

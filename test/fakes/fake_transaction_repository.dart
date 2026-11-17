@@ -1,11 +1,23 @@
 import 'dart:async';
 import 'package:fynans/entities/date_range.dart';
+import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
+import 'package:fynans/ports/missing_card_exception.dart';
 import 'package:fynans/ports/transaction_repository.dart';
+
+import 'fake_card_repository.dart';
 
 /// In-memory [TransactionRepository] for use in tests.
 class FakeTransactionRepository implements TransactionRepository {
+  /// [cards], when given, lets the range queries hide the rows of closed and
+  /// untracked cards, like the real repository. The imports then also refuse
+  /// a card id that [cards] does not hold, like the foreign key. Without it,
+  /// nothing is hidden or refused.
+  FakeTransactionRepository({this.cards});
+
+  final FakeCardRepository? cards;
+
   final List<Transaction> _transactions = [];
 
   /// Mirrors the real repository stamping a storage key onto saved records —
@@ -58,6 +70,7 @@ class FakeTransactionRepository implements TransactionRepository {
     if (id == null) {
       throw StateError('Cannot update a transaction that was never saved.');
     }
+    await _requireCard(transaction.cardId);
     final index = _transactions.indexWhere((t) => t.id == id);
     if (index != -1) _transactions[index] = transaction;
     _notify();
@@ -65,6 +78,7 @@ class FakeTransactionRepository implements TransactionRepository {
 
   @override
   Future<bool> importTransaction(Transaction transaction) async {
+    await _requireCard(transaction.cardId);
     final smsId = transaction.smsId;
     if (smsId != null && _transactions.any((t) => t.smsId == smsId)) {
       return false;
@@ -81,6 +95,7 @@ class FakeTransactionRepository implements TransactionRepository {
     subscribeCount++;
     late final StreamController<List<Transaction>> controller;
     StreamSubscription<void>? watcher;
+    StreamSubscription<void>? cardWatcher;
 
     Future<void> emit() async => controller.add(
           await fetchTransactionsInRange(range: range, filter: filter),
@@ -90,10 +105,15 @@ class FakeTransactionRepository implements TransactionRepository {
       onListen: () {
         emit();
         watcher = _changes.stream.listen((_) => emit());
+        cardWatcher = cards?.changes.listen((_) => emit());
       },
-      onCancel: () async {
-        await watcher?.cancel();
+      // Synchronous on purpose, like Drift: a caller that awaits cancel()
+      // (Stream.first does) must not wait on the inner subscription.
+      onCancel: () {
+        watcher?.cancel();
+        cardWatcher?.cancel();
         watcher = null;
+        cardWatcher = null;
       },
     );
     return controller.stream;
@@ -104,11 +124,62 @@ class FakeTransactionRepository implements TransactionRepository {
     required DateRange range,
     TransactionFilter? filter,
   }) async {
+    final cardsById = {
+      for (final c in await cards?.fetchCards() ?? const <PaymentCard>[])
+        c.id: c,
+    };
     return _transactions
         .where((t) => range.contains(t.date))
+        .where((t) => !(cardsById[t.cardId]?.hides(t) ?? false))
         .where((t) => filter == null || filter.matches(t))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  @override
+  Stream<List<Transaction>> listenToTransactionsForCard(int cardId) {
+    subscribeCount++;
+    late final StreamController<List<Transaction>> controller;
+    StreamSubscription<void>? watcher;
+
+    Future<void> emit() async => controller.add(
+          _transactions.where((t) => t.cardId == cardId).toList()
+            ..sort((a, b) => b.date.compareTo(a.date)),
+        );
+
+    controller = StreamController<List<Transaction>>(
+      onListen: () {
+        emit();
+        watcher = _changes.stream.listen((_) => emit());
+      },
+      // Synchronous on purpose, like Drift: a caller that awaits cancel()
+      // (Stream.first does) must not wait on the inner subscription.
+      onCancel: () {
+        watcher?.cancel();
+        watcher = null;
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<bool> relinkTransactionToCard({
+    required String smsId,
+    required int cardId,
+    required TransactionKind kind,
+    double? cardAvailableLimit,
+  }) async {
+    await _requireCard(cardId);
+    for (final t in _transactions) {
+      if (t.smsId == smsId && t.cardId == null) {
+        t.cardId = cardId;
+        t.kind = kind;
+        t.cardAvailableLimit = cardAvailableLimit;
+        _notify();
+        return true;
+      }
+    }
+    return false;
   }
 
   @override
@@ -120,13 +191,23 @@ class FakeTransactionRepository implements TransactionRepository {
   @override
   Future<List<String>> getAllParties() async => _distinct((t) => [t.party]);
 
+  /// Excludes card transactions, matching DriftTransactionRepository — see
+  /// its `_distinct` for why.
   List<String> _distinct(Iterable<String> Function(Transaction) select) =>
       _transactions
+          .where((t) => t.cardId == null)
           .expand(select)
           .map((value) => value.trim())
           .where((value) => value.isNotEmpty)
           .toSet()
           .toList();
+
+  Future<void> _requireCard(int? cardId) async {
+    final known = cards;
+    if (cardId == null || known == null) return;
+    final ids = (await known.fetchCards()).map((c) => c.id);
+    if (!ids.contains(cardId)) throw MissingCardException(cardId);
+  }
 
   void _notify() {
     if (!_changes.isClosed) _changes.add(null);

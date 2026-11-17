@@ -13,7 +13,8 @@ Transaction _txn(double amount, DateTime date, {bool isCredit = false}) =>
       ..tags = ['food']
       ..group = <String>[]
       ..party = 'x'
-      ..isCredit = isCredit;
+      ..isInflow = isCredit
+      ..kind = isCredit ? TransactionKind.income : TransactionKind.expense;
 
 void main() {
   test('analytics recompute when transactions are written afterwards',
@@ -25,13 +26,13 @@ void main() {
     // The Analytics tab is built before the SMS sweep has imported anything.
     await cubit.loadAnalytics(DateTime(2026, 7));
     await Future<void>.delayed(Duration.zero);
-    expect((cubit.state as AnalyticsLoadSuccess).analytics.totalOutflow, 0);
+    expect((cubit.state as AnalyticsLoadSuccess).analytics.totalSpending, 0);
 
     final updated = expectLater(
       cubit.stream,
       emitsThrough(
         isA<AnalyticsLoadSuccess>()
-            .having((s) => s.analytics.totalOutflow, 'totalOutflow', 250),
+            .having((s) => s.analytics.totalSpending, 'totalSpending', 250),
       ),
     );
 

@@ -21,7 +21,8 @@ Transaction _txn({
   return Transaction()
     ..amount = amount
     ..date = date
-    ..isCredit = isCredit
+    ..isInflow = isCredit
+    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
     ..tags = List.of(tags)
     ..group = List.of(group)
     ..party = party
@@ -39,7 +40,11 @@ void main() {
     test('emits [InProgress, Success] with a summary computed from the repo',
         () async {
       repo.seed([
-        _txn(amount: 120, date: DateTime(2026, 7, 5), isCredit: false, tags: ['food']),
+        _txn(
+            amount: 120,
+            date: DateTime(2026, 7, 5),
+            isCredit: false,
+            tags: ['food']),
         _txn(amount: 500, date: DateTime(2026, 7, 6), isCredit: true),
       ]);
       final cubit = TransactionCubit(repo);
@@ -94,6 +99,7 @@ void main() {
       final controllers = <StreamController<List<Transaction>>>[];
       when(() => repo.listenToTransactionsInRange(
             range: any(named: 'range'),
+            filter: any(named: 'filter'),
           )).thenAnswer((_) {
         final controller = StreamController<List<Transaction>>();
         controllers.add(controller);
@@ -120,6 +126,7 @@ void main() {
       late StreamController<List<Transaction>> controller;
       when(() => repo.listenToTransactionsInRange(
             range: any(named: 'range'),
+            filter: any(named: 'filter'),
           )).thenAnswer((_) {
         controller = StreamController<List<Transaction>>();
         addTearDown(controller.close);
@@ -147,6 +154,7 @@ void main() {
       addTearDown(controller.close);
       when(() => repo.listenToTransactionsInRange(
             range: any(named: 'range'),
+            filter: any(named: 'filter'),
           )).thenAnswer((_) => controller.stream);
 
       final cubit = TransactionCubit(repo);

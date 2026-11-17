@@ -29,7 +29,8 @@ void main() {
       ..date = DateTime.now()
       ..tags = ['food']
       ..party = 'Cafe'
-      ..isCredit = false;
+      ..isInflow = false
+      ..kind = TransactionKind.expense;
     await repository.saveTransaction(row);
   });
   tearDown(() => repository.dispose());
@@ -192,7 +193,9 @@ void main() {
     });
 
     testWidgets('green for money in', (tester) async {
-      row.isCredit = true;
+      row
+        ..isInflow = true
+        ..kind = TransactionKind.income;
       expect((await amountIn(tester)).tone, MoneyTone.positive);
     });
   });

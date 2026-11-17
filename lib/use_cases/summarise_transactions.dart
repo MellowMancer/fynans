@@ -13,23 +13,21 @@ MonthlySummary summariseTransactions(
   final Map<String, double> groupSpending = {};
 
   for (final transaction in transactions) {
-    if (transaction.isCredit) {
-      income += transaction.amount;
-    } else {
-      expenses += transaction.amount;
-      for (final tag in transaction.tags) {
-        final clean = tag.trim().toLowerCase();
-        if (clean.isNotEmpty) {
-          tagSpending.update(clean, (v) => v + transaction.amount,
-              ifAbsent: () => transaction.amount);
-        }
+    income += transaction.incomeEffect;
+    final spent = transaction.spendingEffect;
+    if (spent == 0) continue;
+
+    expenses += spent;
+    for (final tag in transaction.tags) {
+      final clean = tag.trim().toLowerCase();
+      if (clean.isNotEmpty) {
+        tagSpending.update(clean, (v) => v + spent, ifAbsent: () => spent);
       }
-      for (final gr in transaction.group) {
-        final clean = gr.trim().toLowerCase();
-        if (clean.isNotEmpty) {
-          groupSpending.update(clean, (v) => v + transaction.amount,
-              ifAbsent: () => transaction.amount);
-        }
+    }
+    for (final gr in transaction.group) {
+      final clean = gr.trim().toLowerCase();
+      if (clean.isNotEmpty) {
+        groupSpending.update(clean, (v) => v + spent, ifAbsent: () => spent);
       }
     }
   }

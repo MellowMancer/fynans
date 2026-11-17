@@ -95,7 +95,7 @@ class _TransactionTotalsState extends State<TransactionTotals> {
                     children: [
                       Expanded(
                         child: AppMetricTile(
-                          label: 'Inflow',
+                          label: 'Income',
                           amount: widget.summary.totalIncome,
                           tone: MoneyTone.positive,
                           icon: Icons.south_west_rounded,
@@ -104,7 +104,7 @@ class _TransactionTotalsState extends State<TransactionTotals> {
                       AppSpacing.hGapSm,
                       Expanded(
                         child: AppMetricTile(
-                          label: 'Outflow',
+                          label: 'Spent',
                           amount: widget.summary.totalExpenses,
                           tone: MoneyTone.negative,
                           icon: Icons.north_east_rounded,

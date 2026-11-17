@@ -22,7 +22,8 @@ void main() {
       ..date = DateTime.now()
       ..tags = ['food']
       ..party = 'Cafe'
-      ..isCredit = false
+      ..isInflow = false
+      ..kind = TransactionKind.expense
       ..smsId = smsId;
     await repository.saveTransaction(t);
     return t;
