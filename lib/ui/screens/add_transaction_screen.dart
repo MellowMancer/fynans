@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/add_transaction/add_transaction_state.dart';
+import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 import 'package:fynans/ui/theme/app_colors.dart';
 import 'package:fynans/ui/theme/app_spacing.dart';
@@ -11,14 +12,24 @@ import 'package:fynans/ui/utils/formatters.dart';
 import 'package:fynans/ui/utils/tag_helper.dart';
 import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/use_cases/amount_parser.dart';
+import 'package:fynans/use_cases/save_transaction.dart';
 
 /// How far back a transaction may be dated.
 const int _kBackdateYears = 1;
 
+/// Shown under the locked amount of an SMS row.
+const String _kFromSmsNote = 'From the SMS. The amount and date cannot change.';
+
 /// Provides the [AddTransactionCubit] (built from the repository in context)
 /// and renders the transaction entry form.
+///
+/// [editing], when set, is a saved row: the form opens filled in with it, and
+/// saving updates that row. An SMS row keeps the amount and the date from its
+/// SMS.
 class AddTransactionScreen extends StatelessWidget {
-  const AddTransactionScreen({super.key});
+  const AddTransactionScreen({super.key, this.editing});
+
+  final Transaction? editing;
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +37,15 @@ class AddTransactionScreen extends StatelessWidget {
       create: (context) =>
           AddTransactionCubit(context.read<TransactionRepository>())
             ..loadSuggestions(),
-      child: const _AddTransactionForm(),
+      child: _AddTransactionForm(editing: editing),
     );
   }
 }
 
 class _AddTransactionForm extends StatefulWidget {
-  const _AddTransactionForm();
+  const _AddTransactionForm({this.editing});
+
+  final Transaction? editing;
 
   @override
   State<_AddTransactionForm> createState() => _AddTransactionFormState();
@@ -51,6 +64,25 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
   late final List<String> _allTags = TagHelper.getAllTags();
   bool _creditFlag = false;
 
+  bool get _isEditing => widget.editing != null;
+
+  /// An SMS row keeps the amount and the date from its SMS.
+  bool get _fromSms => widget.editing?.isAutoImported ?? false;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.editing;
+    if (t == null) return;
+    _amountController.text = t.amount.toStringAsFixed(2);
+    _partyController.text = t.party;
+    _groupController.text = t.group.join('$kGroupSeparator ');
+    _noteController.text = t.note ?? '';
+    _selectedDate = t.date;
+    _selectedTags.addAll(t.tags);
+    _creditFlag = t.isCredit;
+  }
+
   @override
   void dispose() {
     _amountController.dispose();
@@ -62,10 +94,16 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
 
   Future<void> _presentDatePicker() async {
     final now = DateTime.now();
+    final backdateLimit =
+        DateTime(now.year - _kBackdateYears, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime(now.year - _kBackdateYears, now.month, now.day),
+      // An edited row can be older than the limit, and the picker refuses an
+      // initial date before its first date.
+      firstDate: _selectedDate.isBefore(backdateLimit)
+          ? _selectedDate
+          : backdateLimit,
       lastDate: now,
     );
     if (picked != null) setState(() => _selectedDate = picked);
@@ -81,13 +119,19 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           isCredit: _creditFlag,
           note: _noteController.text,
           date: _selectedDate,
+          existing: widget.editing,
         );
   }
 
   void _onStatusChanged(AddTransactionState state) {
     switch (state.status) {
       case SaveStatus.success:
-        _handleSaveSuccess();
+        if (_isEditing) {
+          _showMessage('Transaction updated');
+          Navigator.pop(context);
+        } else {
+          _handleSaveSuccess();
+        }
       case SaveStatus.invalid:
       case SaveStatus.failure:
         _showMessage(state.message ?? 'Could not save transaction');
@@ -146,9 +190,11 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppSectionLabel('New entry', color: context.colors.accent),
+            AppSectionLabel(_isEditing ? 'Edit entry' : 'New entry',
+                color: context.colors.accent),
             AppSpacing.gapXxs,
-            Text('Add transaction', style: context.type.h1),
+            Text(_isEditing ? 'Edit transaction' : 'Add transaction',
+                style: context.type.h1),
           ],
         ),
       ),
@@ -173,8 +219,10 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                   children: [
                     TextFormField(
                       controller: _amountController,
+                      readOnly: _fromSms,
                       style: context.type.amount,
                       decoration: InputDecoration(
+                        helperText: _fromSms ? _kFromSmsNote : null,
                         // `prefixText` is only painted while the field is
                         // focused or non-empty, so the symbol vanished at rest.
                         prefixIcon: Padding(
@@ -228,7 +276,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
               _Section(
                 label: 'Date',
                 child: AppCard(
-                  onTap: _presentDatePicker,
+                  onTap: _fromSms ? null : _presentDatePicker,
                   borderRadius: AppRadius.mdAll,
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
@@ -244,7 +292,9 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
                       AppSpacing.hGapMd,
                       Expanded(child: MonoText(Fmt.fullDate(_selectedDate))),
                       Icon(
-                        Icons.expand_more_rounded,
+                        _fromSms
+                            ? Icons.lock_outline_rounded
+                            : Icons.expand_more_rounded,
                         size: 18,
                         color: context.colors.inkFaint,
                       ),
@@ -363,7 +413,7 @@ class _AddTransactionFormState extends State<_AddTransactionForm> {
               ),
               AppSpacing.gapSm,
               AppButton(
-                label: 'Save transaction',
+                label: _isEditing ? 'Save changes' : 'Save transaction',
                 icon: Icons.check_rounded,
                 variant: AppButtonVariant.dark,
                 expand: true,

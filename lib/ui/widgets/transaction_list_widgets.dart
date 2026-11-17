@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fynans/adapters/blocs/advanced_view/advanced_view_bloc.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_state.dart';
@@ -17,7 +18,7 @@ import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ui/widgets/date_range_selector.dart';
 import 'package:fynans/ui/widgets/transaction_filter_sheet.dart';
-import 'package:fynans/ui/widgets/transaction_list_item.dart';
+import 'package:fynans/ui/widgets/transaction_swipe_row.dart';
 import 'package:fynans/use_cases/date_range_presets.dart';
 
 
@@ -414,10 +415,18 @@ class SimpleTransactionListView extends StatelessWidget {
   /// Scrolls away with the content rather than staying pinned.
   final Widget? header;
 
+  // Opening one row closes the row that is open.
   @override
-  Widget build(BuildContext context) {
-    final repository = context.read<TransactionRepository>();
+  Widget build(BuildContext context) =>
+      SlidableAutoCloseBehavior(child: _list(context));
 
+  /// Gives an item the left gutter that the list leaves out for the rows.
+  static Widget _inGutter(Widget child) => Padding(
+        padding: const EdgeInsets.only(left: AppSpacing.gutter),
+        child: child,
+      );
+
+  Widget _list(BuildContext context) {
     return BlocBuilder<TransactionCubit, TransactionState>(
       builder: (context, state) {
         final transactions =
@@ -431,20 +440,23 @@ class SimpleTransactionListView extends StatelessWidget {
             transactions == null || transactions.isEmpty ? 1 : transactions.length;
 
         return ListView.builder(
-          padding: AppSpacing.pageInsets,
+          // No left padding: a transaction row reaches the screen edge, so
+          // that its card can slide off the screen. Every other item keeps
+          // the gutter through _inGutter.
+          padding: AppSpacing.pageInsets.copyWith(left: 0),
           itemCount: leading + bodyCount,
           itemBuilder: (context, index) {
             if (header != null && index == 0) {
-              return Padding(
+              return _inGutter(Padding(
                 padding: AppSpacing.headerGapInsets,
                 child: header,
-              );
+              ));
             }
 
             if (failure != null) {
               // Rendered as a body row, not in place of the whole list, so the
               // month pager above stays mounted and can retrigger a fetch.
-              return Padding(
+              return _inGutter(Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.xxl),
                 child: AppErrorView(
                   title: 'Could not load transactions',
@@ -453,16 +465,16 @@ class SimpleTransactionListView extends StatelessWidget {
                       .read<TransactionCubit>()
                       .fetchTransactionsForMonth(currentMonth),
                 ),
-              );
+              ));
             }
             if (transactions == null) {
-              return const Padding(
+              return _inGutter(const Padding(
                 padding: EdgeInsets.only(top: AppSpacing.xxxl),
                 child: AppLoading(),
-              );
+              ));
             }
             if (transactions.isEmpty) {
-              return const Padding(
+              return _inGutter(const Padding(
                 padding: EdgeInsets.only(top: AppSpacing.xxl),
                 child: AppEmptyState(
                   icon: Icons.receipt_long_outlined,
@@ -470,33 +482,11 @@ class SimpleTransactionListView extends StatelessWidget {
                   message:
                       'Imported bank SMS and anything you add will appear here.',
                 ),
-              );
+              ));
             }
 
-            final transaction = transactions[index - leading];
-            return Dismissible(
-              key: ValueKey(transaction.id),
-              direction: DismissDirection.endToStart,
-              // The live subscription re-emits on the delete; no manual
-              // refetch.
-              onDismissed: (_) => repository.deleteTransaction(transaction),
-              background: Container(
-                margin: AppSpacing.rowGapInsets,
-                padding: const EdgeInsets.only(right: AppSpacing.xl),
-                alignment: Alignment.centerRight,
-                decoration: BoxDecoration(
-                  color: context.colors.dangerSoft,
-                  borderRadius: AppRadius.lgAll,
-                  border: Border.all(color: context.colors.dangerBorder),
-                ),
-                child: Icon(
-                  Icons.delete_outline_rounded,
-                  color: context.colors.danger,
-                  size: 20,
-                ),
-              ),
-              child: TransactionListItem(transaction: transaction),
-            );
+            return TransactionSwipeRow(
+                transaction: transactions[index - leading]);
           },
         );
       },
@@ -519,8 +509,12 @@ class HierarchicalTransactionList extends StatelessWidget {
   /// Scrolls away with the content rather than staying pinned.
   final Widget? header;
 
+  // Opening one row closes the row that is open.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      SlidableAutoCloseBehavior(child: _list(context));
+
+  Widget _list(BuildContext context) {
     final leading = header == null ? 0 : 1;
 
     return ListView.builder(
@@ -602,10 +596,12 @@ class HierarchyNodeTile extends StatelessWidget {
         children: isLeaf
             ? [
                 for (final t in node.transactions)
-                  TransactionListItem(
+                  // The card slides into its indent, up to the group card's
+                  // edge, which clips it.
+                  TransactionSwipeRow(
                     transaction: t,
-                    margin: EdgeInsets.only(
-                      left: AppSpacing.md + (AppSpacing.md * level),
+                    overhang: AppSpacing.md + (AppSpacing.md * level),
+                    margin: const EdgeInsets.only(
                       right: AppSpacing.md,
                       bottom: AppSpacing.rowGap,
                     ),

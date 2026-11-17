@@ -29,6 +29,7 @@ dependencies:
   equatable: ^2.0.7
   bloc: ^9.0.0
   meta: ^1.16.0
+  flutter_slidable: ^4.0.3
 
 dev_dependencies:
   # Used by test/ui/font_assets_test.dart to read the declared font assets.

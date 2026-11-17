@@ -6,6 +6,14 @@ import 'package:fynans/entities/transaction.dart';
 
 import '../../fakes/fake_transaction_repository.dart';
 
+/// Fails every save with an error text that contains the row, like a real
+/// database error can.
+class _FailingSaves extends FakeTransactionRepository {
+  @override
+  Future<void> saveTransaction(Transaction transaction) async =>
+      throw StateError('SQL error: INSERT party = ${transaction.party}');
+}
+
 Transaction _txn({List<String> group = const [], String party = 'X'}) {
   return Transaction()
     ..amount = 10
@@ -57,6 +65,23 @@ void main() {
       expect(t.tags, ['food']);
       expect(t.isCredit, isFalse);
       expect(t.note, 'lunch');
+    });
+
+    test('a failed save shows a plain message, not the error text', () async {
+      final cubit = AddTransactionCubit(_FailingSaves());
+      addTearDown(cubit.close);
+
+      await cubit.save(
+        amount: '500',
+        party: 'Secret Shop',
+        group: '',
+        tags: ['food'],
+        isCredit: false,
+        date: DateTime(2026, 7, 5),
+      );
+
+      expect(cubit.state.status, SaveStatus.failure);
+      expect(cubit.state.message, AddTransactionCubit.saveFailedMessage);
     });
 
     test('loading suggestions exposes groups and parties from the repo',
