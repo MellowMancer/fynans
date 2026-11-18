@@ -3,16 +3,14 @@ import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/payment_due_status.dart';
 
+import '../support/builders.dart';
+
 void main() {
   final statementDate = DateTime(2026, 1, 15, 9);
   final dueDate = DateTime(2026, 2, 5);
 
-  CardStatement statement({double? totalDue = 5000, DateTime? due}) =>
-      CardStatement()
-        ..cardId = 1
-        ..statementDate = statementDate
-        ..dueDate = due ?? dueDate
-        ..totalDue = totalDue;
+  CardStatement statement({double? totalDue = 5000}) => aStatement(
+      statementDate: statementDate, dueDate: dueDate, totalDue: totalDue);
 
   Transaction row(
     double amount,
@@ -20,13 +18,7 @@ void main() {
     TransactionKind kind = TransactionKind.repayment,
     bool isInflow = true,
   }) =>
-      Transaction()
-        ..amount = amount
-        ..date = date
-        ..isInflow = isInflow
-        ..kind = kind
-        ..party = 'x'
-        ..tags = <String>[];
+      aTransaction(amount: amount, date: date, isInflow: isInflow, kind: kind);
 
   PaymentDueStatus? statusOn(DateTime today,
           {CardStatement? of, List<Transaction> rows = const []}) =>
@@ -90,7 +82,8 @@ void main() {
   });
 
   test('is null without a due date', () {
-    final noDueDate = statement()..dueDate = null;
+    final noDueDate =
+        aStatement(statementDate: statementDate, totalDue: 5000);
     expect(statusOn(DateTime(2026, 1, 20), of: noDueDate), isNull);
   });
 }

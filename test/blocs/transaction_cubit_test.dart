@@ -9,25 +9,7 @@ import 'package:mocktail/mocktail.dart';
 
 import '../fakes/fake_transaction_repository.dart';
 import '../fakes/mock_transaction_repository.dart';
-
-Transaction _txn({
-  required double amount,
-  required DateTime date,
-  required bool isCredit,
-  List<String> tags = const [],
-  List<String> group = const [],
-  String party = 'Test',
-}) {
-  return Transaction()
-    ..amount = amount
-    ..date = date
-    ..isInflow = isCredit
-    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
-    ..tags = List.of(tags)
-    ..group = List.of(group)
-    ..party = party
-    ..note = null;
-}
+import '../support/builders.dart';
 
 /// Example test proving the testing environment: a real production cubit driven
 /// by the in-memory [FakeTransactionRepository], asserted via the stream.
@@ -40,12 +22,8 @@ void main() {
     test('emits [InProgress, Success] with a summary computed from the repo',
         () async {
       repo.seed([
-        _txn(
-            amount: 120,
-            date: DateTime(2026, 7, 5),
-            isCredit: false,
-            tags: ['food']),
-        _txn(amount: 500, date: DateTime(2026, 7, 6), isCredit: true),
+        aTransaction(amount: 120, date: DateTime(2026, 7, 5), tags: ['food']),
+        aTransaction(amount: 500, date: DateTime(2026, 7, 6), isInflow: true),
       ]);
       final cubit = TransactionCubit(repo);
       addTearDown(cubit.close);
@@ -67,8 +45,8 @@ void main() {
 
     test('excludes transactions outside the selected month', () async {
       repo.seed([
-        _txn(amount: 100, date: DateTime(2026, 7, 10), isCredit: false),
-        _txn(amount: 999, date: DateTime(2026, 6, 30), isCredit: false),
+        aTransaction(amount: 100, date: DateTime(2026, 7, 10)),
+        aTransaction(amount: 999, date: DateTime(2026, 6, 30)),
       ]);
       final cubit = TransactionCubit(repo);
       addTearDown(cubit.close);
@@ -142,7 +120,7 @@ void main() {
       await cubit.close();
 
       controller.add([
-        _txn(amount: 10, date: DateTime(2026, 7, 1), isCredit: false),
+        aTransaction(amount: 10, date: DateTime(2026, 7, 1)),
       ]);
       await Future<void>.delayed(Duration.zero);
 

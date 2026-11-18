@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/payment_card.dart';
-import 'package:fynans/entities/detected_card.dart';
-import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/card_repository.dart';
 import 'package:fynans/ports/card_statement_repository.dart';
 import 'package:fynans/ports/detected_card_repository.dart';
@@ -18,6 +16,7 @@ import '../fakes/fake_card_repository.dart';
 import '../fakes/fake_card_statement_repository.dart';
 import '../fakes/fake_detected_card_repository.dart';
 import '../fakes/fake_transaction_repository.dart';
+import '../support/builders.dart';
 
 void main() {
   late FakeTransactionRepository transactionRepository;
@@ -74,12 +73,7 @@ void main() {
   testWidgets('a registered card renders its tile with issuer and last4',
       (tester) async {
     cardRepository.seed([
-      PaymentCard()
-        ..issuer = 'HDFC'
-        ..last4 = '1234'
-        ..type = CardType.credit
-        ..status = CardStatus.active
-        ..creditLimit = 50000,
+      aCard(issuer: 'HDFC', last4: '1234'),
     ]);
 
     await pumpScreen(tester);
@@ -92,23 +86,14 @@ void main() {
   testWidgets(
       'a card with a matched transaction shows spent, not available equal to full limit',
       (tester) async {
-    final card = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
+    final card = aCard(creditLimit: 50000);
     cardRepository.seed([card]);
     transactionRepository.seed([
-      Transaction()
-        ..amount = 259
-        ..date = DateTime(2026, 1, 15)
-        ..tags = []
-        ..group = []
-        ..party = 'Merchant'
-        ..isInflow = false
-        ..kind = TransactionKind.expense
-        ..cardId = card.id,
+      aTransaction(
+        amount: 259,
+        date: DateTime(2026, 1, 15),
+        cardId: card.id,
+      ),
     ]);
 
     await pumpScreen(tester);
@@ -118,14 +103,7 @@ void main() {
   });
 
   testWidgets('the add-card FAB opens AddCardScreen', (tester) async {
-    cardRepository.seed([
-      PaymentCard()
-        ..issuer = 'HDFC'
-        ..last4 = '1234'
-        ..type = CardType.credit
-        ..status = CardStatus.active
-        ..creditLimit = 50000,
-    ]);
+    cardRepository.seed([aCard()]);
 
     await pumpScreen(tester);
 
@@ -136,13 +114,7 @@ void main() {
   });
 
   testWidgets('tapping a card tile opens its detail screen', (tester) async {
-    final card = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
-    cardRepository.seed([card]);
+    cardRepository.seed([aCard()]);
 
     await pumpScreen(tester);
 
@@ -154,17 +126,10 @@ void main() {
   });
 
   group('DetectedCardsBanner', () {
-    DetectedCard detection() => DetectedCard()
-      ..issuerGuess = 'HDFC'
-      ..sender = 'HDFCCC'
-      ..last4 = '1234'
-      ..firstSeen = DateTime(2026, 1, 1)
-      ..lastSeen = DateTime(2026, 1, 5)
-      ..sightingCount = 3;
-
     testWidgets('a pending sighting prompts even with zero registered cards',
         (tester) async {
-      detectedCardRepository.seed([detection()]);
+      detectedCardRepository
+          .seed([aSighting(issuerGuess: 'HDFC', last4: '1234')]);
 
       await pumpScreen(tester);
 
@@ -183,7 +148,7 @@ void main() {
     });
 
     testWidgets('"Not mine" dismisses the sighting', (tester) async {
-      detectedCardRepository.seed([detection()]);
+      detectedCardRepository.seed([aSighting()]);
       await pumpScreen(tester);
 
       await tester.tap(find.text('Not mine'));
@@ -195,8 +160,7 @@ void main() {
 
     testWidgets('"Add card" opens AddCardScreen pre-filled from the sighting',
         (tester) async {
-      final d = detection();
-      detectedCardRepository.seed([d]);
+      detectedCardRepository.seed([aSighting(issuerGuess: 'HDFC')]);
       await pumpScreen(tester);
 
       await tester.tap(find.text('Add card'));
@@ -213,12 +177,7 @@ void main() {
       'a debit card shows its spending this month and its account, with no '
       'limit figures', (tester) async {
     cardRepository.seed([
-      PaymentCard()
-        ..issuer = 'HDFC'
-        ..last4 = '1234'
-        ..type = CardType.debit
-        ..status = CardStatus.active
-        ..accountLast4 = '4321',
+      aCard(type: CardType.debit, accountLast4: '4321'),
     ]);
     await pumpScreen(tester);
 
@@ -231,21 +190,15 @@ void main() {
 
   testWidgets("a debit card shows this month's income next to its spending",
       (tester) async {
-    final debit = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.debit
-      ..status = CardStatus.active;
+    final debit = aCard(type: CardType.debit);
     cardRepository.seed([debit]);
     transactionRepository.seed([
-      Transaction()
-        ..amount = 12345
-        ..date = DateTime.now()
-        ..isInflow = true
-        ..kind = TransactionKind.income
-        ..party = 'Employer'
-        ..tags = <String>[]
-        ..cardId = debit.id,
+      aTransaction(
+        amount: 12345,
+        date: DateTime.now(),
+        isInflow: true,
+        card: debit,
+      ),
     ]);
     await pumpScreen(tester);
 
@@ -254,36 +207,26 @@ void main() {
   });
 
   group('closed and untracked cards', () {
-    PaymentCard closedCard() => PaymentCard()
-      ..issuer = 'AXIS'
-      ..last4 = '4321'
-      ..type = CardType.credit
-      ..status = CardStatus.closed
-      ..closedOn = DateTime(2026, 7, 31)
-      ..creditLimit = 50000;
+    PaymentCard closedCard() => aCard(
+          issuer: 'AXIS',
+          last4: '4321',
+          status: CardStatus.closed,
+          closedOn: DateTime(2026, 7, 31),
+        );
 
     testWidgets('sit in a collapsed section that shows what they hide',
         (tester) async {
       final closed = closedCard();
       cardRepository.seed([
-        PaymentCard()
-          ..issuer = 'HDFC'
-          ..last4 = '1234'
-          ..type = CardType.credit
-          ..status = CardStatus.active
-          ..creditLimit = 50000,
+        aCard(),
         closed,
       ]);
       transactionRepository.seed([
-        Transaction()
-          ..amount = 300
-          ..date = DateTime(2026, 8, 2)
-          ..tags = <String>[]
-          ..group = <String>[]
-          ..party = 'x'
-          ..isInflow = false
-          ..kind = TransactionKind.debt
-          ..cardId = closed.id,
+        aTransaction(
+          amount: 300,
+          date: DateTime(2026, 8, 2),
+          card: closed,
+        ),
       ]);
       await pumpScreen(tester);
 
@@ -301,7 +244,8 @@ void main() {
       );
     });
 
-    testWidgets('with no active card, the page shows the section, not the '
+    testWidgets(
+        'with no active card, the page shows the section, not the '
         'empty state', (tester) async {
       cardRepository.seed([closedCard()]);
       await pumpScreen(tester);

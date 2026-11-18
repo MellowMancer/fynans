@@ -2,20 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/grouping_option.dart';
 import 'package:fynans/entities/monthly_summary.dart';
-import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
 import 'package:fynans/ui/widgets/month_year_wheel_picker.dart';
 import 'package:fynans/ui/widgets/transaction_list_widgets.dart';
 import 'package:fynans/use_cases/build_transaction_hierarchy.dart';
 
-Transaction _txn(DateTime date, {double amount = 10}) => Transaction()
-  ..amount = amount
-  ..date = date
-  ..tags = <String>[]
-  ..group = <String>[]
-  ..party = 'x'
-  ..isInflow = false
-  ..kind = TransactionKind.expense;
+import '../support/builders.dart';
 
 void main() {
   group('time buckets are chronological, not ranked by total', () {
@@ -23,9 +15,9 @@ void main() {
 
     test('days list newest first regardless of amount', () {
       final nodes = build([
-        _txn(DateTime(2026, 7, 3), amount: 900), // biggest, oldest
-        _txn(DateTime(2026, 7, 19), amount: 5), // smallest, newest
-        _txn(DateTime(2026, 7, 8), amount: 100),
+        aTransaction(date: DateTime(2026, 7, 3), amount: 900), // biggest, oldest
+        aTransaction(date: DateTime(2026, 7, 19), amount: 5), // smallest, newest
+        aTransaction(date: DateTime(2026, 7, 8), amount: 100),
       ], [
         GroupingOption.day
       ]);
@@ -39,8 +31,8 @@ void main() {
     test('weeks and months are chronological too', () {
       for (final option in [GroupingOption.week, GroupingOption.month]) {
         final nodes = build([
-          _txn(DateTime(2026, 5, 4), amount: 900),
-          _txn(DateTime(2026, 7, 20), amount: 5),
+          aTransaction(date: DateTime(2026, 5, 4), amount: 900),
+          aTransaction(date: DateTime(2026, 7, 20), amount: 5),
         ], [
           option
         ]);
@@ -50,8 +42,10 @@ void main() {
     });
 
     test('non-time groupings still rank by total', () {
-      final big = _txn(DateTime(2026, 7, 1), amount: 500)..group = ['Big'];
-      final small = _txn(DateTime(2026, 7, 9), amount: 5)..group = ['Small'];
+      final big = aTransaction(
+          date: DateTime(2026, 7, 1), amount: 500, group: ['Big']);
+      final small = aTransaction(
+          date: DateTime(2026, 7, 9), amount: 5, group: ['Small']);
       final nodes = build([small, big], [GroupingOption.group]);
 
       // total = income - expenses, so the *smallest* expense ranks highest.

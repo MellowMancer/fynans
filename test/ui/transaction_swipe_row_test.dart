@@ -16,6 +16,7 @@ import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/ui/widgets/transaction_swipe_row.dart';
 
 import '../fakes/fake_transaction_repository.dart';
+import '../support/builders.dart';
 
 /// Sliding a row shows Edit, Delete and Cancel, and Delete asks first.
 void main() {
@@ -24,13 +25,12 @@ void main() {
 
   setUp(() async {
     repository = FakeTransactionRepository();
-    row = Transaction()
-      ..amount = 410
-      ..date = DateTime.now()
-      ..tags = ['food']
-      ..party = 'Cafe'
-      ..isInflow = false
-      ..kind = TransactionKind.expense;
+    row = aTransaction(
+      amount: 410,
+      date: DateTime.now(),
+      tags: ['food'],
+      party: 'Cafe',
+    );
     await repository.saveTransaction(row);
   });
   tearDown(() => repository.dispose());

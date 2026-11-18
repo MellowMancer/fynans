@@ -4,14 +4,12 @@ import 'package:fynans/adapters/data/app_database.dart';
 import 'package:fynans/adapters/data/drift_card_repository.dart';
 import 'package:fynans/adapters/data/drift_card_statement_repository.dart';
 import 'package:fynans/adapters/data/drift_transaction_repository.dart';
-import 'package:fynans/entities/card_statement.dart';
-import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ports/missing_card_exception.dart';
 
-import 'transaction_repository_contract.dart';
+import '../support/builders.dart';
 
 /// Card-aware TransactionRepository behaviour, against real Drift.
 ///
@@ -35,12 +33,7 @@ void main() {
   tearDown(() => db.close());
 
   Future<int> seedCard({String issuer = 'HDFC', String last4 = '1234'}) async {
-    final card = PaymentCard()
-      ..issuer = issuer
-      ..last4 = last4
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
+    final card = aCard(issuer: issuer, last4: last4);
     await cards.saveCard(card);
     return card.id!;
   }
@@ -59,22 +52,33 @@ void main() {
 
     test('card transactions are in the main list', () async {
       final cardId = await seedCard();
-      await transactions.saveTransaction(txn(date: DateTime(2026, 7, 1)));
       await transactions
-          .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: cardId));
+          .saveTransaction(aTransaction(date: DateTime(2026, 7, 1)));
+      await transactions.saveTransaction(aTransaction(
+        date: DateTime(2026, 7, 2),
+        cardId: cardId,
+      ));
 
       expect(await mainList(), hasLength(2));
     });
 
     test('a closed card hides only its transactions after the closing date',
         () async {
-      final card = PaymentCard()..id = await seedCard();
-      await transactions.saveTransaction(
-          txn(date: DateTime(2026, 7, 31, 23), cardId: card.id, party: 'kept'));
-      await transactions.saveTransaction(
-          txn(date: DateTime(2026, 8, 2), cardId: card.id, party: 'hidden'));
-      await transactions
-          .saveTransaction(txn(date: DateTime(2026, 8, 2), party: 'no card'));
+      final card = aCard(id: await seedCard());
+      await transactions.saveTransaction(aTransaction(
+        date: DateTime(2026, 7, 31, 23),
+        cardId: card.id,
+        party: 'kept',
+      ));
+      await transactions.saveTransaction(aTransaction(
+        date: DateTime(2026, 8, 2),
+        cardId: card.id,
+        party: 'hidden',
+      ));
+      await transactions.saveTransaction(aTransaction(
+        date: DateTime(2026, 8, 2),
+        party: 'no card',
+      ));
 
       await cards.closeCard(card, DateTime(2026, 7, 31));
 
@@ -82,10 +86,13 @@ void main() {
     });
 
     test('an untracked card hides all of its transactions', () async {
-      final card = PaymentCard()..id = await seedCard();
+      final card = aCard(id: await seedCard());
+      await transactions.saveTransaction(aTransaction(
+        date: DateTime(2026, 7, 2),
+        cardId: card.id,
+      ));
       await transactions
-          .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: card.id));
-      await transactions.saveTransaction(txn(date: DateTime(2026, 7, 3)));
+          .saveTransaction(aTransaction(date: DateTime(2026, 7, 3)));
 
       await cards.untrackCard(card);
 
@@ -96,9 +103,11 @@ void main() {
 
     test('the live list shows the rows again when the card is restored',
         () async {
-      final card = PaymentCard()..id = await seedCard();
-      await transactions
-          .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: card.id));
+      final card = aCard(id: await seedCard());
+      await transactions.saveTransaction(aTransaction(
+        date: DateTime(2026, 7, 2),
+        cardId: card.id,
+      ));
       await cards.untrackCard(card);
 
       final lengths = transactions
@@ -115,9 +124,11 @@ void main() {
 
     test("the card's own list still shows the rows that its status hides",
         () async {
-      final card = PaymentCard()..id = await seedCard();
-      await transactions
-          .saveTransaction(txn(date: DateTime(2026, 7, 2), cardId: card.id));
+      final card = aCard(id: await seedCard());
+      await transactions.saveTransaction(aTransaction(
+        date: DateTime(2026, 7, 2),
+        cardId: card.id,
+      ));
 
       await cards.untrackCard(card);
 
@@ -135,21 +146,23 @@ void main() {
 
     test('importTransaction', () {
       expect(
-          transactions.importTransaction(
-              txn(date: DateTime(2026, 7, 1), smsId: 'a', cardId: missing)),
+          transactions.importTransaction(aTransaction(
+              date: DateTime(2026, 7, 1), smsId: 'a', cardId: missing)),
           throwsMissingCard);
     });
 
     test('relinkTransactionToCard', () async {
-      await transactions
-          .saveTransaction(txn(date: DateTime(2026, 7, 1), smsId: 'a'));
+      await transactions.saveTransaction(aTransaction(
+        date: DateTime(2026, 7, 1),
+        smsId: 'a',
+      ));
 
       expect(transactions.relinkTransactionToCard(kind: TransactionKind.debt,smsId: 'a', cardId: missing),
           throwsMissingCard);
     });
 
     test('updateTransaction', () async {
-      final saved = txn(date: DateTime(2026, 7, 1));
+      final saved = aTransaction(date: DateTime(2026, 7, 1));
       await transactions.saveTransaction(saved);
 
       expect(transactions.updateTransaction(saved..cardId = missing),
@@ -158,10 +171,11 @@ void main() {
 
     test('importStatement', () {
       expect(
-          DriftCardStatementRepository(db).importStatement(CardStatement()
-            ..cardId = missing
-            ..statementDate = DateTime(2026, 7, 1)
-            ..smsId = 'a'),
+          DriftCardStatementRepository(db).importStatement(aStatement(
+            cardId: missing,
+            statementDate: DateTime(2026, 7, 1),
+            smsId: 'a',
+          )),
           throwsMissingCard);
     });
   });
@@ -169,12 +183,18 @@ void main() {
   test('listenToTransactionsForCard is all-time and card-scoped', () async {
     final card1 = await seedCard(issuer: 'HDFC', last4: '1234');
     final card2 = await seedCard(issuer: 'SBI Card', last4: '5678');
-    await transactions
-        .saveTransaction(txn(date: DateTime(2026, 7, 1), cardId: card1));
-    await transactions
-        .saveTransaction(txn(date: DateTime(2020, 1, 1), cardId: card1));
-    await transactions
-        .saveTransaction(txn(date: DateTime(2026, 7, 1), cardId: card2));
+    await transactions.saveTransaction(aTransaction(
+      date: DateTime(2026, 7, 1),
+      cardId: card1,
+    ));
+    await transactions.saveTransaction(aTransaction(
+      date: DateTime(2020, 1, 1),
+      cardId: card1,
+    ));
+    await transactions.saveTransaction(aTransaction(
+      date: DateTime(2026, 7, 1),
+      cardId: card2,
+    ));
 
     final forCard1 =
         await transactions.listenToTransactionsForCard(card1).first;
@@ -185,12 +205,12 @@ void main() {
 
   test('distinct helpers exclude card transactions', () async {
     final cardId = await seedCard();
-    await transactions.saveTransaction(txn(
+    await transactions.saveTransaction(aTransaction(
       date: DateTime(2026, 7, 1),
       party: 'Regular Party',
       group: ['Regular Group'],
     ));
-    await transactions.saveTransaction(txn(
+    await transactions.saveTransaction(aTransaction(
       date: DateTime(2026, 7, 2),
       cardId: cardId,
       party: 'Card Merchant',
@@ -203,8 +223,11 @@ void main() {
 
   test('cardAvailableLimit round-trips', () async {
     final cardId = await seedCard();
-    final t = txn(date: DateTime(2026, 7, 1), cardId: cardId)
-      ..cardAvailableLimit = 48750.0;
+    final t = aTransaction(
+      date: DateTime(2026, 7, 1),
+      cardId: cardId,
+      cardAvailableLimit: 48750.0,
+    );
     await transactions.saveTransaction(t);
 
     final stored =
@@ -214,15 +237,12 @@ void main() {
 
   test('the database refuses to delete a card that a transaction refers to',
       () async {
-    final card = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
+    final card = aCard();
     await cards.saveCard(card);
-    await transactions
-        .saveTransaction(txn(date: DateTime(2026, 7, 1), cardId: card.id));
+    await transactions.saveTransaction(aTransaction(
+      date: DateTime(2026, 7, 1),
+      cardId: card.id,
+    ));
 
     // The safety net under RemoveCard: even a bug that calls deleteCard on a
     // card with history cannot strip the card from its transactions.
@@ -233,17 +253,14 @@ void main() {
   test(
       'relinkTransactionToCard links a card SMS row that was imported '
       'without a card', () async {
-    final card = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
+    final card = aCard();
     await cards.saveCard(card);
     // As if the SMS was imported before the parser recognised it as a card
     // SMS: the row has the smsId, but no card.
-    await transactions
-        .saveTransaction(txn(date: DateTime(2026, 7, 1), smsId: 'sms-1'));
+    await transactions.saveTransaction(aTransaction(
+      date: DateTime(2026, 7, 1),
+      smsId: 'sms-1',
+    ));
 
     final relinked = await transactions.relinkTransactionToCard(
       kind: TransactionKind.debt,
@@ -267,7 +284,7 @@ void main() {
     final cardA = await seedCard(issuer: 'HDFC', last4: '1234');
     final cardB = await seedCard(issuer: 'SBI Card', last4: '5678');
     await transactions.saveTransaction(
-      txn(date: DateTime(2026, 7, 1), cardId: cardA, smsId: 'sms-2'),
+      aTransaction(date: DateTime(2026, 7, 1), cardId: cardA, smsId: 'sms-2'),
     );
 
     final relinked = await transactions.relinkTransactionToCard(

@@ -9,6 +9,7 @@ import '../fakes/fake_card_repository.dart';
 import '../fakes/fake_card_statement_repository.dart';
 import '../fakes/fake_detected_card_repository.dart';
 import '../fakes/fake_transaction_repository.dart';
+import '../support/builders.dart';
 
 void main() {
   _smsIdStabilityTests();
@@ -84,12 +85,7 @@ void main() {
 
     test('a matched card SMS goes to its card as debt, and to the main list',
         () async {
-      final card = PaymentCard()
-        ..issuer = 'SBI Card'
-        ..last4 = '1234'
-        ..type = CardType.credit
-        ..status = CardStatus.active
-        ..creditLimit = 5000;
+      final card = aCard(issuer: 'SBI Card', last4: '1234', creditLimit: 5000);
       cardRepository.seed([card]);
       ingestor = TransactionSmsIngestor(
         repository: repository,
@@ -182,12 +178,7 @@ void main() {
     });
 
     test('a matched card SMS does not record a sighting', () async {
-      final card = PaymentCard()
-        ..issuer = 'SBI Card'
-        ..last4 = '1234'
-        ..type = CardType.credit
-        ..status = CardStatus.active
-        ..creditLimit = 5000;
+      final card = aCard(issuer: 'SBI Card', last4: '1234', creditLimit: 5000);
       cardRepository.seed([card]);
       ingestor = TransactionSmsIngestor(
         repository: repository,
@@ -208,22 +199,13 @@ void main() {
       // As if the SMS was imported before the parser recognised it as a card
       // SMS: the row has the same smsId, but no card.
       repository.seed([
-        Transaction()
-          ..amount = 259
-          ..date = cardDate
-          ..tags = <String>[]
-          ..party = 'x'
-          ..isInflow = false
-          ..kind = TransactionKind.expense
-          ..smsId =
-              smsIdFor(sender: cardSender, body: spendBody, date: cardDate),
+        aTransaction(
+          amount: 259,
+          date: cardDate,
+          smsId: smsIdFor(sender: cardSender, body: spendBody, date: cardDate),
+        ),
       ]);
-      final card = PaymentCard()
-        ..issuer = 'SBI Card'
-        ..last4 = '1234'
-        ..type = CardType.credit
-        ..status = CardStatus.active
-        ..creditLimit = 5000;
+      final card = aCard(issuer: 'SBI Card', last4: '1234', creditLimit: 5000);
       cardRepository.seed([card]);
 
       final relinked = await ingestor.ingest(
@@ -248,12 +230,7 @@ void main() {
 
     group('kinds', () {
       PaymentCard seedSbiCard() {
-        final card = PaymentCard()
-          ..issuer = 'SBI Card'
-          ..last4 = '1234'
-          ..type = CardType.credit
-          ..status = CardStatus.active
-          ..creditLimit = 50000;
+        final card = aCard(issuer: 'SBI Card', last4: '1234');
         cardRepository.seed([card]);
         return card;
       }
@@ -317,21 +294,12 @@ void main() {
         '14/11/2026\nRef 111111111111';
     final day = DateTime(2026, 11, 14);
 
-    PaymentCard card(CardType type, {String last4 = '9999', String? account}) =>
-        PaymentCard()
-          ..issuer = 'HDFC'
-          ..last4 = last4
-          ..type = type
-          ..status = CardStatus.active
-          ..accountLast4 = account
-          ..creditLimit = type == CardType.credit ? 50000 : null;
-
     Future<Transaction> onlyRow() async => (await repository
             .fetchTransactionsInRange(range: DateRange.month(day)))
         .single;
 
     test('links to the debit card that draws from the account', () async {
-      final debit = card(CardType.debit, account: '1111');
+      final debit = aCard(type: CardType.debit, accountLast4: '1111');
       cardRepository.seed([debit]);
 
       await ingestor.ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
@@ -344,8 +312,9 @@ void main() {
     test('never links to a credit card, even with the same digits', () async {
       // The database allows account digits on a credit card; the rule must
       // still skip it.
-      cardRepository
-          .seed([card(CardType.credit, last4: '1111', account: '1111')]);
+      cardRepository.seed([
+        aCard(type: CardType.credit, last4: '1111', accountLast4: '1111'),
+      ]);
 
       await ingestor.ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
 
@@ -353,7 +322,7 @@ void main() {
     });
 
     test('stays unlinked if no debit card has the account digits', () async {
-      cardRepository.seed([card(CardType.debit, last4: '1111')]);
+      cardRepository.seed([aCard(type: CardType.debit, last4: '1111')]);
 
       await ingestor.ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
 
@@ -362,7 +331,7 @@ void main() {
 
     test('an old row links when the debit card is added later', () async {
       await ingestor.ingest(sender: 'AX-HDFCBK', body: upiSpend, date: day);
-      final debit = card(CardType.debit, account: '1111');
+      final debit = aCard(type: CardType.debit, accountLast4: '1111');
       cardRepository.seed([debit]);
 
       final linked = await TransactionSmsIngestor(
@@ -398,11 +367,7 @@ void main() {
     });
 
     test('a refund on a debit card is a refund on that card', () async {
-      final debit = PaymentCard()
-        ..issuer = 'HDFC'
-        ..last4 = '1234'
-        ..type = CardType.debit
-        ..status = CardStatus.active;
+      final debit = aCard(type: CardType.debit, last4: '1234');
       cardRepository.seed([debit]);
 
       await ingestor.ingest(
@@ -441,12 +406,7 @@ void main() {
         detectedCardRepository: detectedCardRepository,
         statementRepository: statementRepository,
       );
-      card = PaymentCard()
-        ..issuer = 'HDFC'
-        ..last4 = '1234'
-        ..type = type
-        ..status = CardStatus.active
-        ..creditLimit = type == CardType.credit ? 50000 : null;
+      card = aCard(type: type, last4: '1234');
       cardRepository.seed([card]);
       await ingestor.ingest(
           sender: 'HDFCBK',
@@ -501,20 +461,13 @@ void main() {
         'Rs.500.00 spent on HDFC Bank Debit Card XX1234 at AMAZON.';
     final day = DateTime(2026, 1, 15);
 
-    PaymentCard hdfcCard(CardType type) => PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = type
-      ..status = CardStatus.active
-      ..creditLimit = type == CardType.credit ? 50000 : null;
-
     Future<Transaction> onlyRow() async => (await repository
             .fetchTransactionsInRange(range: DateRange.month(day)))
         .single;
 
     test('a debit card spend is linked to the debit card as an expense',
         () async {
-      final card = hdfcCard(CardType.debit);
+      final card = aCard(type: CardType.debit, last4: '1234');
       cardRepository.seed([card]);
 
       expect(
@@ -538,7 +491,7 @@ void main() {
 
     test('"HDFC Bank Card" matched to a registered credit card is debt',
         () async {
-      final card = hdfcCard(CardType.credit);
+      final card = aCard(type: CardType.credit, last4: '1234');
       cardRepository.seed([card]);
 
       await ingestor.ingest(
@@ -567,7 +520,7 @@ void main() {
     });
 
     test('an explicit credit card SMS never matches a debit card', () async {
-      cardRepository.seed([hdfcCard(CardType.debit)]);
+      cardRepository.seed([aCard(type: CardType.debit, last4: '1234')]);
 
       final saved = await ingestor.ingest(
         sender: 'HDFCCC',

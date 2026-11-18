@@ -5,6 +5,7 @@ import 'package:fynans/adapters/blocs/add_transaction/add_transaction_state.dart
 import 'package:fynans/entities/transaction.dart';
 
 import '../../fakes/fake_transaction_repository.dart';
+import '../../support/builders.dart';
 
 /// Fails every save with an error text that contains the row, like a real
 /// database error can.
@@ -12,17 +13,6 @@ class _FailingSaves extends FakeTransactionRepository {
   @override
   Future<void> saveTransaction(Transaction transaction) async =>
       throw StateError('SQL error: INSERT party = ${transaction.party}');
-}
-
-Transaction _txn({List<String> group = const [], String party = 'X'}) {
-  return Transaction()
-    ..amount = 10
-    ..date = DateTime(2026, 7, 1)
-    ..tags = const []
-    ..group = List.of(group)
-    ..party = party
-    ..isInflow = false
-    ..kind = TransactionKind.expense;
 }
 
 void main() {
@@ -107,8 +97,8 @@ void main() {
     test('loading suggestions exposes groups and parties from the repo',
         () async {
       repo.seed([
-        _txn(group: ['Food'], party: 'Cafe'),
-        _txn(group: ['Rent'], party: 'Landlord'),
+        aTransaction(group: ['Food'], party: 'Cafe'),
+        aTransaction(group: ['Rent'], party: 'Landlord'),
       ]);
       final cubit = AddTransactionCubit(repo);
       addTearDown(cubit.close);

@@ -8,22 +8,7 @@ import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/use_cases/date_range_presets.dart';
 import 'package:mocktail/mocktail.dart';
 import '../../fakes/mock_transaction_repository.dart';
-
-Transaction _txn({
-  required double amount,
-  required DateTime date,
-  bool isCredit = false,
-}) {
-  return Transaction()
-    ..amount = amount
-    ..date = date
-    ..isInflow = isCredit
-    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
-    ..tags = <String>[]
-    ..group = <String>[]
-    ..party = 'Test'
-    ..note = null;
-}
+import '../../support/builders.dart';
 
 void main() {
   setUpAll(() {
@@ -81,7 +66,7 @@ void main() {
         DateRangePreset.thisMonth,
       ));
       await Future<void>.delayed(Duration.zero);
-      controllers.last.add([_txn(amount: 10, date: DateTime(2026, 6, 2))]);
+      controllers.last.add([aTransaction(amount: 10, date: DateTime(2026, 6, 2))]);
       await Future<void>.delayed(Duration.zero);
 
       expect(bloc.state, isA<AdvancedViewLoadSuccess>(),
@@ -111,7 +96,7 @@ void main() {
 
       bloc.add(AdvancedViewDataFetched());
       await Future<void>.delayed(Duration.zero);
-      controllers[0].add([_txn(amount: 10, date: DateTime(2026, 7, 1))]);
+      controllers[0].add([aTransaction(amount: 10, date: DateTime(2026, 7, 1))]);
       await Future<void>.delayed(Duration.zero);
 
       // Queue the range change, then let the OLD subscription deliver.
@@ -119,7 +104,7 @@ void main() {
         DateRange.month(DateTime(2026, 6)),
         DateRangePreset.thisMonth,
       ));
-      controllers[0].add([_txn(amount: 99, date: DateTime(2026, 7, 2))]);
+      controllers[0].add([aTransaction(amount: 99, date: DateTime(2026, 7, 2))]);
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       final state = bloc.state;
@@ -166,12 +151,12 @@ void main() {
 
       bloc.add(AdvancedViewDataFetched());
       await Future<void>.delayed(Duration.zero);
-      controller.add([_txn(amount: 100, date: DateTime(2026, 7, 5))]);
+      controller.add([aTransaction(amount: 100, date: DateTime(2026, 7, 5))]);
       await Future<void>.delayed(Duration.zero);
       // Simulate a second box write producing a new snapshot.
       controller.add([
-        _txn(amount: 100, date: DateTime(2026, 7, 5)),
-        _txn(amount: 200, date: DateTime(2026, 7, 6)),
+        aTransaction(amount: 100, date: DateTime(2026, 7, 5)),
+        aTransaction(amount: 200, date: DateTime(2026, 7, 6)),
       ]);
 
       await expectation;
@@ -224,7 +209,7 @@ void main() {
       bloc.add(AdvancedViewDataFetched());
       await Future<void>.delayed(Duration.zero);
       // Reach a success state so AdvancedViewRangeChanged is not gated out.
-      controllers[0].add([_txn(amount: 10, date: DateTime(2026, 7, 1))]);
+      controllers[0].add([aTransaction(amount: 10, date: DateTime(2026, 7, 1))]);
       await Future<void>.delayed(Duration.zero);
       bloc.add(AdvancedViewRangeChanged(
         DateRange.month(DateTime(2026, 8)),

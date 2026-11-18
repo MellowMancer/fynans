@@ -1,26 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_cubit.dart';
 import 'package:fynans/adapters/blocs/transaction/transaction_state.dart';
-import 'package:fynans/entities/transaction.dart';
 
 import '../fakes/fake_transaction_repository.dart';
-
-Transaction _txn(double amount, DateTime date) => Transaction()
-  ..amount = amount
-  ..date = date
-  ..tags = <String>[]
-  ..group = <String>[]
-  ..party = 'x'
-  ..isInflow = false
-  ..kind = TransactionKind.expense;
+import '../support/builders.dart';
 
 void main() {
   test('switching month re-subscribes and emits the new month', () async {
     final repo = FakeTransactionRepository()
       ..seed([
-        _txn(100, DateTime(2026, 7, 5)),
-        _txn(50, DateTime(2026, 6, 5)),
-        _txn(25, DateTime(2026, 6, 6)),
+        aTransaction(amount: 100, date: DateTime(2026, 7, 5)),
+        aTransaction(amount: 50, date: DateTime(2026, 6, 5)),
+        aTransaction(amount: 25, date: DateTime(2026, 6, 6)),
       ]);
     addTearDown(repo.dispose);
 

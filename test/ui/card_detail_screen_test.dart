@@ -14,16 +14,10 @@ import 'package:fynans/ui/utils/formatters.dart';
 import '../fakes/fake_card_repository.dart';
 import '../fakes/fake_card_statement_repository.dart';
 import '../fakes/fake_transaction_repository.dart';
+import '../support/builders.dart';
 
-Transaction spend(double amount, DateTime date, int cardId) => Transaction()
-  ..amount = amount
-  ..date = date
-  ..tags = []
-  ..group = []
-  ..party = 'Merchant'
-  ..isInflow = false
-  ..kind = TransactionKind.expense
-  ..cardId = cardId;
+Transaction spend(double amount, DateTime date, int cardId) =>
+    aTransaction(amount: amount, date: date, cardId: cardId);
 
 void main() {
   late FakeTransactionRepository transactionRepository;
@@ -35,12 +29,7 @@ void main() {
     transactionRepository = FakeTransactionRepository();
     cardRepository = FakeCardRepository();
     statementRepository = FakeCardStatementRepository();
-    card = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
+    card = aCard(creditLimit: 50000);
     cardRepository.seed([card]);
   });
 

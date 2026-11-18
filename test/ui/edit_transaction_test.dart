@@ -8,6 +8,7 @@ import 'package:fynans/ui/screens/add_transaction_screen.dart';
 import 'package:fynans/ui/theme/app_theme.dart';
 
 import '../fakes/fake_transaction_repository.dart';
+import '../support/builders.dart';
 
 /// The add-transaction form in edit mode.
 void main() {
@@ -17,14 +18,13 @@ void main() {
   tearDown(() => repository.dispose());
 
   Future<Transaction> seed({String? smsId}) async {
-    final t = Transaction()
-      ..amount = 410
-      ..date = DateTime.now()
-      ..tags = ['food']
-      ..party = 'Cafe'
-      ..isInflow = false
-      ..kind = TransactionKind.expense
-      ..smsId = smsId;
+    final t = aTransaction(
+      amount: 410,
+      date: DateTime.now(),
+      tags: ['food'],
+      party: 'Cafe',
+      smsId: smsId,
+    );
     await repository.saveTransaction(t);
     return t;
   }

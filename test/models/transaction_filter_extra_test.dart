@@ -1,44 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/entities/transaction_filter.dart';
 import 'package:fynans/ui/utils/filter_chips.dart';
 
-Transaction _txn({
-  double amount = 100,
-  bool isCredit = false,
-  List<String> tags = const [],
-  List<String> group = const [],
-  String party = 'Cafe',
-  int? cardId,
-}) =>
-    Transaction()
-      ..amount = amount
-      ..date = DateTime(2026, 7, 15)
-      ..tags = List.of(tags)
-      ..group = List.of(group)
-      ..party = party
-      ..isInflow = isCredit
-      ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
-      ..cardId = cardId;
+import '../support/builders.dart';
 
 void main() {
   group('direction filter', () {
     test('inflow keeps only credits', () {
       const f = TransactionFilter(direction: DirectionFilter.inflow);
-      expect(f.matches(_txn(isCredit: true)), isTrue);
-      expect(f.matches(_txn(isCredit: false)), isFalse);
+      expect(f.matches(aTransaction(isInflow: true)), isTrue);
+      expect(f.matches(aTransaction(isInflow: false)), isFalse);
     });
 
     test('outflow keeps only debits', () {
       const f = TransactionFilter(direction: DirectionFilter.outflow);
-      expect(f.matches(_txn(isCredit: false)), isTrue);
-      expect(f.matches(_txn(isCredit: true)), isFalse);
+      expect(f.matches(aTransaction(isInflow: false)), isTrue);
+      expect(f.matches(aTransaction(isInflow: true)), isFalse);
     });
 
     test('any keeps both and counts as no filter', () {
       const f = TransactionFilter();
-      expect(f.matches(_txn(isCredit: true)), isTrue);
-      expect(f.matches(_txn(isCredit: false)), isTrue);
+      expect(f.matches(aTransaction(isInflow: true)), isTrue);
+      expect(f.matches(aTransaction(isInflow: false)), isTrue);
       expect(f.isEmpty, isTrue);
     });
   });
@@ -46,16 +29,20 @@ void main() {
   group('amount range', () {
     test('bounds are inclusive', () {
       const f = TransactionFilter(minAmount: 100, maxAmount: 500);
-      expect(f.matches(_txn(amount: 100)), isTrue);
-      expect(f.matches(_txn(amount: 500)), isTrue);
-      expect(f.matches(_txn(amount: 99.99)), isFalse);
-      expect(f.matches(_txn(amount: 500.01)), isFalse);
+      expect(f.matches(aTransaction(amount: 100)), isTrue);
+      expect(f.matches(aTransaction(amount: 500)), isTrue);
+      expect(f.matches(aTransaction(amount: 99.99)), isFalse);
+      expect(f.matches(aTransaction(amount: 500.01)), isFalse);
     });
 
     test('a single open bound works', () {
-      expect(const TransactionFilter(minAmount: 100).matches(_txn(amount: 50)),
+      expect(
+          const TransactionFilter(minAmount: 100)
+              .matches(aTransaction(amount: 50)),
           isFalse);
-      expect(const TransactionFilter(maxAmount: 100).matches(_txn(amount: 50)),
+      expect(
+          const TransactionFilter(maxAmount: 100)
+              .matches(aTransaction(amount: 50)),
           isTrue);
     });
   });
@@ -66,11 +53,12 @@ void main() {
       direction: DirectionFilter.outflow,
       minAmount: 50,
     );
-    expect(f.matches(_txn(tags: ['food'], amount: 60)), isTrue);
-    expect(f.matches(_txn(tags: ['food'], amount: 10)), isFalse);
-    expect(f.matches(_txn(tags: ['travel'], amount: 60)), isFalse);
+    expect(f.matches(aTransaction(tags: ['food'], amount: 60)), isTrue);
+    expect(f.matches(aTransaction(tags: ['food'], amount: 10)), isFalse);
+    expect(f.matches(aTransaction(tags: ['travel'], amount: 60)), isFalse);
     expect(
-        f.matches(_txn(tags: ['food'], amount: 60, isCredit: true)), isFalse);
+        f.matches(aTransaction(tags: ['food'], amount: 60, isInflow: true)),
+        isFalse);
     expect(f.activeCount, 3);
   });
 
@@ -128,9 +116,9 @@ void main() {
   group('multi-select', () {
     test('values within a dimension are OR-ed', () {
       const f = TransactionFilter(tags: {'food', 'travel'});
-      expect(f.matches(_txn(tags: ['food'])), isTrue);
-      expect(f.matches(_txn(tags: ['travel'])), isTrue);
-      expect(f.matches(_txn(tags: ['bills'])), isFalse);
+      expect(f.matches(aTransaction(tags: ['food'])), isTrue);
+      expect(f.matches(aTransaction(tags: ['travel'])), isTrue);
+      expect(f.matches(aTransaction(tags: ['bills'])), isFalse);
       expect(f.activeCount, 2, reason: 'each selected value counts');
     });
 
@@ -139,13 +127,14 @@ void main() {
         tags: {'food', 'travel'},
         parties: {'cafe'},
       );
-      expect(f.matches(_txn(tags: ['food'], party: 'Cafe')), isTrue);
-      expect(f.matches(_txn(tags: ['food'], party: 'Airline')), isFalse);
+      expect(f.matches(aTransaction(tags: ['food'], party: 'Cafe')), isTrue);
+      expect(
+          f.matches(aTransaction(tags: ['food'], party: 'Airline')), isFalse);
     });
 
     test('matching is case-insensitive', () {
       const f = TransactionFilter(groups: {'Goa Trip'});
-      expect(f.matches(_txn(group: ['goa trip'])), isTrue);
+      expect(f.matches(aTransaction(group: ['goa trip'])), isTrue);
     });
 
     test('removing one value keeps the rest', () {

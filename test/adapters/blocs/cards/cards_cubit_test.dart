@@ -8,6 +8,7 @@ import 'package:fynans/entities/transaction.dart';
 import '../../../fakes/fake_card_repository.dart';
 import '../../../fakes/fake_card_statement_repository.dart';
 import '../../../fakes/fake_transaction_repository.dart';
+import '../../../support/builders.dart';
 
 /// Fails each card's transaction query with an error text that names a card,
 /// like a real database error can.
@@ -50,12 +51,7 @@ void main() {
   });
 
   PaymentCard seedCard() {
-    final card = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
+    final card = aCard();
     cardRepository.seed([card]);
     return card;
   }
@@ -87,13 +83,7 @@ void main() {
   });
 
   test('a debit card gets a summary instead of crashing the page', () async {
-    cardRepository.seed([
-      PaymentCard()
-        ..issuer = 'HDFC'
-        ..last4 = '4321'
-        ..type = CardType.debit
-        ..status = CardStatus.active,
-    ]);
+    cardRepository.seed([aCard(type: CardType.debit, last4: '4321')]);
     cubit.loadCards();
     await pumpEventQueue();
 
@@ -105,16 +95,7 @@ void main() {
   test('a closed card moves to the retired list, with what it hides',
       () async {
     final card = seedCard();
-    transactionRepository.seed([
-      Transaction()
-        ..amount = 300
-        ..date = DateTime(2026, 8, 2)
-        ..tags = <String>[]
-        ..party = 'x'
-        ..isInflow = false
-        ..kind = TransactionKind.debt
-        ..cardId = card.id,
-    ]);
+    transactionRepository.seed([aTransaction(date: DateTime(2026, 8, 2), card: card)]);
     cubit.loadCards();
     await pumpEventQueue();
 
@@ -142,10 +123,7 @@ void main() {
     cubit.loadCards();
     await pumpEventQueue();
 
-    await statementRepository.importStatement(CardStatement()
-      ..cardId = card.id!
-      ..statementDate = DateTime(2026, 1, 20)
-      ..totalDue = 5000);
+    await statementRepository.importStatement(aStatement(card: card, totalDue: 5000));
     await pumpEventQueue();
 
     final state = cubit.state as CardsLoadSuccess;
@@ -164,10 +142,7 @@ void main() {
 
     expect((cubit.state as CardsLoadSuccess).cards, isEmpty);
 
-    await statementRepository.importStatement(CardStatement()
-      ..cardId = card.id!
-      ..statementDate = DateTime(2026, 1, 20)
-      ..totalDue = 5000);
+    await statementRepository.importStatement(aStatement(card: card, totalDue: 5000));
     await pumpEventQueue();
 
     expect((cubit.state as CardsLoadSuccess).cards, isEmpty);
@@ -184,10 +159,7 @@ void main() {
     cubit.loadCards();
     await pumpEventQueue();
 
-    await statementRepository.importStatement(CardStatement()
-      ..cardId = card.id!
-      ..statementDate = DateTime(2026, 1, 20)
-      ..totalDue = 7000);
+    await statementRepository.importStatement(aStatement(card: card, totalDue: 7000));
     await pumpEventQueue();
 
     // The current (second-generation) subscription still picks this up —

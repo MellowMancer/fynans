@@ -3,25 +3,7 @@ import 'package:fynans/entities/date_range.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/ports/transaction_repository.dart';
 
-Transaction txn({
-  required DateTime date,
-  double amount = 100,
-  String? smsId,
-  List<String> tags = const [],
-  List<String> group = const [],
-  String party = 'x',
-  int? cardId,
-}) =>
-    Transaction()
-      ..amount = amount
-      ..date = date
-      ..tags = List<String>.from(tags)
-      ..group = List<String>.from(group)
-      ..party = party
-      ..isInflow = false
-      ..kind = TransactionKind.expense
-      ..smsId = smsId
-      ..cardId = cardId;
+import '../support/builders.dart';
 
 /// The behaviour every [TransactionRepository] must exhibit, run against each
 /// implementation.
@@ -43,7 +25,7 @@ void runTransactionRepositoryContract(
 
     group('record identity', () {
       test('saving stamps an id and it survives a read', () async {
-        final saved = txn(date: DateTime(2026, 7, 10));
+        final saved = aTransaction(date: DateTime(2026, 7, 10));
 
         await repo.saveTransaction(saved);
 
@@ -52,19 +34,20 @@ void runTransactionRepositoryContract(
       });
 
       test('delete matches on id, not object identity', () async {
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 10)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 7, 10)));
         final stored = (await inJuly()).single;
 
         // A detached instance carrying the same id must delete the row.
         await repo.deleteTransaction(
-            txn(date: DateTime(2026, 7, 10))..id = stored.id);
+            aTransaction(id: stored.id, date: DateTime(2026, 7, 10)));
 
         expect(await inJuly(), isEmpty);
       });
 
       test('deleting an unsaved record throws', () async {
         expect(
-          () => repo.deleteTransaction(txn(date: DateTime(2026, 7, 10))),
+          () => repo
+              .deleteTransaction(aTransaction(date: DateTime(2026, 7, 10))),
           throwsA(isA<StateError>()),
         );
       });
@@ -72,13 +55,18 @@ void runTransactionRepositoryContract(
 
     group('updateTransaction', () {
       test('overwrites the fields and keeps the id', () async {
-        final saved = txn(date: DateTime(2026, 7, 10), party: 'before');
+        final saved =
+            aTransaction(date: DateTime(2026, 7, 10), party: 'before');
         await repo.saveTransaction(saved);
 
-        await repo.updateTransaction(
-            txn(date: DateTime(2026, 7, 11), amount: 250, party: 'after')
-              ..id = saved.id
-              ..isInflow = true);
+        await repo.updateTransaction(aTransaction(
+          id: saved.id,
+          date: DateTime(2026, 7, 11),
+          amount: 250,
+          party: 'after',
+          isInflow: true,
+          kind: TransactionKind.expense,
+        ));
 
         final stored = (await inJuly()).single;
         expect(stored.id, saved.id);
@@ -89,7 +77,9 @@ void runTransactionRepositoryContract(
       });
 
       test('updating an unsaved record throws', () {
-        expect(() => repo.updateTransaction(txn(date: DateTime(2026, 7, 10))),
+        expect(
+            () => repo
+                .updateTransaction(aTransaction(date: DateTime(2026, 7, 10))),
             throwsStateError);
       });
     });
@@ -98,13 +88,13 @@ void runTransactionRepositoryContract(
       test('imports once, ignores a repeat of the same smsId', () async {
         expect(
           await repo.importTransaction(
-            txn(date: DateTime(2026, 7, 10), smsId: 'abc123'),
+            aTransaction(date: DateTime(2026, 7, 10), smsId: 'abc123'),
           ),
           isTrue,
         );
         expect(
           await repo.importTransaction(
-            txn(date: DateTime(2026, 7, 11), smsId: 'abc123'),
+            aTransaction(date: DateTime(2026, 7, 11), smsId: 'abc123'),
           ),
           isFalse,
         );
@@ -113,8 +103,8 @@ void runTransactionRepositoryContract(
       });
 
       test('records without an smsId always import', () async {
-        await repo.importTransaction(txn(date: DateTime(2026, 7, 10)));
-        await repo.importTransaction(txn(date: DateTime(2026, 7, 10)));
+        await repo.importTransaction(aTransaction(date: DateTime(2026, 7, 10)));
+        await repo.importTransaction(aTransaction(date: DateTime(2026, 7, 10)));
 
         expect(await inJuly(), hasLength(2));
       });
@@ -122,10 +112,10 @@ void runTransactionRepositoryContract(
 
     group('querying', () {
       test('returns only the requested range, newest first', () async {
-        await repo.saveTransaction(txn(date: DateTime(2026, 6, 30)));
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 1)));
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 20)));
-        await repo.saveTransaction(txn(date: DateTime(2026, 8, 1)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 6, 30)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 7, 1)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 7, 20)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 8, 1)));
 
         final july = await inJuly();
 
@@ -133,7 +123,7 @@ void runTransactionRepositoryContract(
       });
 
       test('list fields round-trip', () async {
-        await repo.saveTransaction(txn(
+        await repo.saveTransaction(aTransaction(
           date: DateTime(2026, 7, 10),
           tags: ['food', 'lunch'],
           group: ['goa trip'],
@@ -148,9 +138,11 @@ void runTransactionRepositoryContract(
       // A refund is never the column default, so this also proves that the
       // repository writes the kind instead of falling back to the default.
       test('direction and kind round-trip', () async {
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 10))
-          ..isInflow = true
-          ..kind = TransactionKind.refund);
+        await repo.saveTransaction(aTransaction(
+          date: DateTime(2026, 7, 10),
+          isInflow: true,
+          kind: TransactionKind.refund,
+        ));
 
         final stored = (await inJuly()).single;
 
@@ -159,13 +151,13 @@ void runTransactionRepositoryContract(
       });
 
       test('distinct helpers trim, drop empties and dedupe', () async {
-        await repo.saveTransaction(txn(
+        await repo.saveTransaction(aTransaction(
           date: DateTime(2026, 7, 10),
           tags: ['Food', ' food ', ''],
           group: ['Trip'],
           party: 'Swiggy',
         ));
-        await repo.saveTransaction(txn(
+        await repo.saveTransaction(aTransaction(
           date: DateTime(2026, 7, 11),
           tags: ['food'],
           party: 'Swiggy',
@@ -181,7 +173,7 @@ void runTransactionRepositoryContract(
 
     group('listenToTransactionsInRange', () {
       test('emits the range contents and again on write', () async {
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 5)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 7, 5)));
 
         final seen = <int>[];
         final sub = repo
@@ -192,7 +184,7 @@ void runTransactionRepositoryContract(
         await pumpEventQueue();
         expect(seen, isNotEmpty, reason: 'first emission is the current state');
 
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 6)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 7, 6)));
         await pumpEventQueue();
 
         expect(seen.last, 2, reason: 'a write must re-emit');
@@ -223,12 +215,12 @@ void runTransactionRepositoryContract(
             .listen((rows) => seen.add(rows.length));
 
         await pumpEventQueue();
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 5)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 7, 5)));
         await pumpEventQueue();
         final whileLive = seen.length;
 
         await sub.cancel();
-        await repo.saveTransaction(txn(date: DateTime(2026, 7, 6)));
+        await repo.saveTransaction(aTransaction(date: DateTime(2026, 7, 6)));
         await pumpEventQueue();
 
         expect(seen.length, whileLive);
