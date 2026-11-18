@@ -13,6 +13,8 @@ import 'package:fynans/ui/widgets/common/common.dart';
 import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/ui/widgets/transaction_list_widgets.dart';
 
+import '../support/builders.dart';
+
 Widget _host(Widget child, {double? height}) {
   return MaterialApp(
     theme: AppTheme.light(),
@@ -167,25 +169,17 @@ void main() {
   });
 
   group('TransactionListItem original SMS', () {
-    Transaction txn({String? smsId, String? smsBody}) => Transaction()
-      ..amount = 250
-      ..date = DateTime(2026, 7, 15)
-      ..tags = ['food']
-      ..group = <String>[]
-      ..party = 'Corner Cafe'
-      ..isInflow = false
-      ..kind = TransactionKind.expense
-      ..note = null
-      ..smsId = smsId
-      ..smsBody = smsBody;
-
     const body = 'Rs.250.00 debited from a/c XX1234 at Corner Cafe.';
 
     testWidgets('shows the SMS for an auto-imported transaction',
         (tester) async {
       await tester.pumpWidget(
         _host(TransactionListItem(
-            transaction: txn(smsId: 'abc123', smsBody: body))),
+            transaction: aTransaction(
+                amount: 250,
+                party: 'Corner Cafe',
+                smsId: 'abc123',
+                smsBody: body))),
       );
 
       await tester.tap(find.text('Corner Cafe').first);
@@ -197,7 +191,8 @@ void main() {
     });
 
     testWidgets('manual transaction shows no SMS block', (tester) async {
-      await tester.pumpWidget(_host(TransactionListItem(transaction: txn())));
+      await tester.pumpWidget(_host(
+          TransactionListItem(transaction: aTransaction(party: 'Corner Cafe'))));
 
       await tester.tap(find.text('Corner Cafe').first);
       await tester.pumpAndSettle();
@@ -212,19 +207,20 @@ void main() {
     testWidgets('a debt row names its kind on the second line',
         (tester) async {
       await tester.pumpWidget(_host(TransactionListItem(
-          transaction: txn()..kind = TransactionKind.debt)));
+          transaction: aTransaction(kind: TransactionKind.debt))));
 
       expect(find.textContaining('DEBT'), findsOneWidget);
     });
 
     testWidgets('an expense row does not name its kind', (tester) async {
-      await tester.pumpWidget(_host(TransactionListItem(transaction: txn())));
+      await tester.pumpWidget(
+          _host(TransactionListItem(transaction: aTransaction())));
 
       expect(find.textContaining('EXPENSE'), findsNothing);
     });
 
     testWidgets('inflow labels the counterparty as sender', (tester) async {
-      final credit = txn()..isInflow = true;
+      final credit = aTransaction(party: 'Corner Cafe')..isInflow = true;
       await tester.pumpWidget(_host(TransactionListItem(transaction: credit)));
 
       await tester.tap(find.text('Corner Cafe').first);
@@ -237,7 +233,8 @@ void main() {
     testWidgets('auto-imported record with no stored body is skipped',
         (tester) async {
       await tester.pumpWidget(
-        _host(TransactionListItem(transaction: txn(smsId: 'legacy'))),
+        _host(TransactionListItem(
+            transaction: aTransaction(party: 'Corner Cafe', smsId: 'legacy'))),
       );
 
       await tester.tap(find.text('Corner Cafe').first);

@@ -1,50 +1,37 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/summarise_card.dart';
 
-PaymentCard _card({double creditLimit = 50000}) => PaymentCard()
-  ..issuer = 'HDFC'
-  ..last4 = '1234'
-  ..type = CardType.credit
-  ..status = CardStatus.active
-  ..creditLimit = creditLimit;
+import '../support/builders.dart';
 
 Transaction _spend(double amount, DateTime date, {double? availableLimit}) =>
-    Transaction()
-      ..amount = amount
-      ..date = date
-      ..tags = []
-      ..group = []
-      ..party = 'Merchant'
-      ..isInflow = false
-      ..kind = TransactionKind.expense
-      ..cardId = 1
-      ..cardAvailableLimit = availableLimit;
+    aTransaction(
+      amount: amount,
+      date: date,
+      cardId: 1,
+      cardAvailableLimit: availableLimit,
+    );
 
-Transaction _credit(double amount, DateTime date, {double? availableLimit}) =>
-    Transaction()
-      ..amount = amount
-      ..date = date
-      ..tags = []
-      ..group = []
-      ..party = 'Merchant'
-      ..isInflow = true
-      ..kind = TransactionKind.income
-      ..cardId = 1
-      ..cardAvailableLimit = availableLimit;
-
-CardStatement _statement(DateTime statementDate, {double? totalDue}) =>
-    CardStatement()
-      ..cardId = 1
-      ..statementDate = statementDate
-      ..totalDue = totalDue;
+Transaction _credit(
+  double amount,
+  DateTime date, {
+  double? availableLimit,
+  TransactionKind? kind,
+}) =>
+    aTransaction(
+      amount: amount,
+      date: date,
+      isInflow: true,
+      kind: kind,
+      cardId: 1,
+      cardAvailableLimit: availableLimit,
+    );
 
 void main() {
   group('summariseCard', () {
     test('with no transactions, available equals the full limit', () {
-      final result = summariseCard(_card(creditLimit: 50000), []);
+      final result = summariseCard(aCard(creditLimit: 50000), []);
 
       expect(result.spent, 0);
       expect(result.available, 50000);
@@ -58,7 +45,7 @@ void main() {
         _spend(1000, DateTime(2026, 1, 15), availableLimit: 47000),
       ];
 
-      final result = summariseCard(_card(creditLimit: 50000), transactions);
+      final result = summariseCard(aCard(creditLimit: 50000), transactions);
 
       // Fold would say spent=1200, available=48800 — the reported figure
       // wins instead, exactly because dropped/mis-parsed SMS must not skew
@@ -74,7 +61,7 @@ void main() {
         _spend(100, DateTime(2026, 1, 5), availableLimit: 45000),
       ];
 
-      final result = summariseCard(_card(creditLimit: 50000), transactions);
+      final result = summariseCard(aCard(creditLimit: 50000), transactions);
 
       expect(result.available, 40000);
       expect(result.asOf, DateTime(2026, 1, 20));
@@ -88,7 +75,7 @@ void main() {
         _credit(200, DateTime(2026, 1, 15)), // refund
       ];
 
-      final result = summariseCard(_card(creditLimit: 50000), transactions);
+      final result = summariseCard(aCard(creditLimit: 50000), transactions);
 
       expect(result.spent, 800);
       expect(result.available, 49200);
@@ -101,7 +88,7 @@ void main() {
         _credit(500, DateTime(2026, 1, 2)), // a bill payment larger than spend
       ];
 
-      final result = summariseCard(_card(creditLimit: 50000), transactions);
+      final result = summariseCard(aCard(creditLimit: 50000), transactions);
 
       expect(result.spent, 0);
       expect(result.available, 50000);
@@ -114,7 +101,7 @@ void main() {
         _spend(100, DateTime(2026, 1, 1), availableLimit: 999999),
       ];
 
-      final result = summariseCard(_card(creditLimit: 50000), transactions);
+      final result = summariseCard(aCard(creditLimit: 50000), transactions);
 
       expect(result.available, 50000);
       expect(result.spent, 0);
@@ -123,13 +110,13 @@ void main() {
     test('utilization is spent / limit', () {
       final transactions = [_spend(25000, DateTime(2026, 1, 1))];
 
-      final result = summariseCard(_card(creditLimit: 50000), transactions);
+      final result = summariseCard(aCard(creditLimit: 50000), transactions);
 
       expect(result.utilization, 0.5);
     });
 
     test('a zero credit limit never divides by zero', () {
-      final result = summariseCard(_card(creditLimit: 0), []);
+      final result = summariseCard(aCard(creditLimit: 0), []);
 
       expect(result.utilization, 0);
     });
@@ -146,10 +133,11 @@ void main() {
         _spend(500, DateTime(2026, 1, 5)), // before the statement — excluded
         _spend(1000, DateTime(2026, 1, 25)), // after — counted
       ];
-      final statement = _statement(DateTime(2026, 1, 20), totalDue: 15000);
+      final statement =
+          aStatement(statementDate: DateTime(2026, 1, 20), totalDue: 15000);
 
       final result = summariseCard(
-        _card(creditLimit: 50000),
+        aCard(creditLimit: 50000),
         transactions,
         latestStatement: statement,
       );
@@ -166,10 +154,11 @@ void main() {
       final transactions = [
         _credit(2000, DateTime(2026, 1, 25)), // a bill payment/refund
       ];
-      final statement = _statement(DateTime(2026, 1, 20), totalDue: 15000);
+      final statement =
+          aStatement(statementDate: DateTime(2026, 1, 20), totalDue: 15000);
 
       final result = summariseCard(
-        _card(creditLimit: 50000),
+        aCard(creditLimit: 50000),
         transactions,
         latestStatement: statement,
       );
@@ -184,10 +173,11 @@ void main() {
       final transactions = [
         _spend(1000, DateTime(2026, 1, 25), availableLimit: 47000),
       ];
-      final statement = _statement(DateTime(2026, 1, 20), totalDue: 15000);
+      final statement =
+          aStatement(statementDate: DateTime(2026, 1, 20), totalDue: 15000);
 
       final result = summariseCard(
-        _card(creditLimit: 50000),
+        aCard(creditLimit: 50000),
         transactions,
         latestStatement: statement,
       );
@@ -200,10 +190,12 @@ void main() {
         'a statement with no totalDue (parser could not extract it) falls '
         'through to the unanchored all-time fold, unchanged', () {
       final transactions = [_spend(1000, DateTime(2026, 1, 25))];
-      final statement = _statement(DateTime(2026, 1, 20)); // totalDue: null
+      final statement = aStatement(
+        statementDate: DateTime(2026, 1, 20),
+      ); // totalDue: null
 
       final result = summariseCard(
-        _card(creditLimit: 50000),
+        aCard(creditLimit: 50000),
         transactions,
         latestStatement: statement,
       );
@@ -216,7 +208,7 @@ void main() {
     test('no statement at all behaves exactly as before this feature', () {
       final transactions = [_spend(1000, DateTime(2026, 1, 25))];
 
-      final result = summariseCard(_card(creditLimit: 50000), transactions);
+      final result = summariseCard(aCard(creditLimit: 50000), transactions);
 
       expect(result.spent, 1000);
       expect(result.available, 49000);
@@ -225,10 +217,11 @@ void main() {
 
     test('the anchored spent is clamped to the card limit', () {
       final transactions = [_spend(50000, DateTime(2026, 1, 25))];
-      final statement = _statement(DateTime(2026, 1, 20), totalDue: 40000);
+      final statement =
+          aStatement(statementDate: DateTime(2026, 1, 20), totalDue: 40000);
 
       final result = summariseCard(
-        _card(creditLimit: 50000),
+        aCard(creditLimit: 50000),
         transactions,
         latestStatement: statement,
       );
@@ -242,12 +235,15 @@ void main() {
     test('a statement newer than the last limit report becomes the anchor',
         () {
       final result = summariseCard(
-        _card(creditLimit: 50000),
+        aCard(creditLimit: 50000),
         [
           _credit(1644.55, DateTime(2026, 1, 5), availableLimit: 48355.45),
           _spend(20000, DateTime(2026, 2, 20)),
         ],
-        latestStatement: _statement(DateTime(2026, 2, 1), totalDue: 1644.55),
+        latestStatement: aStatement(
+          statementDate: DateTime(2026, 2, 1),
+          totalDue: 1644.55,
+        ),
       );
 
       expect(result.spent, closeTo(21644.55, 0.001));
@@ -255,7 +251,7 @@ void main() {
     });
 
     test('a manual spend after a limit report still counts', () {
-      final result = summariseCard(_card(creditLimit: 50000), [
+      final result = summariseCard(aCard(creditLimit: 50000), [
         _spend(1000, DateTime(2026, 1, 5), availableLimit: 48000),
         _spend(500, DateTime(2026, 1, 10)),
       ]);
@@ -266,7 +262,7 @@ void main() {
     });
 
     test('money back after a limit report lowers what is spent', () {
-      final result = summariseCard(_card(creditLimit: 50000), [
+      final result = summariseCard(aCard(creditLimit: 50000), [
         _spend(1000, DateTime(2026, 1, 5), availableLimit: 48000),
         _credit(1000, DateTime(2026, 1, 12)),
       ]);
@@ -276,11 +272,7 @@ void main() {
   });
 
   group('summariseDebitCard', () {
-    final debitCard = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '4321'
-      ..type = CardType.debit
-      ..status = CardStatus.active;
+    final debitCard = aCard(type: CardType.debit, last4: '4321');
 
     test("is the month's spending, with refunds subtracted", () {
       final result = summariseDebitCard(
@@ -289,7 +281,7 @@ void main() {
           _spend(500, DateTime(2026, 7, 3)),
           _spend(300, DateTime(2026, 7, 20)),
           _spend(900, DateTime(2026, 6, 30)),
-          _credit(100, DateTime(2026, 7, 21))..kind = TransactionKind.refund,
+          _credit(100, DateTime(2026, 7, 21), kind: TransactionKind.refund),
         ],
         month: DateTime(2026, 7, 15),
       );
@@ -307,10 +299,10 @@ void main() {
           _credit(40000, DateTime(2026, 7, 1)),
           _credit(2500, DateTime(2026, 7, 9)),
           _credit(9000, DateTime(2026, 6, 30)),
-          _credit(100, DateTime(2026, 7, 21))..kind = TransactionKind.refund,
-          _credit(800, DateTime(2026, 7, 22))..kind = TransactionKind.transfer,
-          _credit(300, DateTime(2026, 7, 23))
-            ..kind = TransactionKind.repayment,
+          _credit(100, DateTime(2026, 7, 21), kind: TransactionKind.refund),
+          _credit(800, DateTime(2026, 7, 22), kind: TransactionKind.transfer),
+          _credit(300, DateTime(2026, 7, 23),
+              kind: TransactionKind.repayment),
         ],
         month: DateTime(2026, 7, 15),
       );
@@ -320,11 +312,7 @@ void main() {
   });
 
   test('summariseCard still refuses a debit card', () {
-    final debitCard = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '4321'
-      ..type = CardType.debit
-      ..status = CardStatus.active;
+    final debitCard = aCard(type: CardType.debit, last4: '4321');
     expect(() => summariseCard(debitCard, const []), throwsArgumentError);
   });
 }

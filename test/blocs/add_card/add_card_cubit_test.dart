@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/adapters/blocs/add_card/add_card_cubit.dart';
 import 'package:fynans/adapters/blocs/add_card/add_card_state.dart';
-import 'package:fynans/entities/detected_card.dart';
 import 'package:fynans/entities/payment_card.dart';
 
 import '../../fakes/fake_card_repository.dart';
 import '../../fakes/fake_card_statement_repository.dart';
 import '../../fakes/fake_detected_card_repository.dart';
 import '../../fakes/fake_transaction_repository.dart';
+import '../../support/builders.dart';
 
 void main() {
   group('AddCardCubit', () {
@@ -185,12 +185,7 @@ void main() {
     test(
         'saving from a detection removes that sighting, since it is now '
         'confirmed rather than pending', () async {
-      final detection = DetectedCard()
-        ..issuerGuess = 'HDFC'
-        ..sender = 'HDFCCC'
-        ..last4 = '1234'
-        ..firstSeen = DateTime(2026, 1, 1)
-        ..lastSeen = DateTime(2026, 1, 1);
+      final detection = aSighting();
       detectedCardRepository.seed([detection]);
 
       final cubit = AddCardCubit(cardRepository, transactionRepository,
@@ -213,13 +208,6 @@ void main() {
     });
 
     group('sightings that the new card matches', () {
-      DetectedCard sighting(String sender, String last4) => DetectedCard()
-        ..issuerGuess = 'HDFC'
-        ..sender = sender
-        ..last4 = last4
-        ..firstSeen = DateTime(2026, 1, 1)
-        ..lastSeen = DateTime(2026, 1, 1);
-
       Future<List<String>> pendingDigits() async =>
           (await detectedCardRepository.watchPending().first)
               .map((d) => d.last4)
@@ -239,8 +227,10 @@ void main() {
 
       test('a credit card added with the + button removes its sighting',
           () async {
-        detectedCardRepository
-            .seed([sighting('HDFCCC', '1234'), sighting('HDFCCC', '9999')]);
+        detectedCardRepository.seed([
+          aSighting(sender: 'HDFCCC', last4: '1234'),
+          aSighting(sender: 'HDFCCC', last4: '9999'),
+        ]);
 
         await addWithPlusButton(CardType.credit);
 
@@ -250,7 +240,8 @@ void main() {
 
       test('a debit card keeps the sighting, because a credit card SMS never '
           'matches a debit card', () async {
-        detectedCardRepository.seed([sighting('HDFCCC', '1234')]);
+        detectedCardRepository
+            .seed([aSighting(sender: 'HDFCCC', last4: '1234')]);
 
         await addWithPlusButton(CardType.debit);
 
@@ -308,13 +299,8 @@ void main() {
     });
 
     test('a retired duplicate is refused with a hint to restore it', () async {
-      final retired = PaymentCard()
-        ..issuer = 'HDFC'
-        ..last4 = '1234'
-        ..type = CardType.credit
-        ..status = CardStatus.closed
-        ..closedOn = DateTime(2026, 7, 31)
-        ..creditLimit = 50000;
+      final retired =
+          aCard(issuer: 'HDFC', last4: '1234', status: CardStatus.closed);
       cardRepository.seed([retired]);
       final cubit = AddCardCubit(cardRepository, transactionRepository,
           detectedCardRepository, statementRepository);

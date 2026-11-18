@@ -1,25 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/get_monthly_analytics.dart';
 
 import '../fakes/fake_transaction_repository.dart';
-
-Transaction _txn({
-  required double amount,
-  required DateTime date,
-  required bool isCredit,
-  List<String> tags = const [],
-}) {
-  return Transaction()
-    ..amount = amount
-    ..date = date
-    ..isInflow = isCredit
-    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
-    ..tags = List.of(tags)
-    ..group = const []
-    ..party = 'Test'
-    ..note = null;
-}
+import '../support/builders.dart';
 
 void main() {
   group('GetMonthlyAnalytics', () {
@@ -33,22 +16,10 @@ void main() {
 
     test('computes inflow/outflow and daily spending for the month', () async {
       repo.seed([
-        _txn(
-            amount: 120,
-            date: DateTime(2026, 7, 5),
-            isCredit: false,
-            tags: ['food']),
-        _txn(
-            amount: 30,
-            date: DateTime(2026, 7, 5),
-            isCredit: false,
-            tags: ['food']),
-        _txn(amount: 500, date: DateTime(2026, 7, 6), isCredit: true),
-        _txn(
-            amount: 999,
-            date: DateTime(2026, 6, 30),
-            isCredit: false,
-            tags: ['rent']),
+        aTransaction(amount: 120, date: DateTime(2026, 7, 5), tags: ['food']),
+        aTransaction(amount: 30, date: DateTime(2026, 7, 5), tags: ['food']),
+        aTransaction(amount: 500, date: DateTime(2026, 7, 6), isInflow: true),
+        aTransaction(amount: 999, date: DateTime(2026, 6, 30), tags: ['rent']),
       ]);
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
@@ -61,41 +32,13 @@ void main() {
 
     test('folds the 6th+ tags into an "Others" bucket', () async {
       repo.seed([
-        _txn(
-            amount: 60,
-            date: DateTime(2026, 7, 1),
-            isCredit: false,
-            tags: ['a']),
-        _txn(
-            amount: 50,
-            date: DateTime(2026, 7, 2),
-            isCredit: false,
-            tags: ['b']),
-        _txn(
-            amount: 40,
-            date: DateTime(2026, 7, 3),
-            isCredit: false,
-            tags: ['c']),
-        _txn(
-            amount: 30,
-            date: DateTime(2026, 7, 4),
-            isCredit: false,
-            tags: ['d']),
-        _txn(
-            amount: 20,
-            date: DateTime(2026, 7, 5),
-            isCredit: false,
-            tags: ['e']),
-        _txn(
-            amount: 8,
-            date: DateTime(2026, 7, 6),
-            isCredit: false,
-            tags: ['f']),
-        _txn(
-            amount: 2,
-            date: DateTime(2026, 7, 7),
-            isCredit: false,
-            tags: ['g']),
+        aTransaction(amount: 60, date: DateTime(2026, 7, 1), tags: ['a']),
+        aTransaction(amount: 50, date: DateTime(2026, 7, 2), tags: ['b']),
+        aTransaction(amount: 40, date: DateTime(2026, 7, 3), tags: ['c']),
+        aTransaction(amount: 30, date: DateTime(2026, 7, 4), tags: ['d']),
+        aTransaction(amount: 20, date: DateTime(2026, 7, 5), tags: ['e']),
+        aTransaction(amount: 8, date: DateTime(2026, 7, 6), tags: ['f']),
+        aTransaction(amount: 2, date: DateTime(2026, 7, 7), tags: ['g']),
       ]);
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
@@ -112,16 +55,8 @@ void main() {
 
     test('computes per-slice percentages of total outflow', () async {
       repo.seed([
-        _txn(
-            amount: 75,
-            date: DateTime(2026, 7, 1),
-            isCredit: false,
-            tags: ['food']),
-        _txn(
-            amount: 25,
-            date: DateTime(2026, 7, 2),
-            isCredit: false,
-            tags: ['travel']),
+        aTransaction(amount: 75, date: DateTime(2026, 7, 1), tags: ['food']),
+        aTransaction(amount: 25, date: DateTime(2026, 7, 2), tags: ['travel']),
       ]);
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));
@@ -136,7 +71,7 @@ void main() {
         () async {
       // Only credit transactions -> zero outflow.
       repo.seed([
-        _txn(amount: 500, date: DateTime(2026, 7, 6), isCredit: true),
+        aTransaction(amount: 500, date: DateTime(2026, 7, 6), isInflow: true),
       ]);
 
       final analytics = await getMonthlyAnalytics(DateTime(2026, 7));

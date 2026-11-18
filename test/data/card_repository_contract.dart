@@ -2,19 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/ports/card_repository.dart';
 
-PaymentCard card({
-  String issuer = 'HDFC',
-  String last4 = '1234',
-  double creditLimit = 50000,
-  String? nickname,
-}) =>
-    PaymentCard()
-      ..issuer = issuer
-      ..last4 = last4
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = creditLimit
-      ..nickname = nickname;
+import '../support/builders.dart';
 
 /// The behaviour every [CardRepository] must exhibit, run against each
 /// implementation — same reasoning as `runTransactionRepositoryContract`.
@@ -29,7 +17,7 @@ void runCardRepositoryContract(
 
     group('record identity', () {
       test('saving stamps an id and it survives a read', () async {
-        final saved = card();
+        final saved = aCard();
 
         await repo.saveCard(saved);
 
@@ -38,23 +26,23 @@ void runCardRepositoryContract(
       });
 
       test('delete matches on id, not object identity', () async {
-        await repo.saveCard(card());
+        await repo.saveCard(aCard());
         final stored = (await repo.fetchCards()).single;
 
-        await repo.deleteCard(card()..id = stored.id);
+        await repo.deleteCard(aCard(id: stored.id));
 
         expect(await repo.fetchCards(), isEmpty);
       });
 
       test('deleting an unsaved card throws', () async {
-        expect(() => repo.deleteCard(card()), throwsA(anything));
+        expect(() => repo.deleteCard(aCard()), throwsA(anything));
       });
     });
 
     group('fields', () {
       test('round-trip, including a null nickname', () async {
         await repo.saveCard(
-            card(issuer: 'SBI Card', last4: '5667', creditLimit: 100000));
+            aCard(issuer: 'SBI Card', last4: '5667', creditLimit: 100000));
 
         final stored = (await repo.fetchCards()).single;
 
@@ -65,14 +53,14 @@ void runCardRepositoryContract(
       });
 
       test('nickname round-trips when set', () async {
-        await repo.saveCard(card(nickname: 'Travel card'));
+        await repo.saveCard(aCard(nickname: 'Travel card'));
 
         expect((await repo.fetchCards()).single.nickname, 'Travel card');
       });
 
       test('last4 preserves a leading zero — it is text, not a number',
           () async {
-        await repo.saveCard(card(last4: '08'));
+        await repo.saveCard(aCard(last4: '08'));
 
         expect((await repo.fetchCards()).single.last4, '08');
       });
@@ -80,34 +68,33 @@ void runCardRepositoryContract(
 
     group('uniqueness', () {
       test('the same issuer + last4 cannot be registered twice', () async {
-        await repo.saveCard(card(issuer: 'HDFC', last4: '1234'));
+        await repo.saveCard(aCard(issuer: 'HDFC', last4: '1234'));
 
         expect(
-          () => repo.saveCard(card(issuer: 'HDFC', last4: '1234')),
+          () => repo.saveCard(aCard(issuer: 'HDFC', last4: '1234')),
           throwsA(anything),
         );
       });
 
       test('a different last4 for the same issuer is fine', () async {
-        await repo.saveCard(card(issuer: 'HDFC', last4: '1234'));
-        await repo.saveCard(card(issuer: 'HDFC', last4: '5678'));
+        await repo.saveCard(aCard(issuer: 'HDFC', last4: '1234'));
+        await repo.saveCard(aCard(issuer: 'HDFC', last4: '5678'));
 
         expect(await repo.fetchCards(), hasLength(2));
       });
 
       test('the same last4 for a different issuer is fine', () async {
-        await repo.saveCard(card(issuer: 'HDFC', last4: '1234'));
-        await repo.saveCard(card(issuer: 'SBI Card', last4: '1234'));
+        await repo.saveCard(aCard(issuer: 'HDFC', last4: '1234'));
+        await repo.saveCard(aCard(issuer: 'SBI Card', last4: '1234'));
 
         expect(await repo.fetchCards(), hasLength(2));
       });
 
       test('the same issuer + last4 is fine for a different card type',
           () async {
-        await repo.saveCard(card(issuer: 'HDFC', last4: '1234'));
-        await repo.saveCard(card(issuer: 'HDFC', last4: '1234')
-          ..type = CardType.debit
-          ..creditLimit = null);
+        await repo.saveCard(aCard(issuer: 'HDFC', last4: '1234'));
+        await repo.saveCard(
+            aCard(issuer: 'HDFC', last4: '1234', type: CardType.debit));
 
         expect(await repo.fetchCards(), hasLength(2));
       });
@@ -115,7 +102,7 @@ void runCardRepositoryContract(
 
     group('retiring', () {
       test('closeCard stores the closed status and the day', () async {
-        final saved = card();
+        final saved = aCard();
         await repo.saveCard(saved);
 
         await repo.closeCard(saved, DateTime(2026, 7, 31));
@@ -126,7 +113,7 @@ void runCardRepositoryContract(
       });
 
       test('untrackCard stores the untracked status and no day', () async {
-        final saved = card();
+        final saved = aCard();
         await repo.saveCard(saved);
 
         await repo.untrackCard(saved);
@@ -138,7 +125,7 @@ void runCardRepositoryContract(
 
       test('restoreCard makes a closed card active, with no closing date',
           () async {
-        final saved = card();
+        final saved = aCard();
         await repo.saveCard(saved);
         await repo.closeCard(saved, DateTime(2026, 7, 31));
 
@@ -159,7 +146,7 @@ void runCardRepositoryContract(
         await pumpEventQueue();
         expect(seen, isNotEmpty, reason: 'first emission is the current state');
 
-        await repo.saveCard(card());
+        await repo.saveCard(aCard());
         await pumpEventQueue();
 
         expect(seen.last, 1, reason: 'a write must re-emit');
@@ -168,9 +155,9 @@ void runCardRepositoryContract(
 
       test('closed and untracked cards stay in the list with their status',
           () async {
-        final kept = card(last4: '1111');
-        final closed = card(last4: '2222');
-        final untracked = card(last4: '3333');
+        final kept = aCard(last4: '1111');
+        final closed = aCard(last4: '2222');
+        final untracked = aCard(last4: '3333');
         for (final c in [kept, closed, untracked]) {
           await repo.saveCard(c);
         }

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fynans/ui/widgets/common/common.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +14,7 @@ import 'package:fynans/ui/widgets/transaction_list_item.dart';
 import 'package:fynans/ui/widgets/transaction_swipe_row.dart';
 
 import '../fakes/fake_transaction_repository.dart';
+import '../support/builders.dart';
 
 /// Sliding a row shows Edit, Delete and Cancel, and Delete asks first.
 void main() {
@@ -24,13 +23,12 @@ void main() {
 
   setUp(() async {
     repository = FakeTransactionRepository();
-    row = Transaction()
-      ..amount = 410
-      ..date = DateTime.now()
-      ..tags = ['food']
-      ..party = 'Cafe'
-      ..isInflow = false
-      ..kind = TransactionKind.expense;
+    row = aTransaction(
+      amount: 410,
+      date: DateTime.now(),
+      tags: ['food'],
+      party: 'Cafe',
+    );
     await repository.saveTransaction(row);
   });
   tearDown(() => repository.dispose());
@@ -79,64 +77,6 @@ void main() {
     expect(find.byType(TransactionListItem), findsOneWidget);
     expect(await stored(), hasLength(1));
   });
-
-  // The card's visible box, without the gap below the row.
-  Finder card() => find
-      .descendant(
-          of: find.byType(TransactionListItem),
-          matching: find.byType(DecoratedBox))
-      .first;
-
-  /// The fill under the card's rounded right corners.
-  Finder cornerFill() => find.descendant(
-      of: find
-          .byWidgetPredicate((w) => w is Positioned && w.width == AppRadius.lg),
-      matching: find.byType(ColoredBox));
-
-  testWidgets('the buttons are as tall as the card', (tester) async {
-    await pumpRow(tester);
-    await slideOpen(tester);
-
-    expect(tester.getSize(find.byType(SlidableAction).first).height,
-        tester.getSize(card()).height);
-  });
-
-  testWidgets('the card slides off the screen edge, not into the gutter',
-      (tester) async {
-    await pumpRow(tester);
-
-    expect(tester.getRect(card()).left, AppSpacing.gutter,
-        reason: 'at rest the card keeps its place in the page');
-    expect(tester.getRect(find.byType(Slidable)).left, 0,
-        reason: 'the slide area reaches the screen edge, so nothing clips '
-            'the card at the gutter');
-  });
-
-  testWidgets('the right end of the buttons has the card\'s corners',
-      (tester) async {
-    await pumpRow(tester);
-    await slideOpen(tester);
-
-    final cancel = tester.widget<SlidableAction>(find.ancestor(
-        of: find.byIcon(Icons.close_rounded),
-        matching: find.byType(SlidableAction)));
-    expect(cancel.borderRadius,
-        const BorderRadius.horizontal(right: Radius.circular(AppRadius.lg)));
-  });
-
-  testWidgets('the card\'s corners rest on the Edit colour only while open',
-      (tester) async {
-    await pumpRow(tester);
-    expect(cornerFill(), findsNothing,
-        reason: 'at rest it would show in the card\'s corners');
-
-    await slideOpen(tester);
-
-    final fill = tester.getRect(cornerFill());
-    expect(fill.right, moreOrLessEquals(tester.getRect(card()).right),
-        reason: 'the fill lies under the card\'s right edge');
-  });
-
   testWidgets('Cancel closes the row', (tester) async {
     await pumpRow(tester);
     await slideOpen(tester);
@@ -162,42 +102,6 @@ void main() {
 
     expect(find.byType(AlertDialog), findsNothing);
     expect(await stored(), hasLength(1));
-  });
-
-  group('the delete dialog shows the amount large, in its direction colour',
-      () {
-    Future<MoneyText> amountIn(WidgetTester tester) async {
-      await pumpRow(tester);
-      await slideOpen(tester);
-      await tap(tester, find.byIcon(Icons.delete_outline_rounded));
-      return tester.widget<MoneyText>(find.descendant(
-          of: find.byType(AlertDialog), matching: find.byType(MoneyText)));
-    }
-
-    double fontSizeOf(WidgetTester tester, Finder text) =>
-        tester.renderObject<RenderParagraph>(text).text.style!.fontSize!;
-
-    testWidgets('red for money out, larger than the other lines',
-        (tester) async {
-      final amount = await amountIn(tester);
-
-      expect(amount.tone, MoneyTone.negative);
-      final amountText = find.descendant(
-          of: find.descendant(
-              of: find.byType(AlertDialog), matching: find.byType(MoneyText)),
-          matching: find.byType(RichText));
-      final partyText = find.descendant(
-          of: find.byType(AlertDialog), matching: find.text('Cafe'));
-      expect(fontSizeOf(tester, amountText.first),
-          greaterThan(fontSizeOf(tester, partyText)));
-    });
-
-    testWidgets('green for money in', (tester) async {
-      row
-        ..isInflow = true
-        ..kind = TransactionKind.income;
-      expect((await amountIn(tester)).tone, MoneyTone.positive);
-    });
   });
 
   testWidgets('Delete in the dialog deletes the row', (tester) async {

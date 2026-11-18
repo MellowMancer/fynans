@@ -4,6 +4,7 @@ import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/save_transaction.dart';
 
 import '../fakes/fake_transaction_repository.dart';
+import '../support/builders.dart';
 
 /// Editing a saved row through [SaveTransaction].
 void main() {
@@ -17,17 +18,14 @@ void main() {
   });
   tearDown(() => repo.dispose());
 
-  Future<Transaction> seed(
-      {String? smsId, TransactionKind kind = TransactionKind.expense}) async {
-    final t = Transaction()
-      ..amount = 410
-      ..date = DateTime(2026, 7, 14, 9, 30)
-      ..tags = ['food']
-      ..party = 'Cafe'
-      ..isInflow = false
-      ..kind = kind
-      ..smsId = smsId
-      ..smsBody = smsId == null ? null : 'Sent Rs 410.00 From HDFC Bank';
+  Future<Transaction> seed({String? smsId, TransactionKind? kind}) async {
+    final t = aTransaction(
+      amount: 410,
+      date: DateTime(2026, 7, 14, 9, 30),
+      kind: kind,
+      smsId: smsId,
+      smsBody: smsId == null ? null : 'Sent Rs 410.00 From HDFC Bank',
+    );
     await repo.saveTransaction(t);
     return t;
   }

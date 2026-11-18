@@ -1,26 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fynans/entities/grouping_option.dart';
-import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/build_transaction_hierarchy.dart';
 
-Transaction _txn({
-  required double amount,
-  required DateTime date,
-  bool isCredit = false,
-  List<String> tags = const [],
-  List<String> group = const [],
-  String party = 'Test',
-}) {
-  return Transaction()
-    ..amount = amount
-    ..date = date
-    ..isInflow = isCredit
-    ..kind = isCredit ? TransactionKind.income : TransactionKind.expense
-    ..tags = List.of(tags)
-    ..group = List.of(group)
-    ..party = party
-    ..note = null;
-}
+import '../support/builders.dart';
 
 void main() {
   _dayWeekGroupingTests();
@@ -31,24 +13,24 @@ void main() {
     test('returns empty list for empty transactions or empty hierarchy', () {
       expect(build([], [GroupingOption.group]), isEmpty);
       expect(
-        build([_txn(amount: 10, date: DateTime(2026, 7, 1))], []),
+        build([aTransaction(amount: 10, date: DateTime(2026, 7, 1))], []),
         isEmpty,
       );
     });
 
     test('groups by two levels (group then party)', () {
       final txns = [
-        _txn(
+        aTransaction(
             amount: 100,
             date: DateTime(2026, 7, 1),
             group: ['Food'],
             party: 'A'),
-        _txn(
+        aTransaction(
             amount: 50,
             date: DateTime(2026, 7, 2),
             group: ['Food'],
             party: 'B'),
-        _txn(
+        aTransaction(
             amount: 30,
             date: DateTime(2026, 7, 3),
             group: ['Travel'],
@@ -69,7 +51,9 @@ void main() {
     });
 
     test('labels an empty group bucket "Uncategorized"', () {
-      final txns = [_txn(amount: 10, date: DateTime(2026, 7, 1), group: [])];
+      final txns = [
+        aTransaction(amount: 10, date: DateTime(2026, 7, 1), group: []),
+      ];
 
       final nodes = build(txns, [GroupingOption.group]);
 
@@ -79,7 +63,7 @@ void main() {
     });
 
     test('formats a month bucket with a three-letter month', () {
-      final txns = [_txn(amount: 10, date: DateTime(2026, 7, 15))];
+      final txns = [aTransaction(amount: 10, date: DateTime(2026, 7, 15))];
 
       final nodes = build(txns, [GroupingOption.month]);
 
@@ -89,20 +73,20 @@ void main() {
 
     test('sorts sibling nodes by descending total', () {
       final txns = [
-        _txn(
+        aTransaction(
             amount: 10,
             date: DateTime(2026, 7, 1),
-            isCredit: true,
+            isInflow: true,
             group: ['Small']),
-        _txn(
+        aTransaction(
             amount: 500,
             date: DateTime(2026, 7, 2),
-            isCredit: true,
+            isInflow: true,
             group: ['Big']),
-        _txn(
+        aTransaction(
             amount: 100,
             date: DateTime(2026, 7, 3),
-            isCredit: true,
+            isInflow: true,
             group: ['Mid']),
       ];
 
@@ -117,23 +101,14 @@ void main() {
 }
 
 void _dayWeekGroupingTests() {
-  Transaction txn(DateTime date, {double amount = 10}) => Transaction()
-    ..amount = amount
-    ..date = date
-    ..tags = <String>[]
-    ..group = <String>[]
-    ..party = 'x'
-    ..isInflow = false
-    ..kind = TransactionKind.expense;
-
   const build = BuildTransactionHierarchy();
 
   group('day and week grouping', () {
     test('day buckets by calendar date', () {
       final nodes = build([
-        txn(DateTime(2026, 7, 15, 9)),
-        txn(DateTime(2026, 7, 15, 22)),
-        txn(DateTime(2026, 7, 16, 1)),
+        aTransaction(date: DateTime(2026, 7, 15, 9)),
+        aTransaction(date: DateTime(2026, 7, 15, 22)),
+        aTransaction(date: DateTime(2026, 7, 16, 1)),
       ], [
         GroupingOption.day
       ]);
@@ -150,9 +125,9 @@ void _dayWeekGroupingTests() {
     test('week buckets Monday..Sunday and matches the preset boundary', () {
       // 13 Jul 2026 is a Monday; 19 Jul is that Sunday, 20 Jul the next Monday.
       final nodes = build([
-        txn(DateTime(2026, 7, 13)),
-        txn(DateTime(2026, 7, 19, 23)),
-        txn(DateTime(2026, 7, 20)),
+        aTransaction(date: DateTime(2026, 7, 13)),
+        aTransaction(date: DateTime(2026, 7, 19, 23)),
+        aTransaction(date: DateTime(2026, 7, 20)),
       ], [
         GroupingOption.week
       ]);
@@ -166,7 +141,7 @@ void _dayWeekGroupingTests() {
 
     test('week label spells out the month when it straddles two', () {
       final nodes = build(
-        [txn(DateTime(2026, 7, 30))],
+        [aTransaction(date: DateTime(2026, 7, 30))],
         [GroupingOption.week],
       );
       // Mon 27 Jul .. Sun 2 Aug

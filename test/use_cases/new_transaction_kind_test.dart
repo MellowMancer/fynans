@@ -6,13 +6,7 @@ import 'package:fynans/use_cases/new_transaction_kind.dart';
 import 'package:fynans/use_cases/save_transaction.dart';
 
 import '../fakes/fake_transaction_repository.dart';
-
-PaymentCard _card(CardType type) => PaymentCard()
-  ..id = 7
-  ..issuer = 'HDFC'
-  ..last4 = '1234'
-  ..type = type
-  ..status = CardStatus.active;
+import '../support/builders.dart';
 
 void main() {
   group('a kind that the user picked', () {
@@ -20,7 +14,7 @@ void main() {
       expect(
           newTransactionKind(
               isInflow: false,
-              card: _card(CardType.credit),
+              card: aCard(type: CardType.credit),
               chosen: TransactionKind.transfer),
           TransactionKind.transfer);
     });
@@ -79,7 +73,7 @@ void main() {
     });
 
     test('on a credit card, a spend is debt and money back is a refund', () {
-      final credit = _card(CardType.credit);
+      final credit = aCard(type: CardType.credit);
       expect(newTransactionKind(isInflow: false, card: credit),
           TransactionKind.debt);
       expect(newTransactionKind(isInflow: true, card: credit),
@@ -87,7 +81,7 @@ void main() {
     });
 
     test('on a debit card, the direction decides', () {
-      final debit = _card(CardType.debit);
+      final debit = aCard(type: CardType.debit);
       expect(newTransactionKind(isInflow: false, card: debit),
           TransactionKind.expense);
       expect(newTransactionKind(isInflow: true, card: debit),
@@ -106,7 +100,7 @@ void main() {
       tags: const [],
       isInflow: false,
       date: DateTime(2026, 7, 3),
-      card: _card(CardType.credit),
+      card: aCard(id: 7, type: CardType.credit),
     );
 
     expect(result.isSuccess, isTrue);
@@ -118,32 +112,31 @@ void main() {
   });
 
   group('editedKind', () {
-    Transaction row(TransactionKind kind, {required bool isInflow}) =>
-        Transaction()
-          ..isInflow = isInflow
-          ..kind = kind;
-
     test('keeps the kind if the direction stays', () {
       expect(
-          editedKind(row(TransactionKind.debt, isInflow: false),
+          editedKind(
+              aTransaction(isInflow: false, kind: TransactionKind.debt),
               isInflow: false),
           TransactionKind.debt);
     });
 
     test('flips to the opposite kind if the direction changes', () {
       expect(
-          editedKind(row(TransactionKind.debt, isInflow: false),
+          editedKind(
+              aTransaction(isInflow: false, kind: TransactionKind.debt),
               isInflow: true),
           TransactionKind.refund);
       expect(
-          editedKind(row(TransactionKind.income, isInflow: true),
+          editedKind(
+              aTransaction(isInflow: true, kind: TransactionKind.income),
               isInflow: false),
           TransactionKind.expense);
     });
 
     test('keeps a repayment or a transfer in either direction', () {
       expect(
-          editedKind(row(TransactionKind.transfer, isInflow: false),
+          editedKind(
+              aTransaction(isInflow: false, kind: TransactionKind.transfer),
               isInflow: true),
           TransactionKind.transfer);
     });

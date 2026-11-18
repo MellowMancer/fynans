@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fynans/entities/card_statement.dart';
 import 'package:fynans/entities/payment_card.dart';
 import 'package:fynans/entities/transaction.dart';
 import 'package:fynans/use_cases/remove_card.dart';
@@ -7,6 +6,7 @@ import 'package:fynans/use_cases/remove_card.dart';
 import '../fakes/fake_card_repository.dart';
 import '../fakes/fake_card_statement_repository.dart';
 import '../fakes/fake_transaction_repository.dart';
+import '../support/builders.dart';
 
 void main() {
   late FakeCardRepository cards;
@@ -20,28 +20,15 @@ void main() {
     transactions = FakeTransactionRepository();
     statements = FakeCardStatementRepository();
     removeCard = RemoveCard(cards, transactions, statements);
-    card = PaymentCard()
-      ..issuer = 'HDFC'
-      ..last4 = '1234'
-      ..type = CardType.credit
-      ..status = CardStatus.active
-      ..creditLimit = 50000;
+    card = aCard();
     await cards.saveCard(card);
   });
 
-  Future<void> addSpend() => transactions.saveTransaction(Transaction()
-    ..amount = 450
-    ..date = DateTime(2026, 7, 3)
-    ..tags = <String>[]
-    ..party = 'Swiggy'
-    ..isInflow = false
-    ..kind = TransactionKind.debt
-    ..cardId = card.id);
+  Future<void> addSpend() =>
+      transactions.saveTransaction(aTransaction(card: card));
 
-  Future<void> addStatement() => statements.importStatement(CardStatement()
-    ..cardId = card.id!
-    ..statementDate = DateTime(2026, 7, 20)
-    ..smsId = 'statement-1');
+  Future<void> addStatement() => statements
+      .importStatement(aStatement(card: card, smsId: 'statement-1'));
 
   group('removalFor', () {
     test('a card with no transactions and no statements can be deleted',
@@ -110,18 +97,22 @@ void main() {
   });
 
   group('HiddenTransactions.of', () {
-    Transaction spendOn(DateTime date, double amount) => Transaction()
-      ..amount = amount
-      ..date = date
-      ..tags = <String>[]
-      ..party = 'x'
-      ..isInflow = false
-      ..kind = TransactionKind.debt;
-
     final transactions = [
-      spendOn(DateTime(2026, 7, 30), 100),
-      spendOn(DateTime(2026, 7, 31, 22), 200),
-      spendOn(DateTime(2026, 8, 2), 400),
+      aTransaction(
+        amount: 100,
+        date: DateTime(2026, 7, 30),
+        kind: TransactionKind.debt,
+      ),
+      aTransaction(
+        amount: 200,
+        date: DateTime(2026, 7, 31, 22),
+        kind: TransactionKind.debt,
+      ),
+      aTransaction(
+        amount: 400,
+        date: DateTime(2026, 8, 2),
+        kind: TransactionKind.debt,
+      ),
     ];
 
     test('a closed card counts only the transactions after the closing date',
